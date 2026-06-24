@@ -1,0 +1,69 @@
+name: Playwright Automation
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      test_suite:
+        description: 'Test suite to run'
+        required: true
+        default: 'web:login'
+        type: choice
+        options:
+          - test
+          - web
+          - api
+          - web:login
+          - api:login
+          - web:smoke
+          - api:smoke
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Create .env
+        run: cp .env.example .env
+
+      - name: Run tests
+        run: npm run ${{ github.event.inputs.test_suite || 'web:login' }}
+        env:
+          BASE_URL: ${{ secrets.BASE_URL }}
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+          VALID_USER_EMAIL: ${{ secrets.VALID_USER_EMAIL }}
+          VALID_USER_PASSWORD: ${{ secrets.VALID_USER_PASSWORD }}
+          ENABLE_TESTRAIL: false
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: reports/
+          retention-days: 30
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: test-results/
+          retention-days: 14

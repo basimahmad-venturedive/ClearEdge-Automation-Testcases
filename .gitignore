@@ -1,0 +1,15 @@
+node_modules/
+.env
+reports/
+logs/
+screenshots/
+videos/
+traces/
+downloads/
+test-results/
+playwright-report/
+blob-report/
+.auth/
+*.log
+temp.zip
+docx_extract/

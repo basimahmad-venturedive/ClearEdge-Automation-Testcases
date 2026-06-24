@@ -1,0 +1,35 @@
+{
+  "name": "clearedge-automation",
+  "version": "1.0.0",
+  "description": "Enterprise Playwright Automation Framework for ClearEdgeIQ",
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "web": "playwright test --project=web-chromium",
+    "api": "playwright test --project=api",
+    "web:smoke": "playwright test Web/tests/Smoke --project=web-chromium",
+    "web:regression": "playwright test Web/tests/Regression --project=web-chromium",
+    "web:sanity": "playwright test Web/tests/Sanity --project=web-chromium",
+    "api:smoke": "playwright test API/tests/Smoke --project=api",
+    "api:regression": "playwright test API/tests/Regression --project=api",
+    "api:sanity": "playwright test API/tests/Sanity --project=api",
+    "web:login": "playwright test Web/tests/Login --project=web-chromium",
+    "api:login": "playwright test API/tests/Login --project=api",
+    "report": "playwright show-report reports/playwright",
+    "install:browsers": "playwright install"
+  },
+  "keywords": [
+    "playwright",
+    "automation",
+    "clearedgeiq"
+  ],
+  "author": "ClearEdge QA",
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "@playwright/test": "^1.52.0",
+    "dotenv": "^16.5.0"
+  },
+  "dependencies": {
+    "winston": "^3.17.0"
+  }
+}
