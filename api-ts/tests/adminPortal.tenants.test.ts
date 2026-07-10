@@ -14,6 +14,10 @@ import { randomUUID } from "crypto";
 import type { AxiosResponse } from "axios";
 import { AdminPortalClient } from "../src/clients/adminPortalClient";
 import { JwtFactory } from "../src/utils/jwtHelpers";
+// Valid admin token signed by the local Cognito mock (shared keypair served by the
+// JWKS server), so the app's AdminJwtAuthGuard actually accepts it — jwtFactory tokens
+// use a random key/issuer and are only good for negative (rejection) cases.
+import { signAdminToken } from "../local-env/localCognitoMock";
 import { withDbClient } from "../src/utils/dbClient";
 import { createSetupTenant, createHandedOverTenant, teardownTenant } from "../src/utils/adminPortalFixtures";
 import {
@@ -53,8 +57,12 @@ import {
 import { assertResponseTime, assertRequestEchoedInResponse, assertErrorEnvelope } from "../src/utils/assertions";
 import type { ErrorEnvelope } from "../src/payloads/types";
 
+// Endpoints ARE implemented (dev pull 2026-07-10). The remaining skips need an existing
+// tenant, and the only API way to create one — POST /admin/tenants — calls the real AWS
+// Cognito SDK, which is unreachable from the local Docker backend (ERR_COGNITO_OPERATION_FAILED).
+// Guard / validation / pagination / 404 cases that don't need a created tenant are enabled above.
 const SKIP_REASON =
-  "CEIQ-FEAT-001 /api/v1/admin/tenants endpoints not implemented in local backend as of 2026-07-08";
+  "requires a Cognito-provisioned tenant — POST /admin/tenants calls real Cognito, unavailable locally";
 const jwtFactory = new JwtFactory();
 
 /** Pulls `error.details.fields` out of a 400 ERR_VALIDATION_FAILED body. */
@@ -139,9 +147,9 @@ describe("Admin Portal — GET /admin/tenants (list)", () => {
     }
   });
 
-  test.skip(`TC-ADMAPI-003 — list boundaries: whitespace-only search, page=0, page past last, page omitted [blocked: ${SKIP_REASON}]`, async () => {
+  test(`TC-ADMAPI-003 — list boundaries: whitespace-only search, page=0, page past last, page omitted`, async () => {
     const client = new AdminPortalClient();
-    const adminToken = await jwtFactory.adminToken();
+    const adminToken = await signAdminToken({ sub: randomUUID() });
     const baseline = await client.listTenants({}, adminToken);
     assertResponseTime(baseline);
     expect(baseline.status).toBe(200);
@@ -234,8 +242,8 @@ const tokenVariants = ["i missing header", "ii tampered JWT", "iii tenant-pool J
 const authMatrix = endpointProbes.flatMap((probe) => tokenVariants.map((variant) => ({ ...probe, variant })));
 
 describe("Admin Portal — auth guard contract (all 7 endpoints)", () => {
-  test.skip.each(authMatrix)(
-    `TC-ADMAPI-004 — $endpoint with $variant → 401 ERR_AUTH_INVALID_TOKEN [blocked: ${SKIP_REASON}]`,
+  test.each(authMatrix)(
+    `TC-ADMAPI-004 — $endpoint with $variant → 401 ERR_AUTH_INVALID_TOKEN`,
     async ({ invoke, variant }) => {
       const client = new AdminPortalClient();
       let token: string | undefined;
@@ -253,7 +261,7 @@ describe("Admin Portal — auth guard contract (all 7 endpoints)", () => {
     },
   );
 
-  test.skip(`TC-ADMAPI-004 — rejected unauthenticated create has no side effects [blocked: ${SKIP_REASON}]`, async () => {
+  test(`TC-ADMAPI-004 — rejected unauthenticated create has no side effects`, async () => {
     const client = new AdminPortalClient();
     const payload = adminTenantCreatePayload();
 
@@ -420,11 +428,11 @@ describe("Admin Portal — POST /admin/tenants (create)", () => {
     }
   });
 
-  test.skip.each(createValidationMatrix())(
-    `TC-ADMAPI-013 — $sub → 400 ERR_VALIDATION_FAILED with exact §5 per-field message [blocked: ${SKIP_REASON}]`,
+  test.each(createValidationMatrix())(
+    `TC-ADMAPI-013 — $sub → 400 ERR_VALIDATION_FAILED with exact §5 per-field message`,
     async ({ overrides, invalidFields }) => {
       const client = new AdminPortalClient();
-      const adminToken = await jwtFactory.adminToken();
+      const adminToken = await signAdminToken({ sub: randomUUID() });
       const payload = adminTenantCreatePayload(overrides);
 
       const response = await client.createTenant(payload, adminToken);

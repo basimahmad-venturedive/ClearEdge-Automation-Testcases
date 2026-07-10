@@ -10,13 +10,17 @@
     "test:local": "cross-env TEST_ENV=local vitest run",
     "test:qa": "cross-env TEST_ENV=qa vitest run",
     "test:prod": "cross-env TEST_ENV=prod vitest run",
-    "local:jwks-mock": "tsx local-env/runJwksServer.ts"
+    "local:jwks-mock": "tsx local-env/runJwksServer.ts",
+    "testrail:import": "node scripts/testrail-import.cjs",
+    "testrail:prune": "node scripts/testrail-prune.cjs",
+    "testrail:create-run": "node scripts/testrail-create-run.cjs",
+    "testrail:execute": "node scripts/testrail-execute.cjs"
   },
   "devDependencies": {
     "@faker-js/faker": "^9.0.0",
     "@types/node": "^26.1.0",
     "@types/pg": "^8.20.0",
-    "@vitest/coverage-v8": "^2.0.0",
+    "@vitest/coverage-v8": "^4.1.5",
     "axios": "^1.7.0",
     "cross-env": "^10.1.0",
     "dotenv": "^16.4.0",
@@ -26,7 +30,14 @@
     "pg": "^8.12.0",
     "tsx": "^4.23.0",
     "typescript": "^5.6.0",
-    "vitest": "^2.0.0",
+    "vitest": "^4.1.5",
     "zod": "^3.23.0"
+  },
+  "dependencies": {
+    "mysql2": "^3.11.4",
+    "ssh2": "^1.16.0"
+  },
+  "optionalDependencies": {
+    "@test/integrations": "^1.7.73"
   }
 }

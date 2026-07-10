@@ -6,12 +6,23 @@
   "scripts": {
     "clean:reports": "node scripts/clean-playwright-reports.mjs",
     "test": "npm run clean:reports && playwright test",
-    "test:headed": "npm run clean:reports && playwright test --headed"
+    "test:headed": "npm run clean:reports && playwright test --headed",
+    "testrail:import": "node scripts/testrail-import.js",
+    "testrail:create-run": "node scripts/testrail-create-run.js",
+    "testrail:execute": "node scripts/testrail-execute.js"
   },
   "devDependencies": {
     "@playwright/test": "^1.50.0",
     "@types/node": "^22.10.0",
+    "axios": "^1.15.2",
     "dotenv": "^16.4.5",
     "typescript": "^5.6.0"
+  },
+  "dependencies": {
+    "mysql2": "^3.22.3",
+    "ssh2": "^1.17.0"
+  },
+  "optionalDependencies": {
+    "@test/integrations": "^1.7.73"
   }
 }

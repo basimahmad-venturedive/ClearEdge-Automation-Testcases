@@ -2,11 +2,11 @@
  * Payload factories for CEIQ-FOUND-001 (F1).
  *
  * Field names/shape confirmed against the real DTOs in codebase/clearedge-backend
- * (src/tenant/dto/create-tenant.dto.ts) as of 2026-07-08 — camelCase, no `address`
- * field (spec §5.2 documents a tenants.address DB column, but CreateTenantDto does not
- * accept or return it — a confirmed spec/implementation gap, not a typo here).
- * Domain must match DOMAIN_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]?\.[a-zA-Z]{2,}$/
- * — a single label + TLD (no subdomains), lowercased by the DTO's own @Transform.
+ * (src/tenant/dto/create-tenant.dto.ts). As of the CEIQ-FEAT-001 admin-portal merge
+ * (dev, 2026-07-10) CreateTenantDto now REQUIRES `address` ("Company address is required.")
+ * — added to the factory below. Domain must match DOMAIN_HOSTNAME_REGEX in
+ * src/tenant/utils/domain.util.ts and is normalized (protocol/www stripped, lowercased)
+ * by the DTO's own @Transform.
  */
 import { faker } from "@faker-js/faker";
 import type { TenantCreationPayload, UserCreationPayload, UserRole } from "./types";
@@ -22,6 +22,7 @@ export function tenantCreationPayload(overrides: Partial<TenantCreationPayload> 
   return {
     name: `Test Tenant ${unique}`,
     domain: `test${unique}.test`,
+    address: `${unique} Test Street, Test City`,
     ownerName: `Test PO ${unique}`,
     ownerEmail: `po.${unique}@example.test`,
     ...overrides,

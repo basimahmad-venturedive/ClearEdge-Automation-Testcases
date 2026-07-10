@@ -5,8 +5,7 @@
  */
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import type { Reporter } from "vitest/reporters";
-import type { File, Task } from "vitest";
+import type { Reporter, TestModule } from "vitest/node";
 
 interface FlatResult {
   suite: string;
@@ -40,28 +39,6 @@ function escapeHtml(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
-function walk(task: Task, file: string, suitePath: string[], out: FlatResult[]): void {
-  const tasks = "tasks" in task ? task.tasks : [];
-  if (tasks && tasks.length > 0) {
-    const nextPath = task.name ? [...suitePath, task.name] : suitePath;
-    for (const child of tasks) walk(child, file, nextPath, out);
-    return;
-  }
-  const result = task.result;
-  const state = result?.state;
-  const status: FlatResult["status"] = state === "pass" ? "passed" : state === "skip" || state === "todo" ? "skipped" : "failed";
-  const firstError = result?.errors?.[0];
-  out.push({
-    suite: suitePath.join(" > ") || "(root)",
-    name: task.name,
-    file,
-    status,
-    durationMs: result?.duration ?? 0,
-    message: redact(firstError?.message),
-    stack: redact(firstError?.stack),
-  });
-}
-
 export default class ExtentReporter implements Reporter {
   private startedAt = new Date();
 
@@ -69,11 +46,34 @@ export default class ExtentReporter implements Reporter {
     this.startedAt = new Date();
   }
 
-  onFinished(files: File[] = []): void {
+  onTestRunStart(): void {
+    this.startedAt = new Date();
+  }
+
+  // Vitest 4 reporter hook (replaces the removed onFinished(files) — the old hook never
+  // fired under v4, so latest.html went stale). Flattens the TestModule tree via the
+  // reporting API (TestModule.children.allTests() -> TestCase.result()/diagnostic()).
+  onTestRunEnd(testModules: ReadonlyArray<TestModule> = []): void {
     const results: FlatResult[] = [];
-    for (const file of files) {
-      const relFile = path.relative(path.resolve(__dirname, ".."), file.filepath ?? file.name);
-      for (const task of file.tasks) walk(task, relFile, [], results);
+    for (const mod of testModules) {
+      const relFile = path.relative(path.resolve(__dirname, ".."), mod.moduleId);
+      for (const test of mod.children.allTests()) {
+        const res = test.result();
+        const status: FlatResult["status"] =
+          res.state === "passed" ? "passed" : res.state === "failed" ? "failed" : "skipped";
+        const firstError = res.state === "failed" ? res.errors?.[0] : undefined;
+        const parts = test.fullName.split(" > ");
+        const suite = parts.length > 1 ? parts.slice(0, -1).join(" > ") : "(root)";
+        results.push({
+          suite,
+          name: test.name,
+          file: relFile,
+          status,
+          durationMs: Math.round(test.diagnostic()?.duration ?? 0),
+          message: redact(firstError?.message),
+          stack: redact(firstError?.stack),
+        });
+      }
     }
 
     const total = results.length;

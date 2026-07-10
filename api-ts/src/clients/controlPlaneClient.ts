@@ -7,7 +7,7 @@
  * src/**\/*.controller.ts found exactly these three):
  *
  *   GET  /health                — health.controller.ts (no auth, VERSION_NEUTRAL, excluded from /api prefix)
- *   POST /api/v1/tenants         — tenant.controller.ts (AdminJwtAuthGuard + PlatformAdminGuard)
+ *   POST /api/v1/admin/tenants   — tenant.controller.ts (AdminJwtAuthGuard + PlatformAdminGuard)
  *   GET  /api/v1/user/me         — user.controller.ts (JwtAuthGuard, global)
  *
  * Everything else the F1 spec describes (tenant detail view, invite trigger, PO
@@ -21,7 +21,9 @@ import { apiBaseUrl, healthBaseUrl } from "../config/env";
 
 // --- Confirmed real endpoints (codebase/clearedge-backend, 2026-07-07) ---
 export const ENDPOINT_HEALTH = "/health";
-export const ENDPOINT_TENANT_CREATE = "/tenants";
+// Moved to /admin/tenants in the CEIQ-FEAT-001 admin-portal merge (dev, 2026-07-10);
+// was /tenants in the FOUND-001 scaffold.
+export const ENDPOINT_TENANT_CREATE = "/admin/tenants";
 export const ENDPOINT_USER_ME = "/user/me";
 
 // --- Not yet implemented — Admin Portal feature spec owns these (SPEC §1.3) ---

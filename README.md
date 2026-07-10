@@ -102,6 +102,48 @@ automation/reports/html/api/latest.html
 
 Open it directly in a browser after a run — it shows total/passed/failed/skipped counts, a pass-rate donut, and, per failure, the expected-vs-actual message plus a collapsible stack trace (sensitive headers/tokens are redacted before being written). The report is regenerated (overwritten) on every run — it always reflects the latest execution, not a history. Implementation: `automation/api-ts/reporters/extentReporter.ts`, wired in via `reporters` in `automation/api-ts/vitest.config.ts`.
 
+## TestRail & CQM integration
+
+Both layers are wired for TestRail result publishing and CQM automation-stats
+reporting as **runner reporters**, following the VentureDive QA automation
+boilerplates (`qa-automation-boilerplates`: `BE-Automation` for `api-ts`,
+`FE-Boilerplate` for `frontend`). Both are **opt-in** and completely silent
+unless their env flag is set — ordinary `npm test` runs are unaffected. The
+older Python `automation/integration/testrail` publisher has been retired in
+favour of this JS flow.
+
+**Where things live** (per layer — `api-ts/` = `.cjs`, `frontend/` = `.js`):
+
+- `reporters/testrailReporter.*` — posts results to a TestRail run.
+- `reporters/cqmReporter.*` (+ `cqmDirect.*`) — inserts `automation_run` +
+  `test_case_execution` rows. Dual path: **AWS** Secrets Manager via the optional
+  private `@test/integrations`, or **direct** SSH-bastion + MySQL. It auto-routes
+  by which env vars are present (`CQM_DIRECT_DB=1` forces direct).
+- `testrail/` — client, mapping store, importer, run creator, result publisher,
+  markdown parser. `testrail/mappingStore/caseMapping.json` maps `TC-…` ids →
+  TestRail case ids; it is **seeded from `testcases/testrail_map.json`** (the
+  already-published ClearEdge project 110 cases), so no re-import is needed.
+
+**TestRail — publish an automated run** (fill `TESTRAIL_*` in `.env` first):
+
+```bash
+cd automation/api-ts        # or automation/frontend
+npm run testrail:create-run # creates a run from the active TC-ids in the mapping
+npm run testrail:execute    # runs the suite and publishes results to that run
+```
+
+`npm run testrail:import` (re-)creates the mapping from a `testcases/TC-*.md`
+file — **only run it for brand-new cases**; it creates cases in TestRail and
+would duplicate the 150 already published for project 110.
+
+**CQM — enable stats insertion:** set `CQM_INTEGRATION=1` and either the `AWS_*`
++ `SSH_*` vars (AWS path) or the `DB_*` + `SSH_*` vars (direct path), then run the
+suite normally. See each layer's `.env.example` for the full variable list.
+
+> The reporters match `TC-<AREA>-###` ids in test titles. The private
+> `@test/integrations` package (AWS CQM path) is an `optionalDependency`; provide
+> its registry token via `VD_NPM_TOKEN` — never commit a token to `.npmrc`.
+
 ## Layer conventions followed
 
 - `.claude/rules/api-automation.rules.md` — clients/payloads/schemas/utils separation, response-time SLA helper, request-echo assertion helper, TC-ID in test titles.

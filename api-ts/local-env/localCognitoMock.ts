@@ -101,7 +101,10 @@ export async function signAdminToken(claims: {
   return new SignJWT({
     email: claims.email ?? "admin@venturedive.test",
     client_id: "local-admin-client",
-    "custom:admin": claims.admin ?? true,
+    // Cognito custom attributes are always strings; the admin guard checks
+    // custom:admin === "true" (backend commit 310dc68, dev pull 2026-07-10),
+    // so mint a string, not a boolean.
+    "custom:admin": String(claims.admin ?? true),
   })
     .setProtectedHeader({ alg: "RS256", kid: KID })
     .setSubject(claims.sub)

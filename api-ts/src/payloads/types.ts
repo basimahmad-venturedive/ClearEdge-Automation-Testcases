@@ -10,6 +10,9 @@
 export interface TenantCreationPayload {
   name: string;
   domain: string;
+  // Required by CreateTenantDto since the CEIQ-FEAT-001 admin-portal merge (dev, 2026-07-10):
+  // "Company address is required." (was not part of the earlier FOUND-001 contract).
+  address: string;
   ownerName: string;
   ownerEmail: string;
 }

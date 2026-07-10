@@ -78,14 +78,29 @@ describe("Auth guards — real local backend", () => {
   test("TC-AUTH-006 — valid admin-pool JWT accepted (reaches business logic, not rejected by guards) (§8.1)", async () => {
     const token = await signAdminToken({ sub: "fixture-admin-1" });
 
-    const response = await client.post(ENDPOINT_TENANT_CREATE, tenantCreationPayload(), token);
+    const response = await client.post<{ data?: { id?: string }; error?: { code?: string } }>(
+      ENDPOINT_TENANT_CREATE,
+      tenantCreationPayload(),
+      token,
+    );
 
-    // Guards passed (not 401/403) — the request reached TenantService, which then fails at the
-    // real Cognito SDK call (no local Cognito exists). See file header note.
+    // The point of this test is pool acceptance: a valid admin-pool JWT must PASS
+    // AdminJwtAuthGuard + PlatformAdminGuard (never 401/403) and reach the business layer.
     expect(response.status).not.toBe(401);
     expect(response.status).not.toBe(403);
-    expect((response.data as { error?: { code: string } }).error?.code).toBe("ERR_COGNITO_OPERATION_FAILED");
-  });
+    // Beyond the guards, the outcome depends on AWS Cognito reachability from the local
+    // container (which is intermittent here): reachable -> 201 create; unreachable -> the
+    // Cognito SDK fails with ERR_COGNITO_OPERATION_FAILED. Both prove the token was accepted.
+    const errCode = response.data.error?.code;
+    expect(errCode === undefined || errCode === "ERR_COGNITO_OPERATION_FAILED").toBe(true);
+
+    // If creation actually succeeded, remove the DB rows we just made (Cognito user cleanup
+    // is out of scope — no admin helper exists in this kit yet).
+    if (response.status === 201 && response.data.data?.id) {
+      await deleteFixtureTenant(response.data.data.id);
+    }
+    // The Cognito SDK path can take several seconds (AWS timeout), so allow more than the default 5s.
+  }, 20000);
 
   test("TC-AUTH-007 — tenant-pool token rejected by admin-portal route (§7.1 pool separation)", async () => {
     fixture = await createFixtureTenantAndUser({ roleSlug: "procurement_manager" });

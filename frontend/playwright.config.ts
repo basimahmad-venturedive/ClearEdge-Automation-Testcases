@@ -1,5 +1,24 @@
-import { defineConfig } from '@playwright/test';
+import { defineConfig, type ReporterDescription } from '@playwright/test';
 import { baseUrl, isCi } from './utils/env';
+
+/**
+ * Integration reporters (TestRail + CQM) are opt-in and only appended when their
+ * env flag is on, so ordinary local runs stay quiet. `utils/env` already loaded
+ * the .env chain at import time, so process.env is populated here.
+ * - TESTRAIL_INTEGRATION=1 → publish results to the run in testrail/mappingStore/runContext.json
+ * - CQM_INTEGRATION=1       → insert automation_run + test_case_execution rows
+ */
+function isOn(flag: string | undefined): boolean {
+  return ['1', 'true', 'yes'].includes((flag ?? '').trim().toLowerCase());
+}
+
+const integrationReporters: ReporterDescription[] = [];
+if (isOn(process.env.TESTRAIL_INTEGRATION)) {
+  integrationReporters.push(['./reporters/testrailReporter.js']);
+}
+if (isOn(process.env.CQM_INTEGRATION)) {
+  integrationReporters.push(['./reporters/cqmReporter.js']);
+}
 
 /**
  * Playwright config — CEIQ-FEAT-001 Admin Portal UI suite.
@@ -22,6 +41,7 @@ export default defineConfig({
     ['list'],
     ['json', { outputFile: 'reports/last-run.json' }],
     ['html', { outputFolder: '../reports/playwright-html', open: 'never' }],
+    ...integrationReporters,
   ],
   use: {
     baseURL: baseUrl(),

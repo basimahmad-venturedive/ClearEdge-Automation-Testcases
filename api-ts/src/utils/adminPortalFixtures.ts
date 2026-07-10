@@ -67,7 +67,9 @@ export async function teardownTenant(tenantId: string): Promise<void> {
     await db.query("DELETE FROM role_rights WHERE role_id IN (SELECT id FROM roles WHERE tenant_id = $1)", [tenantId]);
     await db.query("DELETE FROM users WHERE tenant_id = $1", [tenantId]);
     await db.query("DELETE FROM roles WHERE tenant_id = $1", [tenantId]);
-    await db.query("DELETE FROM platform_audit_logs WHERE entity = 'tenants' AND entity_id = $1", [tenantId]);
+    // Actual schema (migration 20260706000001) is table_name/record_id — NOT entity/entity_id.
+    // Using the wrong column names here threw "column does not exist" and broke teardown.
+    await db.query("DELETE FROM platform_audit_logs WHERE table_name = 'tenants' AND record_id = $1", [tenantId]);
     await db.query("DELETE FROM tenants WHERE id = $1", [tenantId]);
   });
 }
