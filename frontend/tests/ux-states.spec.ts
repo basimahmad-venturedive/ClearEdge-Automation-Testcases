@@ -1,0 +1,84 @@
+/**
+ * CEIQ-FEAT-001 — UI generic error + loading states (§10).
+ * Source: testcases/TC-CEIQ-FEAT-001.md — TC-ADMUX-001, TC-ADMUX-002.
+ *
+ * Every test is test.fixme(): CEIQ-FEAT-001 admin portal frontend URL not
+ * available as of 2026-07-08. Bodies are fully implemented and run the day
+ * E2E_BASE_URL exists.
+ */
+import { test, FIXME_DETAILS } from './fixtures/baseTest';
+import { Copy } from './fixtures/expectedCopy';
+import { HANDED_OVER_TENANT, uniqueTenant } from './fixtures/testData';
+
+test.describe('§10 UX states', () => {
+  test.fixme(
+    'TC-ADMUX-001 unexpected API error shows the generic error toast',
+    FIXME_DETAILS,
+    async ({ authenticatedTenantList: list, createTenantPage }) => {
+      // 1a — POST /admin/tenants mocked 500: generic toast, no internal detail,
+      // triggering button re-enables; retry succeeds after the mock is removed.
+      const tenant = uniqueTenant();
+      const restoreCreate = await createTenantPage.mockCreateFailure(500);
+      await list.openCreateTenant();
+      await createTenantPage.fillForm(tenant);
+      await createTenantPage.submit();
+      await createTenantPage.expectToast(Copy.genericErrorToast);
+      await createTenantPage.expectSubmitEnabled();
+      // 3. Remove the mock and retry — succeeds normally.
+      await restoreCreate();
+      await createTenantPage.submit();
+      await list.expectLanded();
+      await list.expectToast(Copy.tenantCreatedToast(tenant.companyName));
+
+      // 1b — PATCH …/status mocked network abort: generic toast on a handed-over
+      // tenant's toggle; retry succeeds after the mock is removed.
+      const name = HANDED_OVER_TENANT.companyName;
+      const restoreStatus = await list.mockStatusFailure('abort');
+      await list.clickCardToggle(name);
+      await list.dialog.confirm();
+      await list.expectToast(Copy.genericErrorToast);
+      await restoreStatus();
+      await list.clickCardToggle(name);
+      await list.dialog.confirm();
+      await list.expectToastVisible();
+      // Cleanup (TODO_FIXTURE): teardown the created tenant; restore status.
+    },
+  );
+
+  test.fixme(
+    'TC-ADMUX-002 loading states on toggle confirmations and section saves',
+    FIXME_DETAILS,
+    async ({ authenticatedTenantList: list, tenantProfilePage: profile }) => {
+      // Precondition (TODO_FIXTURE): Handed-Over tenant; responses delayable.
+      const name = HANDED_OVER_TENANT.companyName;
+      const delayMs = 2000;
+      // 2a — status-toggle confirm with a ~2 s delayed response: the confirming
+      // button is disabled + loading indicator visible during the call; repeat
+      // clicks are impossible while disabled; re-enables (dialog closes) on success.
+      const restoreStatus = await list.delayStatusResponse(delayMs);
+      await list.clickCardToggle(name);
+      await list.dialog.confirmAndExpectPending();
+      await list.dialog.expectClosed();
+      await restoreStatus();
+
+      // 2b — Company section Save with a delayed response.
+      await list.openProfile(name);
+      const restoreCompany = await profile.delayCompanyResponse(delayMs);
+      await profile.editCompanySection();
+      await profile.fillCompanyAddress('Loading-state address 1');
+      await profile.saveCompanySectionExpectingPending();
+      await profile.expectCompanySectionReadOnly();
+      await restoreCompany();
+
+      // 2c — PO section Save (name-only) with a delayed response.
+      const restoreOwner = await profile.delayOwnerResponse(delayMs);
+      await profile.editOwnerSection();
+      await profile.fillOwnerName('Loading State Owner');
+      await profile.saveOwnerSectionExpectingPending();
+      await profile.expectOwnerSectionReadOnly();
+      await restoreOwner();
+      // Cleanup (TODO_FIXTURE): restore values / status.
+      await profile.closeProfile();
+    },
+  );
+});

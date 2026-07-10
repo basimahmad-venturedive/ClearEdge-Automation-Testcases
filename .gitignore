@@ -1,0 +1,38 @@
+# ── Dependencies ──
+node_modules/
+**/node_modules/
+
+# ── Secrets & credentials (see .claude/rules/secrets-and-env.rules.md §6) ──
+.env
+.env.local
+**/.env
+**/.env.local
+**/secrets.json
+**/credentials.json
+**/storageState.json
+*.pem
+*.key
+*.p12
+*.jks
+
+# Local JWKS / Cognito mock keypair — contains a private key, never commit
+**/local-env/keypair.json
+
+# ── Run artifacts ──
+reports/
+**/reports/
+test-results/
+**/test-results/
+playwright-report/
+**/playwright-report/
+blob-report/
+**/blob-report/
+coverage/
+**/coverage/
+logs/
+**/logs/
+*.log
+
+# ── OS / editor ──
+.DS_Store
+Thumbs.db

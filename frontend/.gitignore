@@ -1,0 +1,15 @@
+# Secrets / local configuration — never committed (.claude/rules/secrets-and-env.rules.md §6)
+.env
+.env.local
+storageState.json
+
+# Dependencies
+node_modules/
+
+# Run artifacts
+test-results/
+playwright-report/
+blob-report/
+reports/
+logs/
+coverage/
