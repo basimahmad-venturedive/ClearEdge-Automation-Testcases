@@ -13,7 +13,7 @@ const NO_ENV_REASON = "no environment exists yet — see TC-ADMIN-* in TC-CEIQ-F
 const jwtFactory = new JwtFactory();
 
 describe("Platform Admin isolation", () => {
-  test.skip(`TC-ADMIN-001 — PA control-plane action succeeds and is audited (SR-010) [blocked: ${NO_ENV_REASON}]`, async () => {
+  test.skip(`TC-ADMIN-001 — PA control-plane action succeeds and is audited (SR-010) [blocked: ${NO_ENV_REASON}] @smoke`, async () => {
     const client = new ControlPlaneClient();
     const adminToken = await jwtFactory.adminToken();
     const response = await client.get(TODO_ENDPOINT_TENANT_DETAIL("some-tenant-id"), adminToken);
@@ -24,7 +24,7 @@ describe("Platform Admin isolation", () => {
     });
   });
 
-  test.skip(`TC-ADMIN-002 — PA denied business-data access (SR-011, BR-04) [blocked: ${NO_ENV_REASON}]`, async () => {
+  test.skip(`TC-ADMIN-002 — PA denied business-data access (SR-011, BR-04) [blocked: ${NO_ENV_REASON}] @smoke`, async () => {
     const client = new ControlPlaneClient();
     const adminToken = await jwtFactory.adminToken();
     const response = await client.get("/TODO/fixture-table/some-business-record", adminToken);
@@ -32,14 +32,14 @@ describe("Platform Admin isolation", () => {
     expect((response.data as ErrorEnvelope).error.code).toBe("ERR_RBAC_FORBIDDEN");
   });
 
-  test.skip(`TC-ADMIN-003 — PA cannot read tenant_audit_logs (SR-018, BR-20) [blocked: ${NO_ENV_REASON}]`, async () => {
+  test.skip(`TC-ADMIN-003 — PA cannot read tenant_audit_logs (SR-018, BR-20) [blocked: ${NO_ENV_REASON}] @smoke`, async () => {
     const client = new ControlPlaneClient();
     const adminToken = await jwtFactory.adminToken();
     const response = await client.get(TODO_ENDPOINT_AUDIT_TENANT, adminToken);
     expect(response.status).toBe(403);
   });
 
-  test.skip(`TC-ADMIN-004 — PA write to users routes to platform_audit_logs, not tenant (§5.4, §13.2) [blocked: ${NO_ENV_REASON}]`, async () => {
+  test.skip(`TC-ADMIN-004 — PA write to users routes to platform_audit_logs, not tenant (§5.4, §13.2) [blocked: ${NO_ENV_REASON}] @smoke`, async () => {
     const client = new ControlPlaneClient();
     const adminToken = await jwtFactory.adminToken();
     await client.post(ENDPOINT_TENANT_CREATE, tenantCreationPayload(), adminToken);

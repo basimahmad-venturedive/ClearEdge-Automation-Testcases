@@ -12,7 +12,7 @@ const NO_ENV_REASON = "no environment exists yet — see TC-AUDIT-* in TC-CEIQ-F
 const jwtFactory = new JwtFactory();
 
 describe("Audit logging", () => {
-  test.skip(`TC-AUDIT-001 — write captured with full actor/action/table/record/old/new state (SR-013) [blocked: ${NO_ENV_REASON}]`, async () => {
+  test.skip(`TC-AUDIT-001 — write captured with full actor/action/table/record/old/new state (SR-013) [blocked: ${NO_ENV_REASON}] @smoke`, async () => {
     const client = new ControlPlaneClient();
     const ownerToken = await jwtFactory.tenantToken({ tenantId: "t1", roleId: "role-owner" });
     await client.patch("/TODO/tenant/users/some-user-id", { name: "New Name" }, ownerToken);
@@ -27,7 +27,7 @@ describe("Audit logging", () => {
     });
   });
 
-  test.skip(`TC-AUDIT-002 — sensitive fields stripped from audit snapshots (SR-013, BR-21) [blocked: ${NO_ENV_REASON}]`, async () => {
+  test.skip(`TC-AUDIT-002 — sensitive fields stripped from audit snapshots (SR-013, BR-21) [blocked: ${NO_ENV_REASON}] @smoke`, async () => {
     const client = new ControlPlaneClient();
     const adminToken = await jwtFactory.adminToken();
     await client.post(ENDPOINT_TENANT_CREATE, tenantCreationPayload(), adminToken);
@@ -41,7 +41,7 @@ describe("Audit logging", () => {
     });
   });
 
-  test.skip(`TC-AUDIT-003 — adminPrincipal writes route to platform_audit_logs (§13.2) [blocked: ${NO_ENV_REASON}]`, async () => {
+  test.skip(`TC-AUDIT-003 — adminPrincipal writes route to platform_audit_logs (§13.2) [blocked: ${NO_ENV_REASON}] @smoke`, async () => {
     const client = new ControlPlaneClient();
     const adminToken = await jwtFactory.adminToken();
     await client.post(ENDPOINT_TENANT_CREATE, tenantCreationPayload(), adminToken);
@@ -51,7 +51,7 @@ describe("Audit logging", () => {
     });
   });
 
-  test.skip(`TC-AUDIT-004 — principal-only writes route to tenant_audit_logs (§13.2) [blocked: ${NO_ENV_REASON}]`, async () => {
+  test.skip(`TC-AUDIT-004 — principal-only writes route to tenant_audit_logs (§13.2) [blocked: ${NO_ENV_REASON}] @smoke`, async () => {
     const client = new ControlPlaneClient();
     const ownerToken = await jwtFactory.tenantToken({ tenantId: "t1", roleId: "role-owner" });
     await client.patch("/TODO/tenant/users/some-user-id", { name: "Y" }, ownerToken);

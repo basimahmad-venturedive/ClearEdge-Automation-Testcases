@@ -15,7 +15,7 @@ function rawTokenAndHash(): { raw: string; hash: string } {
 }
 
 describe("Vendor secure link", () => {
-  test.skip(`TC-VENDOR-001 — valid unexpired token establishes session, no rights granted (SR-007) [blocked: ${NO_ENV_REASON}]`, async () => {
+  test.skip(`TC-VENDOR-001 — valid unexpired token establishes session, no rights granted (SR-007) [blocked: ${NO_ENV_REASON}] @smoke`, async () => {
     const client = new ControlPlaneClient();
     const { raw } = rawTokenAndHash();
     // Arrange: insert an active, unexpired vendor_access_tokens row with this hash (fixture setup).
@@ -24,7 +24,7 @@ describe("Vendor secure link", () => {
     expect((response.data as SuccessEnvelope<Record<string, unknown>>).data).not.toHaveProperty("rights");
   });
 
-  test.skip(`TC-VENDOR-002 — vendor cannot escape its record scope (SR-008) [blocked: ${NO_ENV_REASON}]`, async () => {
+  test.skip(`TC-VENDOR-002 — vendor cannot escape its record scope (SR-008) [blocked: ${NO_ENV_REASON}] @smoke`, async () => {
     const client = new ControlPlaneClient();
     const { raw } = rawTokenAndHash(); // bound to RFP X / Vendor V by fixture
     const response = await client.get("/TODO/vendor-portal/rfp/some-other-rfp-id", raw);
@@ -33,7 +33,7 @@ describe("Vendor secure link", () => {
   });
 
   test.skip.each(["expired", "used", "revoked", "active_but_expires_at_past"])(
-    `TC-VENDOR-003 — token state=%s rejected 401 (SR-009) [blocked: ${NO_ENV_REASON}]`,
+    `TC-VENDOR-003 — token state=%s rejected 401 (SR-009) [blocked: ${NO_ENV_REASON}] @smoke`,
     async () => {
       const client = new ControlPlaneClient();
       const { raw } = rawTokenAndHash(); // fixture seeds the row in the given state

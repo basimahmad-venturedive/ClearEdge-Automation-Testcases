@@ -29,7 +29,7 @@ afterEach(async () => {
 });
 
 describe("Auth guards — real local backend", () => {
-  test("TC-AUTH-001 — valid tenant-pool JWT accepted; principal populated (SR-001)", async () => {
+  test("TC-AUTH-001 — valid tenant-pool JWT accepted; principal populated (SR-001) @smoke", async () => {
     fixture = await createFixtureTenantAndUser({ roleSlug: "procurement_manager" });
     const token = await signTenantToken({ sub: fixture.cognitoSub, tenantId: fixture.tenantId, roleId: fixture.roleId });
 
@@ -41,7 +41,7 @@ describe("Auth guards — real local backend", () => {
   });
 
   test.each(["tampered_signature", "wrong_issuer", "expired"] as const)(
-    "TC-AUTH-002/003/004 — invalid JWT variant=%s rejected 401 ERR_AUTH_INVALID_TOKEN (SR-002)",
+    "TC-AUTH-002/003/004 — invalid JWT variant=%s rejected 401 ERR_AUTH_INVALID_TOKEN (SR-002) @smoke",
     async (variant) => {
       let token: string;
       if (variant === "tampered_signature") {
@@ -61,7 +61,7 @@ describe("Auth guards — real local backend", () => {
     },
   );
 
-  test("TC-AUTH-005 — missing role_id claim (SR-006) — DEVIATION FOUND: real code returns 401 ERR_AUTH_INVALID_TOKEN, not 403 as spec states", async () => {
+  test("TC-AUTH-005 — missing role_id claim (SR-006) — DEVIATION FOUND: real code returns 401 ERR_AUTH_INVALID_TOKEN, not 403 as spec states @smoke", async () => {
     fixture = await createFixtureTenantAndUser({ roleSlug: "procurement_manager" });
     const token = await signTenantToken({ sub: fixture.cognitoSub, tenantId: fixture.tenantId }); // no roleId
 
@@ -75,7 +75,7 @@ describe("Auth guards — real local backend", () => {
     expect((response.data as { error: { code: string } }).error.code).toBe("ERR_AUTH_INVALID_TOKEN");
   });
 
-  test("TC-AUTH-006 — valid admin-pool JWT accepted (reaches business logic, not rejected by guards) (§8.1)", async () => {
+  test("TC-AUTH-006 — valid admin-pool JWT accepted (reaches business logic, not rejected by guards) (§8.1) @smoke", async () => {
     const token = await signAdminToken({ sub: "fixture-admin-1" });
 
     const response = await client.post<{ data?: { id?: string }; error?: { code?: string } }>(
@@ -102,7 +102,7 @@ describe("Auth guards — real local backend", () => {
     // The Cognito SDK path can take several seconds (AWS timeout), so allow more than the default 5s.
   }, 20000);
 
-  test("TC-AUTH-007 — tenant-pool token rejected by admin-portal route (§7.1 pool separation)", async () => {
+  test("TC-AUTH-007 — tenant-pool token rejected by admin-portal route (§7.1 pool separation) @smoke", async () => {
     fixture = await createFixtureTenantAndUser({ roleSlug: "procurement_manager" });
     const token = await signTenantToken({ sub: fixture.cognitoSub, tenantId: fixture.tenantId, roleId: fixture.roleId });
 
@@ -112,7 +112,7 @@ describe("Auth guards — real local backend", () => {
     expect((response.data as { error: { code: string } }).error.code).toBe("ERR_AUTH_INVALID_TOKEN");
   });
 
-  test("TC-AUTH-008 — admin-pool token rejected by tenant-app route (§7.1 pool separation)", async () => {
+  test("TC-AUTH-008 — admin-pool token rejected by tenant-app route (§7.1 pool separation) @smoke", async () => {
     const token = await signAdminToken({ sub: "fixture-admin-2" });
 
     const response = await client.get(ENDPOINT_USER_ME, token);

@@ -72,7 +72,7 @@ function validationFields(response: AxiosResponse): Record<string, string> {
 }
 
 describe("Admin Portal — GET /admin/tenants (list)", () => {
-  test.skip(`TC-ADMAPI-001 — list envelope, fixed page size 12, createdAt DESC + displayId tie-break, setupPassword never present [blocked: ${SKIP_REASON}]`, async () => {
+  test.skip(`TC-ADMAPI-001 — list envelope, fixed page size 12, createdAt DESC + displayId tie-break, setupPassword never present [blocked: ${SKIP_REASON}] @smoke`, async () => {
     // Arrange — env fixture: ≥13 tenants incl. ≥1 in_setup and a shared created_at pair (tie-break).
     const client = new AdminPortalClient();
     const adminToken = await jwtFactory.adminToken();
@@ -243,7 +243,7 @@ const authMatrix = endpointProbes.flatMap((probe) => tokenVariants.map((variant)
 
 describe("Admin Portal — auth guard contract (all 7 endpoints)", () => {
   test.each(authMatrix)(
-    `TC-ADMAPI-004 — $endpoint with $variant → 401 ERR_AUTH_INVALID_TOKEN`,
+    `TC-ADMAPI-004 — $endpoint with $variant → 401 ERR_AUTH_INVALID_TOKEN @smoke`,
     async ({ invoke, variant }) => {
       const client = new AdminPortalClient();
       let token: string | undefined;
@@ -261,7 +261,7 @@ describe("Admin Portal — auth guard contract (all 7 endpoints)", () => {
     },
   );
 
-  test(`TC-ADMAPI-004 — rejected unauthenticated create has no side effects`, async () => {
+  test(`TC-ADMAPI-004 — rejected unauthenticated create has no side effects @smoke`, async () => {
     const client = new AdminPortalClient();
     const payload = adminTenantCreatePayload();
 
@@ -276,7 +276,7 @@ describe("Admin Portal — auth guard contract (all 7 endpoints)", () => {
 });
 
 describe("Admin Portal — POST /admin/tenants (create)", () => {
-  test.skip(`TC-ADMAPI-010 — create: 201 contract, DB row, role seeding, users mirror, permanent Cognito password [blocked: ${SKIP_REASON}]`, async () => {
+  test.skip(`TC-ADMAPI-010 — create: 201 contract, DB row, role seeding, users mirror, permanent Cognito password [blocked: ${SKIP_REASON}] @smoke`, async () => {
     // Arrange
     const client = new AdminPortalClient();
     const adminToken = await jwtFactory.adminToken();
@@ -336,7 +336,7 @@ describe("Admin Portal — POST /admin/tenants (create)", () => {
   });
 
   test.skip.each(domainNormalizationVariants())(
-    `TC-ADMAPI-011 — duplicate domain $sub → 409 ERR_TENANT_DOMAIN_DUPLICATE, nothing created [blocked: ${SKIP_REASON}]`,
+    `TC-ADMAPI-011 — duplicate domain $sub → 409 ERR_TENANT_DOMAIN_DUPLICATE, nothing created [blocked: ${SKIP_REASON}] @smoke`,
     async ({ value }) => {
       // Arrange — a tenant already owns the bare base domain.
       const client = new AdminPortalClient();
@@ -371,7 +371,7 @@ describe("Admin Portal — POST /admin/tenants (create)", () => {
     },
   );
 
-  test.skip(`TC-ADMAPI-011 — stored value is the bare domain (protocol/www/path/query stripped) [blocked: ${SKIP_REASON}]`, async () => {
+  test.skip(`TC-ADMAPI-011 — stored value is the bare domain (protocol/www/path/query stripped) [blocked: ${SKIP_REASON}] @smoke`, async () => {
     const client = new AdminPortalClient();
     const adminToken = await jwtFactory.adminToken();
     const bare = uniqueDomain("zenith");
@@ -393,7 +393,7 @@ describe("Admin Portal — POST /admin/tenants (create)", () => {
     }
   });
 
-  test.skip(`TC-ADMAPI-012 — duplicate owner email → 409 ERR_EMAIL_ALREADY_IN_USE (full-address match, not domain-level) [blocked: ${SKIP_REASON}]`, async () => {
+  test.skip(`TC-ADMAPI-012 — duplicate owner email → 409 ERR_EMAIL_ALREADY_IN_USE (full-address match, not domain-level) [blocked: ${SKIP_REASON}] @smoke`, async () => {
     // Arrange — an existing user already holds the shared email.
     const client = new AdminPortalClient();
     const adminToken = await jwtFactory.adminToken();
@@ -484,7 +484,7 @@ describe("Admin Portal — POST /admin/tenants (create)", () => {
     },
   );
 
-  test.skip(`TC-ADMAPI-015 — setup password stored encrypted; audit snapshot strips it [blocked: ${SKIP_REASON}]`, async () => {
+  test.skip(`TC-ADMAPI-015 — setup password stored encrypted; audit snapshot strips it [blocked: ${SKIP_REASON}] @smoke`, async () => {
     // Arrange — chains with TC-ADMAPI-010: create a tenant and hold the plaintext setupPassword.
     const client = new AdminPortalClient();
     const adminToken = await jwtFactory.adminToken();
@@ -559,7 +559,7 @@ describe("Admin Portal — POST /admin/tenants (create)", () => {
 });
 
 describe("Admin Portal — GET /admin/tenants/:id (detail)", () => {
-  test.skip(`TC-ADMAPI-020 — detail returns decrypted setupPassword only while in_setup [blocked: ${SKIP_REASON}]`, async () => {
+  test.skip(`TC-ADMAPI-020 — detail returns decrypted setupPassword only while in_setup [blocked: ${SKIP_REASON}] @smoke`, async () => {
     const client = new AdminPortalClient();
     const adminToken = await jwtFactory.adminToken();
     const { tenant } = await createSetupTenant(client, adminToken);
@@ -579,7 +579,7 @@ describe("Admin Portal — GET /admin/tenants/:id (detail)", () => {
     }
   });
 
-  test.skip(`TC-ADMAPI-021 — detail after handover: setupPassword null/omitted; setupCompletedAt populated [blocked: ${SKIP_REASON}]`, async () => {
+  test.skip(`TC-ADMAPI-021 — detail after handover: setupPassword null/omitted; setupCompletedAt populated [blocked: ${SKIP_REASON}] @smoke`, async () => {
     const client = new AdminPortalClient();
     const adminToken = await jwtFactory.adminToken();
     const { tenant } = await createHandedOverTenant(client, adminToken);
@@ -748,7 +748,7 @@ describe("Admin Portal — PATCH /admin/tenants/:id/company", () => {
 });
 
 describe("Admin Portal — PATCH /admin/tenants/:id/status", () => {
-  test.skip(`TC-ADMAPI-040 — post-handover status toggle: active ↔ inactive both directions; setupStatus stays handed_over [blocked: ${SKIP_REASON}]`, async () => {
+  test.skip(`TC-ADMAPI-040 — post-handover status toggle: active ↔ inactive both directions; setupStatus stays handed_over [blocked: ${SKIP_REASON}] @smoke`, async () => {
     const client = new AdminPortalClient();
     const adminToken = await jwtFactory.adminToken();
     const { tenant } = await createHandedOverTenant(client, adminToken); // handed over ⇒ active
@@ -782,7 +782,7 @@ describe("Admin Portal — PATCH /admin/tenants/:id/status", () => {
     }
   });
 
-  test.skip(`TC-ADMAPI-041 — activating a Setup tenant rejected: 409 ERR_INVALID_STATE_TRANSITION (server-side lock, not UI-only) [blocked: ${SKIP_REASON}]`, async () => {
+  test.skip(`TC-ADMAPI-041 — activating a Setup tenant rejected: 409 ERR_INVALID_STATE_TRANSITION (server-side lock, not UI-only) [blocked: ${SKIP_REASON}] @smoke`, async () => {
     const client = new AdminPortalClient();
     const adminToken = await jwtFactory.adminToken();
     const { tenant } = await createSetupTenant(client, adminToken); // in_setup / inactive
@@ -851,7 +851,7 @@ describe("Admin Portal — audit-log capture across mutating endpoints", () => {
     });
   }
 
-  test.skip(`TC-ADMAPI-006 — every mutating endpoint writes a platform_audit_logs row (no setup_password_enc in snapshots) [blocked: ${SKIP_REASON}]`, async () => {
+  test.skip(`TC-ADMAPI-006 — every mutating endpoint writes a platform_audit_logs row (no setup_password_enc in snapshots) [blocked: ${SKIP_REASON}] @smoke`, async () => {
     // Global Assumptions + Tech §2: all admin DB writes are captured by the F1 interceptor into
     // platform_audit_logs (routed to platform, not tenant, because request.adminPrincipal exists).
     const client = new AdminPortalClient();

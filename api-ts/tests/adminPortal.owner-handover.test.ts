@@ -45,7 +45,7 @@ function validationFields(response: AxiosResponse): Record<string, string> {
 }
 
 describe("Admin Portal — PATCH /admin/tenants/:id/owner", () => {
-  test.skip(`TC-ADMAPI-050 — name-only change: users.name + tenants.owner_name updated; no Cognito/email side effects [blocked: ${SKIP_REASON}]`, async () => {
+  test.skip(`TC-ADMAPI-050 — name-only change: users.name + tenants.owner_name updated; no Cognito/email side effects [blocked: ${SKIP_REASON}] @smoke`, async () => {
     // Arrange
     const client = new AdminPortalClient();
     const adminToken = await jwtFactory.adminToken();
@@ -78,7 +78,7 @@ describe("Admin Portal — PATCH /admin/tenants/:id/owner", () => {
     }
   });
 
-  test.skip(`TC-ADMAPI-051 — email change on handed-over tenant: full reassignment chain [blocked: ${SKIP_REASON}]`, async () => {
+  test.skip(`TC-ADMAPI-051 — email change on handed-over tenant: full reassignment chain [blocked: ${SKIP_REASON}] @smoke`, async () => {
     // Arrange — disposable handed-over tenant.
     const client = new AdminPortalClient();
     const adminToken = await jwtFactory.adminToken();
@@ -117,7 +117,7 @@ describe("Admin Portal — PATCH /admin/tenants/:id/owner", () => {
     }
   });
 
-  test.skip(`TC-ADMAPI-052 — email change during Setup: new setup password issued and re-encrypted; no email [blocked: ${SKIP_REASON}]`, async () => {
+  test.skip(`TC-ADMAPI-052 — email change during Setup: new setup password issued and re-encrypted; no email [blocked: ${SKIP_REASON}] @smoke`, async () => {
     // Arrange — Setup tenant; original setup password known from creation.
     const client = new AdminPortalClient();
     const adminToken = await jwtFactory.adminToken();
@@ -270,7 +270,7 @@ describe("Admin Portal — PATCH /admin/tenants/:id/owner", () => {
 });
 
 describe("Admin Portal — POST /admin/tenants/:id/handover", () => {
-  test.skip(`TC-ADMAPI-060 — handover: 200 + all DB effects in one transaction [blocked: ${SKIP_REASON}]`, async () => {
+  test.skip(`TC-ADMAPI-060 — handover: 200 + all DB effects in one transaction [blocked: ${SKIP_REASON}] @smoke`, async () => {
     // Arrange — disposable Setup tenant (as produced by TC-ADMAPI-010).
     const client = new AdminPortalClient();
     const adminToken = await jwtFactory.adminToken();
@@ -308,7 +308,7 @@ describe("Admin Portal — POST /admin/tenants/:id/handover", () => {
     }
   });
 
-  test.skip(`TC-ADMAPI-061 — handover on an already-handed-over tenant → 409 (terminal state), no state change [blocked: ${SKIP_REASON}]`, async () => {
+  test.skip(`TC-ADMAPI-061 — handover on an already-handed-over tenant → 409 (terminal state), no state change [blocked: ${SKIP_REASON}] @smoke`, async () => {
     const client = new AdminPortalClient();
     const adminToken = await jwtFactory.adminToken();
     const { tenant } = await createHandedOverTenant(client, adminToken);
@@ -346,7 +346,7 @@ describe("Admin Portal — POST /admin/tenants/:id/handover", () => {
     expect((response.data as ErrorEnvelope).error.message).toBe(MSG_TENANT_NOT_FOUND);
   });
 
-  test.skip(`TC-ADMAPI-063 — old setup password no longer authenticates after handover [blocked: ${SKIP_REASON}]`, async () => {
+  test.skip(`TC-ADMAPI-063 — old setup password no longer authenticates after handover [blocked: ${SKIP_REASON}] @smoke`, async () => {
     // Arrange — capture the plaintext setup password before handover, then hand over.
     const client = new AdminPortalClient();
     const adminToken = await jwtFactory.adminToken();
@@ -362,14 +362,14 @@ describe("Admin Portal — POST /admin/tenants/:id/handover", () => {
       // Cognito half — the actual rejection of the old setup password (temporary password overwrote
       // it via AdminSetUserPassword(Permanent: false) + AdminUserGlobalSignOut). Chains with TC-ADMAPI-060.
       throw new Error(
-        "TC-ADMAPI-063 Cognito leg: tenant-pool auth attempt with the pre-handover setup password requires a Cognito auth helper (local-env/localCognitoMock or AWS SDK) — scaffolded, not yet implemented",
+        "TC-ADMAPI-063 Cognito leg: tenant-pool auth attempt with the pre-handover setup password requires a Cognito auth helper (local-env/localCognitoMock or AWS SDK) — scaffolded, not yet implemented @smoke",
       );
     } finally {
       await teardownTenant(fixture.tenant.id);
     }
   });
 
-  test.skip(`TC-ADMAPI-066 — handover invalidates any active PO session token (global sign-out) [blocked: ${SKIP_REASON}]`, async () => {
+  test.skip(`TC-ADMAPI-066 — handover invalidates any active PO session token (global sign-out) [blocked: ${SKIP_REASON}] @smoke`, async () => {
     // Arrange — needs an ACTIVE Cognito session as the PO (setup password) held by the test
     // before handover; assert on REFRESH-token rejection afterwards, not raw JWT expiry
     // (Cognito access tokens stay valid until natural expiry even after AdminUserGlobalSignOut).
@@ -381,7 +381,7 @@ describe("Admin Portal — POST /admin/tenants/:id/handover", () => {
       // Step 1 (blocked): authenticate as the PO with the setup password and hold refresh/access tokens.
       // Step 2: execute handover. Step 3: refresh-token use must be REJECTED (revoked).
       throw new Error(
-        "TC-ADMAPI-066: establishing and refreshing a PO Cognito session requires a tenant-pool auth helper (local-env/localCognitoMock or AWS SDK) — scaffolded, not yet implemented",
+        "TC-ADMAPI-066: establishing and refreshing a PO Cognito session requires a tenant-pool auth helper (local-env/localCognitoMock or AWS SDK) — scaffolded, not yet implemented @smoke",
       );
     } finally {
       await teardownTenant(tenant.id);

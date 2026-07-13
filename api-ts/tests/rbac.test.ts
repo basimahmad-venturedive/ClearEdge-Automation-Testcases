@@ -23,7 +23,7 @@ const ANALYST_VIEW_RIGHTS = ["view_contracts", "view_sourcing", "view_vendors", 
 const ANALYST_WRITE_RIGHTS = ["manage_contracts", "manage_sourcing", "manage_vendors", "manage_users", "view_audit_logs"];
 
 describe("RBAC / rights enforcement", () => {
-  test.skip(`TC-RBAC-001 — Analyst blocked from manage_contracts endpoint (SR-005) [blocked: ${NO_ENDPOINT_REASON}]`, async () => {
+  test.skip(`TC-RBAC-001 — Analyst blocked from manage_contracts endpoint (SR-005) [blocked: ${NO_ENDPOINT_REASON}] @smoke`, async () => {
     const client = new ControlPlaneClient();
     const token = await jwtFactory.tenantToken({ tenantId: "t1", roleId: "role-analyst" });
     const response = await client.post("/TODO/fixture/manage-contracts", {}, token);
@@ -32,7 +32,7 @@ describe("RBAC / rights enforcement", () => {
   });
 
   test.skip.each(MANAGER_RIGHTS)(
-    `TC-RBAC-002 — Manager has right=%s (US-RBAC-004 AC-001) [blocked: ${NO_ENDPOINT_REASON}]`,
+    `TC-RBAC-002 — Manager has right=%s (US-RBAC-004 AC-001) [blocked: ${NO_ENDPOINT_REASON}] @smoke`,
     async (right) => {
       const client = new ControlPlaneClient();
       const token = await jwtFactory.tenantToken({ tenantId: "t1", roleId: "role-manager" });
@@ -42,7 +42,7 @@ describe("RBAC / rights enforcement", () => {
   );
 
   test.skip.each(ANALYST_VIEW_RIGHTS)(
-    `TC-RBAC-003a — Analyst view right=%s succeeds (US-RBAC-005 AC-001) [blocked: ${NO_ENDPOINT_REASON}]`,
+    `TC-RBAC-003a — Analyst view right=%s succeeds (US-RBAC-005 AC-001) [blocked: ${NO_ENDPOINT_REASON}] @smoke`,
     async (right) => {
       const client = new ControlPlaneClient();
       const token = await jwtFactory.tenantToken({ tenantId: "t1", roleId: "role-analyst" });
@@ -52,7 +52,7 @@ describe("RBAC / rights enforcement", () => {
   );
 
   test.skip.each(ANALYST_WRITE_RIGHTS)(
-    `TC-RBAC-003b — Analyst write right=%s denied [blocked: ${NO_ENDPOINT_REASON}]`,
+    `TC-RBAC-003b — Analyst write right=%s denied [blocked: ${NO_ENDPOINT_REASON}] @smoke`,
     async (right) => {
       const client = new ControlPlaneClient();
       const token = await jwtFactory.tenantToken({ tenantId: "t1", roleId: "role-analyst" });
@@ -63,7 +63,7 @@ describe("RBAC / rights enforcement", () => {
   );
 
   test.skip.each(["role-manager", "role-analyst"])(
-    `TC-RBAC-004 — role=%s denied User Management access (SR-014) [blocked: ${NO_ENV_REASON}]`,
+    `TC-RBAC-004 — role=%s denied User Management access (SR-014) [blocked: ${NO_ENV_REASON}] @smoke`,
     async (roleId) => {
       const client = new ControlPlaneClient();
       const token = await jwtFactory.tenantToken({ tenantId: "t1", roleId });
@@ -73,7 +73,7 @@ describe("RBAC / rights enforcement", () => {
     },
   );
 
-  test.skip(`TC-RBAC-005 — default role→rights mapping seeded correctly (§6.2) [blocked: ${NO_ENV_REASON}]`, async () => {
+  test.skip(`TC-RBAC-005 — default role→rights mapping seeded correctly (§6.2) [blocked: ${NO_ENV_REASON}] @smoke`, async () => {
     await withDbClient(async (db) => {
       const { rows } = await db.query(
         `SELECT r.slug, count(*) FROM roles r JOIN role_rights rr ON rr.role_id = r.id

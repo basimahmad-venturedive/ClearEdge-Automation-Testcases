@@ -20,14 +20,14 @@ const NO_ENV_REASON = "no environment exists yet — see TC-TENANT-* in TC-CEIQ-
 const jwtFactory = new JwtFactory();
 
 describe("Tenant isolation, context, and lifecycle", () => {
-  test.skip(`TC-TENANT-001 — cross-tenant read returns 404, not 403 (SR-003) [blocked: ${NO_ENV_REASON}]`, async () => {
+  test.skip(`TC-TENANT-001 — cross-tenant read returns 404, not 403 (SR-003) [blocked: ${NO_ENV_REASON}] @smoke`, async () => {
     const client = new ControlPlaneClient();
     const token = await jwtFactory.tenantToken({ tenantId: "tenant-a", roleId: "role-manager" });
     const response = await client.get("/TODO/fixture-table/tenant-b-record-id", token);
     expect(response.status).toBe(404);
   });
 
-  test.skip(`TC-TENANT-002 — cross-tenant write blocked by RLS WITH CHECK (SR-004) [blocked: ${NO_ENV_REASON}]`, async () => {
+  test.skip(`TC-TENANT-002 — cross-tenant write blocked by RLS WITH CHECK (SR-004) [blocked: ${NO_ENV_REASON}] @smoke`, async () => {
     const client = new ControlPlaneClient();
     const token = await jwtFactory.tenantToken({ tenantId: "tenant-a", roleId: "role-manager" });
     const response = await client.post("/TODO/fixture-table", { tenant_id: "tenant-b" }, token);
@@ -35,13 +35,13 @@ describe("Tenant isolation, context, and lifecycle", () => {
     expect((response.data as ErrorEnvelope).error.code).toBe("ERR_TENANT_SCOPE_VIOLATION");
   });
 
-  test.skip(`TC-TENANT-003 — absent tenant context fails closed (SR-012) [blocked: ${NO_ENV_REASON} — also requires direct DB access bypassing the interceptor]`, async () => {
+  test.skip(`TC-TENANT-003 — absent tenant context fails closed (SR-012) [blocked: ${NO_ENV_REASON} — also requires direct DB access bypassing the interceptor] @smoke`, async () => {
     await withDbClient(async (db) => {
       await expect(db.query("SELECT * FROM users")).rejects.toThrow();
     });
   });
 
-  test.skip(`TC-TENANT-004 — inactive+handed_over tenant locks out all users (SR-017) [blocked: ${NO_ENV_REASON}]`, async () => {
+  test.skip(`TC-TENANT-004 — inactive+handed_over tenant locks out all users (SR-017) [blocked: ${NO_ENV_REASON}] @smoke`, async () => {
     const client = new ControlPlaneClient();
     const token = await jwtFactory.tenantToken({ tenantId: "inactive-handed-over-tenant", roleId: "role-manager" });
     const response = await client.get("/TODO/tenant/dashboard", token);
@@ -49,18 +49,18 @@ describe("Tenant isolation, context, and lifecycle", () => {
     expect((response.data as ErrorEnvelope).error.code).toBe("ERR_TENANT_INACTIVE");
   });
 
-  test.skip(`TC-TENANT-005 — setup-phase exception allows access despite inactive (SR-021) [blocked: ${NO_ENV_REASON}]`, async () => {
+  test.skip(`TC-TENANT-005 — setup-phase exception allows access despite inactive (SR-021) [blocked: ${NO_ENV_REASON}] @smoke`, async () => {
     const client = new ControlPlaneClient();
     const token = await jwtFactory.tenantToken({ tenantId: "in-setup-tenant", roleId: "role-owner" });
     const response = await client.get("/TODO/tenant/dashboard", token);
     expect(response.status).toBe(200);
   });
 
-  test.skip(`TC-TENANT-006 — SET LOCAL does not leak across pooled connections (§8.2) [blocked: ${NO_ENV_REASON} — requires a concurrency test harness]`, async () => {
+  test.skip(`TC-TENANT-006 — SET LOCAL does not leak across pooled connections (§8.2) [blocked: ${NO_ENV_REASON} — requires a concurrency test harness] @smoke`, async () => {
     throw new Error("requires async concurrency harness — scaffolded, not yet implemented");
   });
 
-  test.skip(`TC-TENANT-007 — PA creates a tenant + PO successfully (US-RBAC-001 AC-001, BR-01/02/05) [blocked: ${NO_ENV_REASON}]`, async () => {
+  test.skip(`TC-TENANT-007 — PA creates a tenant + PO successfully (US-RBAC-001 AC-001, BR-01/02/05) [blocked: ${NO_ENV_REASON}] @smoke`, async () => {
     const client = new ControlPlaneClient();
     const adminToken = await jwtFactory.adminToken();
     const payload = tenantCreationPayload();
@@ -70,7 +70,7 @@ describe("Tenant isolation, context, and lifecycle", () => {
     assertRequestEchoedInResponse(payload, response);
   });
 
-  test.skip(`TC-TENANT-008 — duplicate domain blocked with exact message (US-RBAC-001 AC-002, SR-016) [blocked: ${NO_ENV_REASON}]`, async () => {
+  test.skip(`TC-TENANT-008 — duplicate domain blocked with exact message (US-RBAC-001 AC-002, SR-016) [blocked: ${NO_ENV_REASON}] @smoke`, async () => {
     const client = new ControlPlaneClient();
     const adminToken = await jwtFactory.adminToken();
     const payload = tenantCreationPayload({ domain: "example.com" });
@@ -93,7 +93,7 @@ describe("Tenant isolation, context, and lifecycle", () => {
     });
   });
 
-  test.skip(`TC-TENANT-010 — invite trigger activates tenant (SR-020) [blocked: ${NO_ENV_REASON} — SendGrid dispatch also needs a sandbox decision]`, async () => {
+  test.skip(`TC-TENANT-010 — invite trigger activates tenant (SR-020) [blocked: ${NO_ENV_REASON} — SendGrid dispatch also needs a sandbox decision] @smoke`, async () => {
     const client = new ControlPlaneClient();
     const adminToken = await jwtFactory.adminToken();
     const response = await client.post(TODO_ENDPOINT_TENANT_INVITE_TRIGGER("some-tenant-id"), {}, adminToken);
@@ -121,7 +121,7 @@ describe("Tenant isolation, context, and lifecycle", () => {
     }
   });
 
-  test.skip(`TC-TENANT-012 — PA direct attempt to create a Manager/Analyst rejected (BR-01, BR-12) [blocked: ${NO_ENV_REASON}]`, async () => {
+  test.skip(`TC-TENANT-012 — PA direct attempt to create a Manager/Analyst rejected (BR-01, BR-12) [blocked: ${NO_ENV_REASON}] @smoke`, async () => {
     const client = new ControlPlaneClient();
     const adminToken = await jwtFactory.adminToken();
     const response = await client.post(TODO_ENDPOINT_USER_CREATE, { name: "X", email: "x@example.test", role: "procurement_manager" }, adminToken);

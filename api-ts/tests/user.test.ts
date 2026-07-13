@@ -17,7 +17,7 @@ const jwtFactory = new JwtFactory();
 
 describe("User lifecycle", () => {
   test.skip.each(["procurement_manager", "procurement_analyst"] as const)(
-    `TC-USER-001 — PO creates role=%s, active immediately, notification email sent (US-RBAC-003 AC-001) [blocked: ${SENDGRID_REASON}]`,
+    `TC-USER-001 — PO creates role=%s, active immediately, notification email sent (US-RBAC-003 AC-001) [blocked: ${SENDGRID_REASON}] @smoke`,
     async (role) => {
       const client = new ControlPlaneClient();
       const ownerToken = await jwtFactory.tenantToken({ tenantId: "t1", roleId: "role-owner" });
@@ -46,7 +46,7 @@ describe("User lifecycle", () => {
     expect(response.data.data.name).toBe("Updated Name");
   });
 
-  test.skip(`TC-USER-004 — PO changes a user's email, old loses access, new invite sent (US-RBAC-003 AC-004, §7.8) [blocked: ${SENDGRID_REASON}]`, async () => {
+  test.skip(`TC-USER-004 — PO changes a user's email, old loses access, new invite sent (US-RBAC-003 AC-004, §7.8) [blocked: ${SENDGRID_REASON}] @smoke`, async () => {
     const client = new ControlPlaneClient();
     const ownerToken = await jwtFactory.tenantToken({ tenantId: "t1", roleId: "role-owner" });
     const response = await client.patch<SuccessEnvelope<UserResponse>>(
@@ -58,7 +58,7 @@ describe("User lifecycle", () => {
     expect(response.data.data.email).toBe("new.address@example.test");
   });
 
-  test.skip(`TC-USER-005 — PO deactivates an active user, immediate loss of access, reversible (US-RBAC-003 AC-005, §7.6) [blocked: ${NO_ENV_REASON}]`, async () => {
+  test.skip(`TC-USER-005 — PO deactivates an active user, immediate loss of access, reversible (US-RBAC-003 AC-005, §7.6) [blocked: ${NO_ENV_REASON}] @smoke`, async () => {
     const client = new ControlPlaneClient();
     const ownerToken = await jwtFactory.tenantToken({ tenantId: "t1", roleId: "role-owner" });
     const response = await client.patch(TODO_ENDPOINT_USER_DETAIL("some-user-id"), { status: "inactive" }, ownerToken);
@@ -69,7 +69,7 @@ describe("User lifecycle", () => {
     });
   });
 
-  test.skip(`TC-USER-006 — PO reactivates an inactive user, immediate regain, no confirmation (US-RBAC-003 AC-006, §7.7) [blocked: ${NO_ENV_REASON}]`, async () => {
+  test.skip(`TC-USER-006 — PO reactivates an inactive user, immediate regain, no confirmation (US-RBAC-003 AC-006, §7.7) [blocked: ${NO_ENV_REASON}] @smoke`, async () => {
     const client = new ControlPlaneClient();
     const ownerToken = await jwtFactory.tenantToken({ tenantId: "t1", roleId: "role-owner" });
     const response = await client.patch<SuccessEnvelope<UserResponse>>(TODO_ENDPOINT_USER_DETAIL("some-user-id"), { status: "active" }, ownerToken);
@@ -86,7 +86,7 @@ describe("User lifecycle", () => {
     expect(listedIds).not.toContain("owner-sub");
   });
 
-  test.skip(`TC-USER-008 — PO cannot deactivate their own account (US-RBAC-003 AC-009, SR-015) [blocked: ${NO_ENV_REASON}]`, async () => {
+  test.skip(`TC-USER-008 — PO cannot deactivate their own account (US-RBAC-003 AC-009, SR-015) [blocked: ${NO_ENV_REASON}] @smoke`, async () => {
     const client = new ControlPlaneClient();
     const ownerToken = await jwtFactory.tenantToken({ tenantId: "t1", roleId: "role-owner", sub: "owner-sub" });
     const response = await client.patch(TODO_ENDPOINT_USER_DETAIL("owner-sub"), { status: "inactive" }, ownerToken);
@@ -94,7 +94,7 @@ describe("User lifecycle", () => {
     expect((response.data as ErrorEnvelope).error.code).toBe("ERR_OWNER_SELF_DEACTIVATION");
   });
 
-  test.skip(`TC-USER-009 — email already in use in another tenant rejected (BR-24) [blocked: ${NO_ENV_REASON}]`, async () => {
+  test.skip(`TC-USER-009 — email already in use in another tenant rejected (BR-24) [blocked: ${NO_ENV_REASON}] @smoke`, async () => {
     const client = new ControlPlaneClient();
     const ownerToken = await jwtFactory.tenantToken({ tenantId: "tenant-b", roleId: "role-owner" });
     const payload = userCreationPayload({ email: "taken@example.test" }); // already exists in tenant-a per fixture
@@ -103,7 +103,7 @@ describe("User lifecycle", () => {
     expect((response.data as ErrorEnvelope).error.code).toBe("ERR_EMAIL_ALREADY_IN_USE");
   });
 
-  test.skip(`TC-USER-010 — PO reassignment deactivates old owner, creates new, audits to platform (SR-019, §7.4) [blocked: ${NO_ENV_REASON}]`, async () => {
+  test.skip(`TC-USER-010 — PO reassignment deactivates old owner, creates new, audits to platform (SR-019, §7.4) [blocked: ${NO_ENV_REASON}] @smoke`, async () => {
     const client = new ControlPlaneClient();
     const adminToken = await jwtFactory.adminToken();
     const response = await client.patch(TODO_ENDPOINT_PO_REASSIGN("some-tenant-id"), { name: "New PO", email: "new.po@example.test" }, adminToken);
