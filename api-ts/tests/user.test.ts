@@ -16,9 +16,9 @@ const SENDGRID_REASON = `${NO_ENV_REASON} — SendGrid dispatch also needs a tes
 const jwtFactory = new JwtFactory();
 
 describe("User lifecycle", () => {
-  test.skip.each(["procurement_manager", "procurement_analyst"] as const)(
-    `TC-USER-001 — PO creates role=%s, active immediately, notification email sent (US-RBAC-003 AC-001) [blocked: ${SENDGRID_REASON}] @smoke`,
-    async (role) => {
+  test.skip.each((["procurement_manager", "procurement_analyst"] as const).map((role, i) => ({ role, tc: `TC-USER-001-${String(i + 1).padStart(2, "0")}` })))(
+    `$tc — PO creates role=$role, active immediately, notification email sent (US-RBAC-003 AC-001) [blocked: ${SENDGRID_REASON}] @smoke`,
+    async ({ role }) => {
       const client = new ControlPlaneClient();
       const ownerToken = await jwtFactory.tenantToken({ tenantId: "t1", roleId: "role-owner" });
       const payload = userCreationPayload({ role });

@@ -131,8 +131,8 @@ describe("Tenant isolation, context, and lifecycle", () => {
   test.skip.each([
     { length: 255, expectSuccess: true },
     { length: 256, expectSuccess: false },
-  ])(
-    `TC-TENANT-013 — tenant name/domain length=$length boundary (§5.2 varchar(255)) [blocked: ${NO_ENV_REASON}]`,
+  ].map((row, i) => ({ ...row, tc: `TC-TENANT-013-${String(i + 1).padStart(2, "0")}` })))(
+    `$tc — tenant name/domain length=$length boundary (§5.2 varchar(255)) [blocked: ${NO_ENV_REASON}]`,
     async ({ length, expectSuccess }) => {
       const client = new ControlPlaneClient();
       const adminToken = await jwtFactory.adminToken();

@@ -31,9 +31,9 @@ describe("RBAC / rights enforcement", () => {
     expect((response.data as ErrorEnvelope).error.code).toBe("ERR_RBAC_FORBIDDEN");
   });
 
-  test.skip.each(MANAGER_RIGHTS)(
-    `TC-RBAC-002 — Manager has right=%s (US-RBAC-004 AC-001) [blocked: ${NO_ENDPOINT_REASON}] @smoke`,
-    async (right) => {
+  test.skip.each(MANAGER_RIGHTS.map((right, i) => ({ right, tc: `TC-RBAC-002-${String(i + 1).padStart(2, "0")}` })))(
+    `$tc — Manager has right=$right (US-RBAC-004 AC-001) [blocked: ${NO_ENDPOINT_REASON}] @smoke`,
+    async ({ right }) => {
       const client = new ControlPlaneClient();
       const token = await jwtFactory.tenantToken({ tenantId: "t1", roleId: "role-manager" });
       const response = await client.get(`/TODO/fixture/${right}`, token);
@@ -41,9 +41,9 @@ describe("RBAC / rights enforcement", () => {
     },
   );
 
-  test.skip.each(ANALYST_VIEW_RIGHTS)(
-    `TC-RBAC-003a — Analyst view right=%s succeeds (US-RBAC-005 AC-001) [blocked: ${NO_ENDPOINT_REASON}] @smoke`,
-    async (right) => {
+  test.skip.each(ANALYST_VIEW_RIGHTS.map((right, i) => ({ right, tc: `TC-RBAC-003a-${String(i + 1).padStart(2, "0")}` })))(
+    `$tc — Analyst view right=$right succeeds (US-RBAC-005 AC-001) [blocked: ${NO_ENDPOINT_REASON}] @smoke`,
+    async ({ right }) => {
       const client = new ControlPlaneClient();
       const token = await jwtFactory.tenantToken({ tenantId: "t1", roleId: "role-analyst" });
       const response = await client.get(`/TODO/fixture/${right}`, token);
@@ -51,9 +51,9 @@ describe("RBAC / rights enforcement", () => {
     },
   );
 
-  test.skip.each(ANALYST_WRITE_RIGHTS)(
-    `TC-RBAC-003b — Analyst write right=%s denied [blocked: ${NO_ENDPOINT_REASON}] @smoke`,
-    async (right) => {
+  test.skip.each(ANALYST_WRITE_RIGHTS.map((right, i) => ({ right, tc: `TC-RBAC-003b-${String(i + 1).padStart(2, "0")}` })))(
+    `$tc — Analyst write right=$right denied [blocked: ${NO_ENDPOINT_REASON}] @smoke`,
+    async ({ right }) => {
       const client = new ControlPlaneClient();
       const token = await jwtFactory.tenantToken({ tenantId: "t1", roleId: "role-analyst" });
       const response = await client.post(`/TODO/fixture/${right}`, {}, token);
@@ -62,9 +62,9 @@ describe("RBAC / rights enforcement", () => {
     },
   );
 
-  test.skip.each(["role-manager", "role-analyst"])(
-    `TC-RBAC-004 — role=%s denied User Management access (SR-014) [blocked: ${NO_ENV_REASON}] @smoke`,
-    async (roleId) => {
+  test.skip.each(["role-manager", "role-analyst"].map((roleId, i) => ({ roleId, tc: `TC-RBAC-004-${String(i + 1).padStart(2, "0")}` })))(
+    `$tc — role=$roleId denied User Management access (SR-014) [blocked: ${NO_ENV_REASON}] @smoke`,
+    async ({ roleId }) => {
       const client = new ControlPlaneClient();
       const token = await jwtFactory.tenantToken({ tenantId: "t1", roleId });
       const response = await client.get("/TODO/tenant/users", token);

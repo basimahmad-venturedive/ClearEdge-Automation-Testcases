@@ -2,7 +2,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const AUTOMATION_PATH_PATTERN = /automation\/api-ts\//;
-const TC_ID_IN_TEST_PATTERN = /TC-[A-Z0-9]+-\d+/g;
+const TC_ID_IN_TEST_PATTERN = /TC-[A-Z0-9]+-\d+[a-z]?(?:-\d+)?/g;
 
 /**
  * Parse testcases/TRACEABILITY.md and return TC-IDs with a real backend automation path.
