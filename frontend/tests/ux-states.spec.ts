@@ -2,7 +2,7 @@
  * CEIQ-FEAT-001 — UI generic error + loading states (§10).
  * Source: testcases/TC-CEIQ-FEAT-001.md — TC-ADMUX-001, TC-ADMUX-002.
  *
- * Every test is test.fixme(): CEIQ-FEAT-001 admin portal frontend URL not
+ * Every test is test(): CEIQ-FEAT-001 admin portal frontend URL not
  * available as of 2026-07-08. Bodies are fully implemented and run the day
  * E2E_BASE_URL exists.
  */
@@ -11,9 +11,8 @@ import { Copy } from './fixtures/expectedCopy';
 import { HANDED_OVER_TENANT, uniqueTenant } from './fixtures/testData';
 
 test.describe('§10 UX states', () => {
-  test.fixme(
+  test(
     'TC-ADMUX-001 unexpected API error shows the generic error toast',
-    FIXME_DETAILS,
     async ({ authenticatedTenantList: list, createTenantPage }) => {
       // 1a — POST /admin/tenants mocked 500: generic toast, no internal detail,
       // triggering button re-enables; retry succeeds after the mock is removed.
@@ -45,9 +44,8 @@ test.describe('§10 UX states', () => {
     },
   );
 
-  test.fixme(
+  test(
     'TC-ADMUX-002 loading states on toggle confirmations and section saves',
-    FIXME_DETAILS,
     async ({ authenticatedTenantList: list, tenantProfilePage: profile }) => {
       // Precondition (TODO_FIXTURE): Handed-Over tenant; responses delayable.
       const name = HANDED_OVER_TENANT.companyName;

@@ -17,9 +17,19 @@ import { ControlPlaneClient, ENDPOINT_USER_ME, ENDPOINT_TENANT_CREATE } from "..
 import { signTenantToken, signAdminToken, tamperToken } from "../local-env/localCognitoMock";
 import { createFixtureTenantAndUser, deleteFixtureTenant, type FixtureTenant } from "../src/utils/dbFixtures";
 import { tenantCreationPayload } from "../src/payloads/identityRbacPayloads";
+import { isLiveEnv } from "../src/config/env";
+import { validAdminToken } from "../src/utils/testTokens";
 
 const client = new ControlPlaneClient();
 let fixture: FixtureTenant | undefined;
+
+// A *valid tenant-pool* principal needs either the local mock (forged claims signed by the
+// JWKS mock + a DB fixture) or a real provisioned tenant user. On live dev we have neither
+// (admin-only creds, no DB reachability), so these run on local only. See tests/auth.test.ts
+// header + the dev refactor: admin-authenticated guard/pool checks still run on live.
+const REQUIRES_TENANT_FIXTURE = isLiveEnv();
+const TENANT_SKIP_REASON =
+  "requires a valid tenant-pool user (local mock + DB fixture) — not available on live dev (admin-only, no DB)";
 
 afterEach(async () => {
   if (fixture) {
@@ -29,7 +39,7 @@ afterEach(async () => {
 });
 
 describe("Auth guards — real local backend", () => {
-  test("TC-AUTH-001 — valid tenant-pool JWT accepted; principal populated (SR-001) @smoke", async () => {
+  test.skipIf(REQUIRES_TENANT_FIXTURE)(`TC-AUTH-001 — valid tenant-pool JWT accepted; principal populated (SR-001) [live-skip: ${TENANT_SKIP_REASON}] @smoke`, async () => {
     fixture = await createFixtureTenantAndUser({ roleSlug: "procurement_manager" });
     const token = await signTenantToken({ sub: fixture.cognitoSub, tenantId: fixture.tenantId, roleId: fixture.roleId });
 
@@ -40,12 +50,22 @@ describe("Auth guards — real local backend", () => {
     expect(response.data.data.roleId).toBe(fixture.roleId);
   });
 
-  test.each(["tampered_signature", "wrong_issuer", "expired"] as const)(
+  // On live dev only "tampered_signature" is constructible (tamper a real admin token). The
+  // "wrong_issuer"/"expired" variants must be minted with the local mock's key, so they run
+  // on local only — the untrusted-signer path they exercise is also covered live by TC-AUTH-008.
+  const INVALID_JWT_VARIANTS = isLiveEnv()
+    ? (["tampered_signature"] as const)
+    : (["tampered_signature", "wrong_issuer", "expired"] as const);
+
+  test.each(INVALID_JWT_VARIANTS)(
     "TC-AUTH-002/003/004 — invalid JWT variant=%s rejected 401 ERR_AUTH_INVALID_TOKEN (SR-002) @smoke",
     async (variant) => {
       let token: string;
       if (variant === "tampered_signature") {
-        token = tamperToken(await signTenantToken({ sub: "x", tenantId: "y", roleId: "z" }));
+        // Live: tamper a genuine admin ID token. Local: tamper a mock-signed tenant token.
+        token = tamperToken(
+          isLiveEnv() ? await validAdminToken() : await signTenantToken({ sub: "x", tenantId: "y", roleId: "z" }),
+        );
       } else if (variant === "wrong_issuer") {
         // Real backend only trusts COGNITO_TENANT_JWKS_URI's issuer — any other issuer fails
         // signature/issuer validation the same way an unrecognized signer would.
@@ -61,7 +81,7 @@ describe("Auth guards — real local backend", () => {
     },
   );
 
-  test("TC-AUTH-005 — missing role_id claim (SR-006) — DEVIATION FOUND: real code returns 401 ERR_AUTH_INVALID_TOKEN, not 403 as spec states @smoke", async () => {
+  test.skipIf(REQUIRES_TENANT_FIXTURE)(`TC-AUTH-005 — missing role_id claim (SR-006) — DEVIATION FOUND: real code returns 401 ERR_AUTH_INVALID_TOKEN, not 403 as spec states [live-skip: ${TENANT_SKIP_REASON}] @smoke`, async () => {
     fixture = await createFixtureTenantAndUser({ roleSlug: "procurement_manager" });
     const token = await signTenantToken({ sub: fixture.cognitoSub, tenantId: fixture.tenantId }); // no roleId
 
@@ -76,33 +96,39 @@ describe("Auth guards — real local backend", () => {
   });
 
   test("TC-AUTH-006 — valid admin-pool JWT accepted (reaches business logic, not rejected by guards) (§8.1) @smoke", async () => {
-    const token = await signAdminToken({ sub: "fixture-admin-1" });
+    const token = await validAdminToken();
+
+    // Live dev: send an intentionally invalid body. Validation runs AFTER the guards, so a
+    // 400 still proves AdminJwtAuthGuard + PlatformAdminGuard accepted the token — and no real
+    // tenant/Cognito user is created (which a valid payload WOULD do on dev, with no teardown).
+    const payload = isLiveEnv() ? {} : tenantCreationPayload();
 
     const response = await client.post<{ data?: { id?: string }; error?: { code?: string } }>(
       ENDPOINT_TENANT_CREATE,
-      tenantCreationPayload(),
+      payload,
       token,
     );
 
     // The point of this test is pool acceptance: a valid admin-pool JWT must PASS
-    // AdminJwtAuthGuard + PlatformAdminGuard (never 401/403) and reach the business layer.
+    // AdminJwtAuthGuard + PlatformAdminGuard (never 401/403) and reach the business/validation layer.
     expect(response.status).not.toBe(401);
     expect(response.status).not.toBe(403);
-    // Beyond the guards, the outcome depends on AWS Cognito reachability from the local
-    // container (which is intermittent here): reachable -> 201 create; unreachable -> the
-    // Cognito SDK fails with ERR_COGNITO_OPERATION_FAILED. Both prove the token was accepted.
-    const errCode = response.data.error?.code;
-    expect(errCode === undefined || errCode === "ERR_COGNITO_OPERATION_FAILED").toBe(true);
 
-    // If creation actually succeeded, remove the DB rows we just made (Cognito user cleanup
-    // is out of scope — no admin helper exists in this kit yet).
-    if (response.status === 201 && response.data.data?.id) {
-      await deleteFixtureTenant(response.data.data.id);
+    if (!isLiveEnv()) {
+      // Local: outcome depends on AWS Cognito reachability from the container (intermittent):
+      // reachable -> 201 create; unreachable -> ERR_COGNITO_OPERATION_FAILED. Both prove acceptance.
+      const errCode = response.data.error?.code;
+      expect(errCode === undefined || errCode === "ERR_COGNITO_OPERATION_FAILED").toBe(true);
+      // If creation actually succeeded, remove the DB rows we just made (Cognito user cleanup
+      // is out of scope — no admin helper exists in this kit yet).
+      if (response.status === 201 && response.data.data?.id) {
+        await deleteFixtureTenant(response.data.data.id);
+      }
     }
     // The Cognito SDK path can take several seconds (AWS timeout), so allow more than the default 5s.
   }, 20000);
 
-  test("TC-AUTH-007 — tenant-pool token rejected by admin-portal route (§7.1 pool separation) @smoke", async () => {
+  test.skipIf(REQUIRES_TENANT_FIXTURE)(`TC-AUTH-007 — tenant-pool token rejected by admin-portal route (§7.1 pool separation) [live-skip: ${TENANT_SKIP_REASON}] @smoke`, async () => {
     fixture = await createFixtureTenantAndUser({ roleSlug: "procurement_manager" });
     const token = await signTenantToken({ sub: fixture.cognitoSub, tenantId: fixture.tenantId, roleId: fixture.roleId });
 
@@ -113,7 +139,7 @@ describe("Auth guards — real local backend", () => {
   });
 
   test("TC-AUTH-008 — admin-pool token rejected by tenant-app route (§7.1 pool separation) @smoke", async () => {
-    const token = await signAdminToken({ sub: "fixture-admin-2" });
+    const token = await validAdminToken();
 
     const response = await client.get(ENDPOINT_USER_ME, token);
 

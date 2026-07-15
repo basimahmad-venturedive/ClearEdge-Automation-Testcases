@@ -2,7 +2,7 @@
  * CEIQ-FEAT-001 — UI Active/Inactive Toggle (US-2.2).
  * Source: testcases/TC-CEIQ-FEAT-001.md — TC-ADMTOGGLE-001…007.
  *
- * Every test is test.fixme(): CEIQ-FEAT-001 admin portal frontend URL not
+ * Every test is test(): CEIQ-FEAT-001 admin portal frontend URL not
  * available as of 2026-07-08. Bodies are fully implemented and run the day
  * E2E_BASE_URL exists.
  */
@@ -11,9 +11,8 @@ import { Copy } from './fixtures/expectedCopy';
 import { SETUP_TENANT, HANDED_OVER_TENANT, uniqueTenant } from './fixtures/testData';
 
 test.describe('US-2.2 Active/Inactive Toggle', () => {
-  test.fixme(
+  test(
     'TC-ADMTOGGLE-001 toggle locked to Inactive while tenant is in Setup (card + profile)',
-    FIXME_DETAILS,
     async ({ authenticatedTenantList: list, tenantProfilePage: profile }) => {
       // Precondition (TODO_FIXTURE): SETUP_TENANT seeded in Setup.
       const statusRequests = list.trackStatusPatchRequests();
@@ -36,9 +35,8 @@ test.describe('US-2.2 Active/Inactive Toggle', () => {
     },
   );
 
-  test.fixme(
+  test(
     'TC-ADMTOGGLE-002 post-handover activation dialog (exact copy) and confirmed toggle',
-    FIXME_DETAILS,
     async ({ authenticatedTenantList: list, tenantProfilePage: profile }) => {
       // Precondition (TODO_FIXTURE): HANDED_OVER_TENANT handed over, currently Inactive.
       const name = HANDED_OVER_TENANT.companyName;
@@ -59,9 +57,8 @@ test.describe('US-2.2 Active/Inactive Toggle', () => {
     },
   );
 
-  test.fixme(
+  test(
     'TC-ADMTOGGLE-003 post-handover deactivation dialog includes the access-revocation warning',
-    FIXME_DETAILS,
     async ({ authenticatedTenantList: list, tenantProfilePage: profile }) => {
       // Precondition (TODO_FIXTURE): HANDED_OVER_TENANT handed over, currently Active.
       const name = HANDED_OVER_TENANT.companyName;
@@ -82,9 +79,8 @@ test.describe('US-2.2 Active/Inactive Toggle', () => {
     },
   );
 
-  test.fixme(
+  test(
     'TC-ADMTOGGLE-004 canceling the toggle dialog reverts with no change',
-    FIXME_DETAILS,
     async ({ authenticatedTenantList: list, tenantProfilePage: profile }) => {
       // Precondition (TODO_FIXTURE): HANDED_OVER_TENANT handed over (either status).
       const name = HANDED_OVER_TENANT.companyName;
@@ -107,9 +103,8 @@ test.describe('US-2.2 Active/Inactive Toggle', () => {
     },
   );
 
-  test.fixme(
+  test(
     'TC-ADMTOGGLE-005 rapid repeated toggle clicks open only one dialog',
-    FIXME_DETAILS,
     async ({ authenticatedTenantList: list }) => {
       // Precondition (TODO_FIXTURE): HANDED_OVER_TENANT handed over.
       const name = HANDED_OVER_TENANT.companyName;
@@ -124,9 +119,8 @@ test.describe('US-2.2 Active/Inactive Toggle', () => {
     },
   );
 
-  test.fixme(
+  test(
     'TC-ADMTOGGLE-006 profile open at the moment of handover updates toggle live',
-    FIXME_DETAILS,
     async ({ authenticatedTenantList: list, createTenantPage, tenantProfilePage: profile }) => {
       // Handover is irreversible → create a DISPOSABLE Setup tenant first.
       const tenant = uniqueTenant();
@@ -146,9 +140,8 @@ test.describe('US-2.2 Active/Inactive Toggle', () => {
     },
   );
 
-  test.fixme(
+  test(
     'TC-ADMTOGGLE-007 toggle works independently of section edit states',
-    FIXME_DETAILS,
     async ({ authenticatedTenantList: list, tenantProfilePage: profile }) => {
       // Precondition (TODO_FIXTURE): HANDED_OVER_TENANT handed over.
       await list.openProfile(HANDED_OVER_TENANT.companyName);

@@ -2,7 +2,7 @@
  * CEIQ-FEAT-001 — UI Tenant Profile & Edit (US-2.3).
  * Source: testcases/TC-CEIQ-FEAT-001.md — TC-ADMEDIT-001…009.
  *
- * Every test is test.fixme(): CEIQ-FEAT-001 admin portal frontend URL not
+ * Every test is test(): CEIQ-FEAT-001 admin portal frontend URL not
  * available as of 2026-07-08. Bodies are fully implemented and run the day
  * E2E_BASE_URL exists.
  */
@@ -11,9 +11,8 @@ import { Copy } from './fixtures/expectedCopy';
 import { SETUP_TENANT, HANDED_OVER_TENANT, uniqueTenant } from './fixtures/testData';
 
 test.describe('US-2.3 Tenant Profile & Edit', () => {
-  test.fixme(
+  test(
     'TC-ADMEDIT-001 profile shows two independent read-only sections with own Edit buttons',
-    FIXME_DETAILS,
     async ({ authenticatedTenantList: list, tenantProfilePage: profile }) => {
       // Precondition (TODO_FIXTURE): tenant exists (either status).
       const detailRequests = list.trackTenantDetailRequests();
@@ -33,9 +32,8 @@ test.describe('US-2.3 Tenant Profile & Edit', () => {
     },
   );
 
-  test.fixme(
+  test(
     'TC-ADMEDIT-002 section edit independence (one section, both sections, cancel one keeps the other)',
-    FIXME_DETAILS,
     async ({ authenticatedTenantList: list, tenantProfilePage: profile }) => {
       // Precondition (TODO_FIXTURE): tenant profile open.
       await list.openProfile(HANDED_OVER_TENANT.companyName);
@@ -66,9 +64,8 @@ test.describe('US-2.3 Tenant Profile & Edit', () => {
     },
   );
 
-  test.fixme(
+  test(
     'TC-ADMEDIT-003 save Company info: applies, returns read-only, never notifies the Owner',
-    FIXME_DETAILS,
     async ({ authenticatedTenantList: list, tenantProfilePage: profile }) => {
       // Precondition (TODO_FIXTURE): Handed-Over tenant (worst case for an
       // accidental Owner notification).
@@ -96,9 +93,8 @@ test.describe('US-2.3 Tenant Profile & Edit', () => {
     },
   );
 
-  test.fixme(
+  test(
     'TC-ADMEDIT-004 PO name-only change: in-place update, no email, regardless of status',
-    FIXME_DETAILS,
     async ({ authenticatedTenantList: list, tenantProfilePage: profile }) => {
       // Precondition (TODO_FIXTURE): 4a Setup tenant · 4b Handed-Over tenant.
       const newOwnerName = 'Thomas Whitfield';
@@ -131,9 +127,8 @@ test.describe('US-2.3 Tenant Profile & Edit', () => {
     },
   );
 
-  test.fixme(
+  test(
     'TC-ADMEDIT-005 PO email change on Handed-Over tenant: confirmation dialog (exact copy) then reassignment',
-    FIXME_DETAILS,
     async ({ authenticatedTenantList: list, tenantProfilePage: profile }) => {
       // Precondition (TODO_FIXTURE): disposable Handed-Over tenant with PO
       // tom@orbitmediagroup.com (reassignment is destructive to the old PO).
@@ -166,9 +161,8 @@ test.describe('US-2.3 Tenant Profile & Edit', () => {
     },
   );
 
-  test.fixme(
+  test(
     'TC-ADMEDIT-006 PO email change during Setup: new setup password displayed, no dialog-email flow, no email',
-    FIXME_DETAILS,
     async ({ authenticatedTenantList: list, createTenantPage, tenantProfilePage: profile }) => {
       // Setup tenant with a resettable setup password → create a DISPOSABLE one.
       const tenant = uniqueTenant();
@@ -198,9 +192,8 @@ test.describe('US-2.3 Tenant Profile & Edit', () => {
     },
   );
 
-  test.fixme(
+  test(
     'TC-ADMEDIT-007 duplicate checks on edit exclude self (domain + email)',
-    FIXME_DETAILS,
     async ({ authenticatedTenantList: list, tenantProfilePage: profile }) => {
       // Precondition (TODO_FIXTURE): tenant A (acmelogistics.com,
       // sarah.chen@acmelogistics.com) and tenant B (orbitmediagroup.com,
@@ -239,9 +232,8 @@ test.describe('US-2.3 Tenant Profile & Edit', () => {
     },
   );
 
-  test.fixme(
+  test(
     'TC-ADMEDIT-008 closing the profile mid-edit discards unsaved changes in both sections',
-    FIXME_DETAILS,
     async ({ authenticatedTenantList: list, tenantProfilePage: profile }) => {
       // Precondition (TODO_FIXTURE): tenant profile open.
       const patchRequests = list.trackAnyTenantPatchRequests();
@@ -267,9 +259,8 @@ test.describe('US-2.3 Tenant Profile & Edit', () => {
     },
   );
 
-  test.fixme(
+  test(
     'TC-ADMEDIT-009 saving the PO section with nothing changed is a no-op',
-    FIXME_DETAILS,
     async ({ authenticatedTenantList: list, tenantProfilePage: profile }) => {
       // Precondition (TODO_FIXTURE): Handed-Over tenant profile open.
       const name = HANDED_OVER_TENANT.companyName;

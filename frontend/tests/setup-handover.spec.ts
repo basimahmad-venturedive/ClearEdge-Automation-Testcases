@@ -6,7 +6,7 @@
  * (TC-ADMSETUP-003 and TC-ADMHAND-005 are MANUAL-ONLY / PARTIAL — out of scope
  * for this Playwright spec.)
  *
- * Every test is test.fixme(): CEIQ-FEAT-001 admin portal frontend URL not
+ * Every test is test(): CEIQ-FEAT-001 admin portal frontend URL not
  * available as of 2026-07-08. Bodies are fully implemented and run the day
  * E2E_BASE_URL exists.
  */
@@ -15,9 +15,8 @@ import { Copy } from './fixtures/expectedCopy';
 import { SETUP_TENANT, HANDED_OVER_TENANT, uniqueTenant } from './fixtures/testData';
 
 test.describe('US-4.1 Setup Password & Setup Banner', () => {
-  test.fixme(
+  test(
     'TC-ADMSETUP-001 setup password displayed in profile with show/hide; stable across views',
-    FIXME_DETAILS,
     async ({ authenticatedTenantList: list, createTenantPage, tenantProfilePage: profile }) => {
       // Freshly created Setup tenant → create a DISPOSABLE one.
       const tenant = uniqueTenant();
@@ -41,9 +40,8 @@ test.describe('US-4.1 Setup Password & Setup Banner', () => {
     },
   );
 
-  test.fixme(
+  test(
     'TC-ADMSETUP-002 setup banner: exact copy during Setup; disappears permanently after handover',
-    FIXME_DETAILS,
     async ({ authenticatedTenantList: list, tenantProfilePage: profile }) => {
       // Precondition (TODO_FIXTURE): 2a Setup tenant · 2b Handed-Over tenant.
       // 2a — banner visible with exact §8.6 heading, body, and action button.
@@ -59,9 +57,8 @@ test.describe('US-4.1 Setup Password & Setup Banner', () => {
 });
 
 test.describe('US-4.2 Handover', () => {
-  test.fixme(
+  test(
     'TC-ADMHAND-001 handover action available only during Setup; dialog copy is exact and named',
-    FIXME_DETAILS,
     async ({ authenticatedTenantList: list, tenantProfilePage: profile }) => {
       // Precondition (TODO_FIXTURE): 1a Setup tenant (Owner "Sarah Chen",
       // Company "Acme Logistics") · 1b Handed-Over tenant.
@@ -83,9 +80,8 @@ test.describe('US-4.2 Handover', () => {
     },
   );
 
-  test.fixme(
+  test(
     'TC-ADMHAND-002 confirmed handover applies all UI effects together',
-    FIXME_DETAILS,
     async ({ authenticatedTenantList: list, createTenantPage, tenantProfilePage: profile }) => {
       // Handover is irreversible → create a DISPOSABLE Setup tenant.
       const tenant = uniqueTenant();
@@ -122,9 +118,8 @@ test.describe('US-4.2 Handover', () => {
     },
   );
 
-  test.fixme(
+  test(
     'TC-ADMHAND-003 canceling the handover dialog performs none of the effects',
-    FIXME_DETAILS,
     async ({ authenticatedTenantList: list, tenantProfilePage: profile }) => {
       // Precondition (TODO_FIXTURE): Setup tenant.
       const name = SETUP_TENANT.companyName;
@@ -148,9 +143,8 @@ test.describe('US-4.2 Handover', () => {
     },
   );
 
-  test.fixme(
+  test(
     'TC-ADMHAND-004 post-handover text is static: unaffected by later PO edits; date = handover date',
-    FIXME_DETAILS,
     async ({ authenticatedTenantList: list, createTenantPage, tenantProfilePage: profile }) => {
       // Handover is irreversible → create + hand over a DISPOSABLE tenant.
       const tenant = uniqueTenant();

@@ -16,19 +16,15 @@ export class LoginPage {
   }
 
   get emailInput(): Locator {
-    return this.page.getByTestId(LoginLocators.emailInput);
+    return this.page.locator(LoginLocators.emailInput);
   }
 
   get passwordInput(): Locator {
-    return this.page.getByTestId(LoginLocators.passwordInput);
+    return this.page.locator(LoginLocators.passwordInput);
   }
 
   get passwordToggle(): Locator {
-    return this.page.getByTestId(LoginLocators.passwordToggle);
-  }
-
-  get errorText(): Locator {
-    return this.page.getByTestId(LoginLocators.errorText);
+    return this.page.locator(LoginLocators.passwordToggle);
   }
 
   get loginButton(): Locator {
@@ -101,13 +97,20 @@ export class LoginPage {
     await expect(this.passwordInput).toHaveValue(value);
   }
 
-  /** Assert the login error shows the EXACT expected copy. */
+  /**
+   * Assert an error with the EXACT expected copy is visible. Covers both the
+   * per-field antd validation messages and the invalid-credentials message,
+   * matched by their exact text rather than a single container.
+   */
   async expectError(message: string): Promise<void> {
-    await expect(this.errorText, 'login error copy').toHaveText(message);
+    await expect(
+      this.page.getByText(message, { exact: true }),
+      'login error copy',
+    ).toBeVisible();
   }
 
   async errorMessageText(): Promise<string> {
-    return (await this.errorText.innerText()).trim();
+    return (await this.page.locator(LoginLocators.fieldError).first().innerText()).trim();
   }
 
   /** User remains on (or was redirected to) the Login screen. */

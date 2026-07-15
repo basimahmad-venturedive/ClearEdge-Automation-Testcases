@@ -3,7 +3,7 @@
  * Source: testcases/TC-CEIQ-FEAT-001.md — TC-ADMCREATE-001…007
  * (UI-AUTOMATION cases; the API-only TC-ADMCREATE-008 is out of scope here).
  *
- * Every test is test.fixme(): CEIQ-FEAT-001 admin portal frontend URL not
+ * Every test is test(): CEIQ-FEAT-001 admin portal frontend URL not
  * available as of 2026-07-08. Bodies are fully implemented and run the day
  * E2E_BASE_URL exists.
  */
@@ -13,9 +13,8 @@ import { SETUP_TENANT, uniqueTenant, valueOfLength } from './fixtures/testData';
 import type { CreateField } from '../locators/createTenant';
 
 test.describe('US-3.1 Create Tenant', () => {
-  test.fixme(
+  test(
     'TC-ADMCREATE-001 happy path: create tenant + PO, land on page 1 with toast',
-    FIXME_DETAILS,
     async ({ authenticatedTenantList: list, createTenantPage, tenantProfilePage: profile }) => {
       // Precondition (TODO_FIXTURE): domain + owner email unused by any tenant/user.
       const tenant = uniqueTenant();
@@ -40,9 +39,8 @@ test.describe('US-3.1 Create Tenant', () => {
     },
   );
 
-  test.fixme(
+  test(
     'TC-ADMCREATE-002 per-field validation messages (blur + submit; first invalid field scrolled into view)',
-    FIXME_DETAILS,
     async ({ authenticatedTenantList: list, createTenantPage }) => {
       const createRequests = createTenantPage.trackCreateRequests();
       await list.openCreateTenant();
@@ -72,9 +70,8 @@ test.describe('US-3.1 Create Tenant', () => {
     },
   );
 
-  test.fixme(
+  test(
     'TC-ADMCREATE-003 field max-length boundaries (255 / 255 / 500 / 255 / 320)',
-    FIXME_DETAILS,
     async ({ authenticatedTenantList: list, createTenantPage }) => {
       await list.openCreateTenant();
       await createTenantPage.expectFormVisible();
@@ -100,9 +97,8 @@ test.describe('US-3.1 Create Tenant', () => {
     },
   );
 
-  test.fixme(
+  test(
     'TC-ADMCREATE-004 duplicate domain and duplicate email are blocked with exact messages',
-    FIXME_DETAILS,
     async ({ authenticatedTenantList: list, createTenantPage }) => {
       // Precondition (TODO_FIXTURE): existing SETUP_TENANT (Acme Logistics /
       // acmelogistics.com / sarah.chen@acmelogistics.com).
@@ -130,9 +126,8 @@ test.describe('US-3.1 Create Tenant', () => {
     },
   );
 
-  test.fixme(
+  test(
     'TC-ADMCREATE-005 domain normalization: protocol / www. / path variants collide',
-    FIXME_DETAILS,
     async ({ authenticatedTenantList: list, createTenantPage }) => {
       // Precondition (TODO_FIXTURE): existing tenant with stored domain
       // acmelogistics.com. Every variant normalizes to the same bare domain,
@@ -155,9 +150,8 @@ test.describe('US-3.1 Create Tenant', () => {
     },
   );
 
-  test.fixme(
+  test(
     'TC-ADMCREATE-006 double-click submit creates exactly one tenant; button disables with loading state',
-    FIXME_DETAILS,
     async ({ authenticatedTenantList: list, createTenantPage }) => {
       // Precondition (TODO_FIXTURE): valid, unique form data.
       const tenant = uniqueTenant();
@@ -179,9 +173,8 @@ test.describe('US-3.1 Create Tenant', () => {
     },
   );
 
-  test.fixme(
+  test(
     'TC-ADMCREATE-007 cancel returns to the Tenant List without saving',
-    FIXME_DETAILS,
     async ({ authenticatedTenantList: list, createTenantPage }) => {
       // Precondition: create form open with all fields filled (unique values).
       const tenant = uniqueTenant();

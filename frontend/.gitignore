@@ -1,6 +1,9 @@
 # Secrets / local configuration — never committed (.claude/rules/secrets-and-env.rules.md §6)
+# Covers .env plus every per-environment file (.env.local/.env.dev/.env.qa/.env.prod);
+# only the committed .env.example template is exempt.
 .env
-.env.local
+.env.*
+!.env.example
 storageState.json
 
 # Dependencies

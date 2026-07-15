@@ -3,10 +3,16 @@ node_modules/
 **/node_modules/
 
 # ── Secrets & credentials (see .claude/rules/secrets-and-env.rules.md §6) ──
+# Covers .env plus every per-environment file (.env.local/.env.dev/.env.qa/.env.prod);
+# only the committed .env.example templates are exempt.
 .env
-.env.local
+.env.*
+!.env.example
+!.env.*.example
 **/.env
-**/.env.local
+**/.env.*
+!**/.env.example
+!**/.env.*.example
 **/secrets.json
 **/credentials.json
 **/storageState.json

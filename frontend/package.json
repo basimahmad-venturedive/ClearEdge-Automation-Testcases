@@ -7,6 +7,10 @@
     "clean:reports": "node scripts/clean-playwright-reports.mjs",
     "test": "npm run clean:reports && playwright test",
     "test:headed": "npm run clean:reports && playwright test --headed",
+    "test:local": "node scripts/run-env.mjs local",
+    "test:dev": "node scripts/run-env.mjs dev",
+    "test:qa": "node scripts/run-env.mjs qa",
+    "test:prod": "node scripts/run-env.mjs prod",
     "testrail:import": "node scripts/testrail-import.js",
     "testrail:create-run": "node scripts/testrail-create-run.js",
     "testrail:execute": "node scripts/testrail-execute.js"

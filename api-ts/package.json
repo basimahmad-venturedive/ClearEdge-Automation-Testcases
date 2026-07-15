@@ -8,6 +8,7 @@
     "test:coverage": "vitest run --coverage",
     "test:live": "USE_MOCK=0 vitest run",
     "test:local": "cross-env TEST_ENV=local vitest run",
+    "test:dev": "cross-env TEST_ENV=dev vitest run",
     "test:qa": "cross-env TEST_ENV=qa vitest run",
     "test:prod": "cross-env TEST_ENV=prod vitest run",
     "local:jwks-mock": "tsx local-env/runJwksServer.ts",

@@ -2,7 +2,7 @@
  * CEIQ-FEAT-001 — UI Login & Session (US-1.1).
  * Source: testcases/TC-CEIQ-FEAT-001.md — TC-ADMLOGIN-001/002/003/004/006/007/008.
  *
- * Every test is test.fixme(): CEIQ-FEAT-001 admin portal frontend URL not
+ * Every test is test(): CEIQ-FEAT-001 admin portal frontend URL not
  * available as of 2026-07-08. Bodies are fully implemented and run the day
  * E2E_BASE_URL exists (set it in automation/frontend/.env).
  */
@@ -11,9 +11,8 @@ import { Copy } from './fixtures/expectedCopy';
 import { paEmail, paPassword } from '../utils/env';
 
 test.describe('US-1.1 Login & Session', () => {
-  test.fixme(
+  test(
     'TC-ADMLOGIN-001 valid PA credentials land on Tenant List',
-    FIXME_DETAILS,
     async ({ loginPage, tenantListPage }) => {
       await loginPage.goto();
       await loginPage.expectLoginScreen();
@@ -25,9 +24,8 @@ test.describe('US-1.1 Login & Session', () => {
     },
   );
 
-  test.fixme(
+  test(
     'TC-ADMLOGIN-002 wrong credentials show generic error; no account enumeration',
-    FIXME_DETAILS,
     async ({ loginPage }) => {
       await loginPage.goto();
       // 2a — existing account, wrong password. Deliberately-wrong credential
@@ -50,9 +48,8 @@ test.describe('US-1.1 Login & Session', () => {
     },
   );
 
-  test.fixme(
+  test(
     'TC-ADMLOGIN-003 field validation on submit (email format, empty password)',
-    FIXME_DETAILS,
     async ({ loginPage }) => {
       await loginPage.goto();
       const authRequests = loginPage.trackAuthRequests();
@@ -81,9 +78,8 @@ test.describe('US-1.1 Login & Session', () => {
     },
   );
 
-  test.fixme(
+  test(
     'TC-ADMLOGIN-004 password eye toggle reveals and re-masks without changing the value',
-    FIXME_DETAILS,
     async ({ loginPage }) => {
       const password = 'Xy9!secretValue'; // TC test-data value, not a credential
       await loginPage.goto();
@@ -98,9 +94,8 @@ test.describe('US-1.1 Login & Session', () => {
     },
   );
 
-  test.fixme(
+  test(
     'TC-ADMLOGIN-006 logout ends the session and returns to Login',
-    FIXME_DETAILS,
     async ({ authenticatedTenantList, loginPage, tenantListPage }) => {
       // authenticatedTenantList fixture: logged in, on the Tenant List.
       await expect(authenticatedTenantList.createTenantButton).toBeVisible();
@@ -112,9 +107,8 @@ test.describe('US-1.1 Login & Session', () => {
     },
   );
 
-  test.fixme(
+  test(
     'TC-ADMLOGIN-007 session gating: protected routes redirect out; Login redirects in',
-    FIXME_DETAILS,
     async ({ loginPage, tenantListPage, createTenantPage }) => {
       // 7a — Tenant List URL while logged out → Login; protected content never renders.
       await tenantListPage.goto();
@@ -131,9 +125,8 @@ test.describe('US-1.1 Login & Session', () => {
     },
   );
 
-  test.fixme(
+  test(
     'TC-ADMLOGIN-008 email matching is case-insensitive and trimmed',
-    FIXME_DETAILS,
     async ({ loginPage, tenantListPage }) => {
       // 8a — upper-cased email with the correct password.
       await loginPage.goto();

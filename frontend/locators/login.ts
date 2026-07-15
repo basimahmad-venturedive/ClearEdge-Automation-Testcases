@@ -1,27 +1,26 @@
 /**
- * PLACEHOLDER selector contract — testcases/TC-CEIQ-FEAT-001.md §6.
+ * Login screen selectors — VERIFIED against the live dev admin portal
+ * (https://d1u0bc7op5aqi4.cloudfront.net/login) on 2026-07-14.
  *
- * The admin portal frontend is not yet built; the spec defines no data-testid
- * attributes. Every selector below is the PROPOSED contract pending
- * confirmation by the frontend team (analogous to the kit's TODO_LOCATOR
- * policy). Playwright specs must not merge to a live pipeline until the real
- * attributes exist or role/name fallbacks are verified.
- *
- * Convention: values without a `Name` suffix are `data-testid` values (use
- * `page.getByTestId`); values with a `Name` suffix are accessible names for
- * `page.getByRole('button', { name })`.
+ * The deployed app is an Ant Design (antd) SPA. It exposes NO data-testid
+ * attributes, so the §6 placeholder testid contract does not apply here; these
+ * are the real, stable selectors observed on the page:
+ *   - email / password are antd inputs with stable ids (#email, #password)
+ *   - the reveal control is antd's Input.Password icon (role=button "Show"/"Hide")
+ *   - validation errors render per-field in `.ant-form-item-explain-error`
+ *   - the submit button's accessible name is "Log in"
  */
 export const LoginLocators = {
-  /** §6: data-testid="login-email" */
-  emailInput: 'login-email',
-  /** §6: data-testid="login-password" */
-  passwordInput: 'login-password',
-  /** §6: data-testid="login-password-toggle" (eye icon) */
-  passwordToggle: 'login-password-toggle',
-  /** §6: data-testid="login-error" */
-  errorText: 'login-error',
-  /** §6: role=button[name="Log in"] */
+  /** antd Input id — email field. */
+  emailInput: '#email',
+  /** antd Input.Password id — password field. */
+  passwordInput: '#password',
+  /** antd Input.Password reveal icon (toggles type password<->text). */
+  passwordToggle: '.ant-input-password-icon',
+  /** Per-field validation message container (antd). */
+  fieldError: '.ant-form-item-explain-error',
+  /** role=button[name="Log in"] */
   loginButtonName: 'Log in',
-  /** §6: role=button[name="Logout"] */
+  /** role=button[name="Logout"] — real name TBD (post-login screen not yet verified). */
   logoutButtonName: 'Logout',
 } as const;

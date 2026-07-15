@@ -2,7 +2,7 @@
  * CEIQ-FEAT-001 — UI Tenant List (US-2.1).
  * Source: testcases/TC-CEIQ-FEAT-001.md — TC-ADMLIST-001…011.
  *
- * Every test is test.fixme(): CEIQ-FEAT-001 admin portal frontend URL not
+ * Every test is test(): CEIQ-FEAT-001 admin portal frontend URL not
  * available as of 2026-07-08. Bodies are fully implemented and run the day
  * E2E_BASE_URL exists.
  *
@@ -15,9 +15,8 @@ import { Copy } from './fixtures/expectedCopy';
 import { SETUP_TENANT, HANDED_OVER_TENANT, uniqueTenant } from './fixtures/testData';
 
 test.describe('US-2.1 Tenant List', () => {
-  test.fixme(
+  test(
     'TC-ADMLIST-001 tenant card renders every specified element',
-    FIXME_DETAILS,
     async ({ authenticatedTenantList: list }) => {
       // Precondition (TODO_FIXTURE): SETUP_TENANT seeded in Setup;
       // HANDED_OVER_TENANT seeded Handed Over.
@@ -39,9 +38,8 @@ test.describe('US-2.1 Tenant List', () => {
     },
   );
 
-  test.fixme(
+  test(
     'TC-ADMLIST-002 newest-first ordering; newly created tenant appears at the top of page 1',
-    FIXME_DETAILS,
     async ({ authenticatedTenantList: list, createTenantPage, tenantProfilePage: profile }) => {
       // Precondition (TODO_FIXTURE): ≥ 3 tenants with distinct creation times.
       const newTenant = uniqueTenant();
@@ -67,9 +65,8 @@ test.describe('US-2.1 Tenant List', () => {
     },
   );
 
-  test.fixme(
+  test(
     'TC-ADMLIST-003 pagination boundary: 12 per page; controls appear only above 12',
-    FIXME_DETAILS,
     async ({ authenticatedTenantList: list }) => {
       // 3a — Precondition (TODO_FIXTURE): EXACTLY 12 tenants seeded.
       await list.expectCardCount(12);
@@ -84,9 +81,8 @@ test.describe('US-2.1 Tenant List', () => {
     },
   );
 
-  test.fixme(
+  test(
     'TC-ADMLIST-004 search filters by Company Name only, partial and case-insensitive',
-    FIXME_DETAILS,
     async ({ authenticatedTenantList: list }) => {
       // Precondition (TODO_FIXTURE): SETUP_TENANT ("Acme Logistics", owner
       // "Sarah Chen"), plus tenants whose owner email contains "acme" but whose
@@ -111,9 +107,8 @@ test.describe('US-2.1 Tenant List', () => {
     },
   );
 
-  test.fixme(
+  test(
     'TC-ADMLIST-005 whitespace-only search = unfiltered; clearing search restores the full list',
-    FIXME_DETAILS,
     async ({ authenticatedTenantList: list }) => {
       // Precondition (TODO_FIXTURE): ≥ 2 tenants seeded.
       const total = await list.tenantCountValue();
@@ -127,9 +122,8 @@ test.describe('US-2.1 Tenant List', () => {
     },
   );
 
-  test.fixme(
+  test(
     'TC-ADMLIST-006 no-match search shows the empty-results message',
-    FIXME_DETAILS,
     async ({ authenticatedTenantList: list }) => {
       // Precondition (TODO_FIXTURE): ≥ 1 tenant seeded, none matching.
       await list.searchTenants('zzz-no-match-xyz');
@@ -140,9 +134,8 @@ test.describe('US-2.1 Tenant List', () => {
     },
   );
 
-  test.fixme(
+  test(
     'TC-ADMLIST-007 zero tenants: "No tenants yet." with Create Tenant still visible',
-    FIXME_DETAILS,
     async ({ authenticatedTenantList: list }) => {
       // Precondition (TODO_FIXTURE): environment with ZERO tenants (fresh DB /
       // isolated tenant-set). If shared environments make that impossible,
@@ -153,9 +146,8 @@ test.describe('US-2.1 Tenant List', () => {
     },
   );
 
-  test.fixme(
+  test(
     'TC-ADMLIST-008 search resets to page 1; filtered results paginate',
-    FIXME_DETAILS,
     async ({ authenticatedTenantList: list }) => {
       // Precondition (TODO_FIXTURE): ≥ 14 tenants seeded, ≥ 13 sharing the
       // searchable fragment "Fixture" (e.g. "Fixture Co NN").
@@ -172,9 +164,8 @@ test.describe('US-2.1 Tenant List', () => {
     },
   );
 
-  test.fixme(
+  test(
     'TC-ADMLIST-009 running tenant count updates with search',
-    FIXME_DETAILS,
     async ({ authenticatedTenantList: list }) => {
       // Precondition (TODO_FIXTURE): N total tenants, M matching "acme" (M < N).
       const total = await list.tenantCountValue();
@@ -188,9 +179,8 @@ test.describe('US-2.1 Tenant List', () => {
     },
   );
 
-  test.fixme(
+  test(
     'TC-ADMLIST-010 "Create Tenant" navigates to the creation form',
-    FIXME_DETAILS,
     async ({ authenticatedTenantList: list, createTenantPage }) => {
       const mutations = list.trackTenantCreateRequests();
       await list.openCreateTenant();
@@ -202,9 +192,8 @@ test.describe('US-2.1 Tenant List', () => {
     },
   );
 
-  test.fixme(
+  test(
     'TC-ADMLIST-011 responsive grid: multi-column desktop, single column mobile',
-    FIXME_DETAILS,
     async ({ authenticatedTenantList: list }) => {
       // Precondition (TODO_FIXTURE): ≥ 4 tenants seeded.
       // Desktop viewport 1440×900 — cards render in more than one column.

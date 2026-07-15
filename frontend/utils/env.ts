@@ -9,21 +9,55 @@
  *   message naming the variable and the file to populate.
  * - No inline `process.env.…` anywhere else in specs, pages, or locators —
  *   everything is read through this module.
+ * - Per-environment switching (local / dev / qa / prod) is done by SELECTING A
+ *   DIFFERENT `.env` FILE via `TEST_ENV`, never by `if (env === …)` branches in
+ *   test code (secrets-and-env.rules §1a rule 3).
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { config as loadDotenv } from 'dotenv';
 
+/** The four supported target environments. Select one with the `TEST_ENV` var. */
+export const KNOWN_ENVS = ['local', 'dev', 'qa', 'prod'] as const;
+export type TestEnv = (typeof KNOWN_ENVS)[number];
+
 /**
- * .env search order per the skill/rules:
- * automation/frontend/.env → automation/frontend/.env.local →
- * automation/shared/config/.env → repo root .env
+ * Which environment this run targets. Chosen by `TEST_ENV` (from the shell /
+ * CI), defaulting to `local`. An unknown value fails loud so a typo can never
+ * silently run against the wrong stack.
+ *   TEST_ENV=dev npm test      (bash / CI)
+ *   $env:TEST_ENV='dev'; npm test   (PowerShell)
+ */
+export function testEnv(): TestEnv {
+  const raw = (process.env.TEST_ENV ?? 'local').trim().toLowerCase();
+  if (!(KNOWN_ENVS as readonly string[]).includes(raw)) {
+    throw new Error(
+      `Configuration error: TEST_ENV="${raw}" is not one of: ${KNOWN_ENVS.join(', ')}. ` +
+        'Set TEST_ENV to local, dev, qa, or prod (e.g. `TEST_ENV=dev npm test`).',
+    );
+  }
+  return raw as TestEnv;
+}
+
+const FRONTEND_DIR = path.resolve(__dirname, '..');
+const SELECTED_ENV = testEnv();
+
+/**
+ * .env search order — the FIRST file to set a variable wins (dotenv
+ * `override: false`), so the per-environment file takes precedence over the
+ * shared defaults:
+ *   1. automation/frontend/.env.<TEST_ENV>   ← per-environment URLs + creds (highest priority)
+ *   2. automation/frontend/.env              ← shared, non-URL defaults (TestRail/CQM flags, etc.)
+ *   3. automation/shared/config/.env
+ *   4. repo root .env
+ *
+ * For TEST_ENV=local the per-environment file is `.env.local`.
  */
 const ENV_SEARCH_ORDER: readonly string[] = [
-  path.resolve(__dirname, '..', '.env'),
-  path.resolve(__dirname, '..', '.env.local'),
-  path.resolve(__dirname, '..', '..', 'shared', 'config', '.env'),
-  path.resolve(__dirname, '..', '..', '..', '.env'),
+  path.join(FRONTEND_DIR, `.env.${SELECTED_ENV}`),
+  path.join(FRONTEND_DIR, '.env'),
+  path.resolve(FRONTEND_DIR, '..', 'shared', 'config', '.env'),
+  path.resolve(FRONTEND_DIR, '..', '..', '.env'),
 ];
 
 for (const envFile of ENV_SEARCH_ORDER) {
@@ -33,7 +67,8 @@ for (const envFile of ENV_SEARCH_ORDER) {
 }
 
 const ENV_FILE_HINT =
-  'automation/frontend/.env (copy automation/frontend/.env.example and fill in the real value)';
+  `automation/frontend/.env.${SELECTED_ENV} (copy automation/frontend/.env.example and fill in ` +
+  `the real value for the "${SELECTED_ENV}" environment)`;
 
 function readVar(name: string): string | undefined {
   const value = process.env[name]?.trim();
@@ -45,7 +80,8 @@ export function requireVar(name: string): string {
   const value = readVar(name);
   if (value === undefined) {
     throw new Error(
-      `Configuration error: required environment variable "${name}" is not set. ` +
+      `Configuration error: required environment variable "${name}" is not set ` +
+        `for the "${SELECTED_ENV}" environment. ` +
         `Populate it in ${ENV_FILE_HINT}. ` +
         'This suite never falls back to localhost or any hardcoded default.',
     );
@@ -59,11 +95,21 @@ export function hasVar(name: string): boolean {
 }
 
 /**
- * Admin portal base URL Playwright opens (E2E_BASE_URL).
- * Called at config-load time by playwright.config.ts → fails loud when missing.
+ * Admin portal base URL Playwright opens (E2E_BASE_URL) — this is the
+ * `baseURL` in playwright.config.ts. Called at config-load time → fails loud
+ * when missing for the selected environment.
  */
 export function baseUrl(): string {
   return requireVar('E2E_BASE_URL');
+}
+
+/**
+ * ClearEdge main-application base URL (APP_BASE_URL) — the tenant-facing app,
+ * distinct from the admin portal. Used by flows that cross into the app (e.g.
+ * verifying a handed-over tenant's access). Fails loud when missing.
+ */
+export function appBaseUrl(): string {
+  return requireVar('APP_BASE_URL');
 }
 
 /** Platform Admin email — SECRET. Guard with hasVar('PA_EMAIL') + test.skip before calling. */
