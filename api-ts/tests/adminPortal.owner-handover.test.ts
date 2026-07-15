@@ -16,6 +16,7 @@ import { randomUUID } from "crypto";
 import type { AxiosResponse } from "axios";
 import { AdminPortalClient } from "../src/clients/adminPortalClient";
 import { JwtFactory } from "../src/utils/jwtHelpers";
+import { validAdminToken } from "../src/utils/testTokens";
 import { withDbClient } from "../src/utils/dbClient";
 import { createSetupTenant, createHandedOverTenant, teardownTenant } from "../src/utils/adminPortalFixtures";
 import {
@@ -34,8 +35,14 @@ import { TenantDetailEnvelopeSchema, ErrorEnvelopeSchema } from "../src/schemas/
 import { assertResponseTime, assertErrorEnvelope } from "../src/utils/assertions";
 import type { ErrorEnvelope } from "../src/payloads/types";
 
+// UPDATED 2026-07-15: the owner + handover endpoints ARE implemented (backend controllers
+// tenant.controller.ts PATCH :id/owner and POST :id/handover). These cases still can't run
+// because they self-provision a tenant via POST /admin/tenants (needs REAL Cognito ⇒ a live
+// env) AND assert/teardown via direct Postgres (needs TEST_DATABASE_URL). No environment
+// currently has both: local has DB but no real Cognito; dev has Cognito but no DB (RDS
+// unreachable). They flip on automatically once a live env with DB access exists.
 const SKIP_REASON =
-  "CEIQ-FEAT-001 /api/v1/admin/tenants endpoints not implemented in local backend as of 2026-07-08";
+  "route implemented; needs a live env (real Cognito for create) WITH direct DB access — no env has both yet (local=DB only, dev=Cognito only)";
 const jwtFactory = new JwtFactory();
 
 /** Pulls `error.details.fields` out of a 400 ERR_VALIDATION_FAILED body. */
@@ -333,15 +340,23 @@ describe("Admin Portal — POST /admin/tenants/:id/handover", () => {
     }
   });
 
-  test.skip(`TC-ADMAPI-062 — handover 404 for unknown/soft-deleted tenant [blocked: ${SKIP_REASON}]`, async () => {
+  // ENABLED 2026-07-15: pure negative — needs neither a provisioned tenant nor DB, only a
+  // valid admin token (real on dev, mock-signed on local). Runs on local and any live target.
+  test(`TC-ADMAPI-062 — handover 404 for unknown/soft-deleted tenant`, async () => {
     const client = new AdminPortalClient();
-    const adminToken = await jwtFactory.adminToken();
+    const adminToken = await validAdminToken();
 
     const response = await client.triggerHandover(randomUUID(), adminToken);
 
     assertResponseTime(response);
     expect(response.status).toBe(404);
     ErrorEnvelopeSchema.parse(response.data);
+    // DEFECT (filed 2026-07-15, DEV-CEIQ-001): spec §4.2 + TC-CEIQ-FEAT-001 mandate code
+    // `ERR_NOT_FOUND`, but the backend returns `ERR_TENANT_NOT_FOUND` on every tenant 404
+    // (error-code.ts / tenant.repository.ts / tenant.service.ts). Message "Tenant not found."
+    // is correct. Test asserts the SPEC on purpose — it fails until the backend code is
+    // aligned (or the spec is amended). Do NOT switch this to ERR_TENANT_NOT_FOUND without a
+    // spec decision, or you'll mask the discrepancy for every other 404 case (022/032/042/054d).
     assertErrorEnvelope(response, ERR_NOT_FOUND);
     expect((response.data as ErrorEnvelope).error.message).toBe(MSG_TENANT_NOT_FOUND);
   });

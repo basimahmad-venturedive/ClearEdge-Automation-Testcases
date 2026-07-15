@@ -1,11 +1,29 @@
 /**
  * Self-contained ExtentReports-style HTML reporter for the API-TS Vitest suite.
- * Writes a single dashboard file per run to automation/report/api/latest.html
+ * Writes a single dashboard file per run to automation/reports/html/api/latest.html
  * (path is fixed per team convention — do not read it from .env, it is not a secret/base-URL).
+ *
+ * Each test row expands to show every HTTP call it made — request headers, request
+ * payload, response headers, response body — captured by src/utils/apiCapture.ts and
+ * handed over on `task.meta.apiCalls`. A status filter (All / Passed / Failed / Skipped)
+ * sits at the top of the report.
  */
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { Reporter, TestModule } from "vitest/node";
+
+interface ApiCall {
+  method: string;
+  url: string;
+  requestHeaders: Record<string, string>;
+  requestBody: unknown;
+  status: number | null;
+  statusText: string;
+  responseHeaders: Record<string, string>;
+  responseBody: unknown;
+  durationMs: number;
+  error?: string;
+}
 
 interface FlatResult {
   suite: string;
@@ -15,6 +33,7 @@ interface FlatResult {
   durationMs: number;
   message?: string;
   stack?: string;
+  apiCalls: ApiCall[];
 }
 
 const REPORT_DIR = path.resolve(__dirname, "../../reports/html/api");
@@ -22,8 +41,8 @@ const REPORT_FILE = path.join(REPORT_DIR, "latest.html");
 
 const SECRET_PATTERNS = [
   /Bearer\s+[A-Za-z0-9\-_.]+/g,
-  /Authorization:\s*\S+/gi,
-  /"?(?:api[_-]?key|password|token)"?\s*[:=]\s*"[^"]*"/gi,
+  /Authorization"?\s*[:=]\s*"?\S+/gi,
+  /"?(?:api[_-]?key|password|token|refreshToken|accessToken|idToken)"?\s*[:=]\s*"[^"]*"/gi,
 ];
 
 function redact(input: string | undefined): string | undefined {
@@ -39,6 +58,23 @@ function escapeHtml(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
+/** JSON-stringify arbitrary captured data, redact secrets, escape for HTML. */
+function fmt(value: unknown): string {
+  let text: string;
+  if (value === null || value === undefined) {
+    text = "(empty)";
+  } else if (typeof value === "string") {
+    text = value;
+  } else {
+    try {
+      text = JSON.stringify(value, null, 2);
+    } catch {
+      text = String(value);
+    }
+  }
+  return escapeHtml(redact(text) ?? "");
+}
+
 export default class ExtentReporter implements Reporter {
   private startedAt = new Date();
 
@@ -52,7 +88,7 @@ export default class ExtentReporter implements Reporter {
 
   // Vitest 4 reporter hook (replaces the removed onFinished(files) — the old hook never
   // fired under v4, so latest.html went stale). Flattens the TestModule tree via the
-  // reporting API (TestModule.children.allTests() -> TestCase.result()/diagnostic()).
+  // reporting API (TestModule.children.allTests() -> TestCase.result()/diagnostic()/meta()).
   onTestRunEnd(testModules: ReadonlyArray<TestModule> = []): void {
     const results: FlatResult[] = [];
     for (const mod of testModules) {
@@ -64,6 +100,7 @@ export default class ExtentReporter implements Reporter {
         const firstError = res.state === "failed" ? res.errors?.[0] : undefined;
         const parts = test.fullName.split(" > ");
         const suite = parts.length > 1 ? parts.slice(0, -1).join(" > ") : "(root)";
+        const meta = test.meta() as { apiCalls?: ApiCall[] };
         results.push({
           suite,
           name: test.name,
@@ -72,6 +109,7 @@ export default class ExtentReporter implements Reporter {
           durationMs: Math.round(test.diagnostic()?.duration ?? 0),
           message: redact(firstError?.message),
           stack: redact(firstError?.stack),
+          apiCalls: Array.isArray(meta?.apiCalls) ? meta.apiCalls : [],
         });
       }
     }
@@ -102,6 +140,27 @@ export default class ExtentReporter implements Reporter {
   }
 }
 
+function renderApiCall(call: ApiCall): string {
+  const statusText = call.status !== null ? `${call.status} ${escapeHtml(call.statusText)}` : "NO RESPONSE";
+  const statusClass = call.status === null ? "err" : call.status < 400 ? "ok" : "bad";
+  return `
+    <div class="api-call">
+      <div class="api-call-head">
+        <span class="method">${escapeHtml(call.method)}</span>
+        <span class="url">${escapeHtml(redact(call.url) ?? "")}</span>
+        <span class="http-status ${statusClass}">${statusText}</span>
+        <span class="muted">${call.durationMs} ms</span>
+      </div>
+      ${call.error ? `<div class="api-error">Network error: ${escapeHtml(redact(call.error) ?? "")}</div>` : ""}
+      <div class="api-grid">
+        <div class="api-pane"><h5>Request Headers</h5><pre>${fmt(call.requestHeaders)}</pre></div>
+        <div class="api-pane"><h5>Request Payload</h5><pre>${fmt(call.requestBody)}</pre></div>
+        <div class="api-pane"><h5>Response Headers</h5><pre>${fmt(call.responseHeaders)}</pre></div>
+        <div class="api-pane"><h5>Response Body</h5><pre>${fmt(call.responseBody)}</pre></div>
+      </div>
+    </div>`;
+}
+
 function renderHtml(data: {
   results: FlatResult[];
   total: number;
@@ -124,27 +183,38 @@ function renderHtml(data: {
   }
 
   const rows = [...bySuite.entries()]
-    .map(([suite, tests]) => {
+    .map(([suite, tests], suiteIdx) => {
       const testRows = tests
         .map((t, i) => {
-          const rowId = `${suite}-${i}`.replace(/[^a-zA-Z0-9-]/g, "_");
+          const rowId = `s${suiteIdx}-t${i}`;
           const badgeClass = t.status;
-          const hasDetail = Boolean(t.message || t.stack);
+          const hasError = Boolean(t.message || t.stack);
+          const hasApi = t.apiCalls.length > 0;
+          const hasDetail = hasError || hasApi;
+          const apiSummary = hasApi ? `<span class="api-count">${t.apiCalls.length} call${t.apiCalls.length === 1 ? "" : "s"}</span>` : "";
           return `
-        <tr class="test-row ${badgeClass}" ${hasDetail ? `onclick="toggleDetail('${rowId}')" style="cursor:pointer"` : ""}>
+        <tr class="test-row ${badgeClass}" data-status="${t.status}" data-row="${rowId}" ${hasDetail ? `onclick="toggleDetail('${rowId}')" style="cursor:pointer"` : ""}>
           <td><span class="badge ${badgeClass}">${t.status.toUpperCase()}</span></td>
-          <td>${escapeHtml(t.name)}</td>
+          <td>${escapeHtml(t.name)} ${apiSummary}</td>
           <td class="muted">${escapeHtml(t.file)}</td>
           <td class="muted">${t.durationMs} ms</td>
         </tr>
         ${
           hasDetail
-            ? `<tr class="detail-row" id="detail-${rowId}" style="display:none">
+            ? `<tr class="detail-row" id="detail-${rowId}" data-row="${rowId}" style="display:none">
           <td colspan="4">
             <div class="detail-box">
-              <div><strong>Expected vs Actual</strong></div>
-              <pre>${escapeHtml(t.message ?? "(no message)")}</pre>
-              ${t.stack ? `<details><summary>Stack trace</summary><pre>${escapeHtml(t.stack)}</pre></details>` : ""}
+              ${
+                hasError
+                  ? `<div class="error-block">
+                      <div><strong>Failure</strong></div>
+                      <pre>${escapeHtml(t.message ?? "(no message)")}</pre>
+                      ${t.stack ? `<details><summary>Stack trace</summary><pre>${escapeHtml(t.stack)}</pre></details>` : ""}
+                    </div>`
+                  : ""
+              }
+              ${hasApi ? t.apiCalls.map((c) => renderApiCall(c)).join("") : ""}
+              ${!hasApi && !hasError ? "<div class='muted'>No HTTP calls recorded.</div>" : ""}
             </div>
           </td>
         </tr>`
@@ -153,11 +223,13 @@ function renderHtml(data: {
         })
         .join("");
       return `
-      <h3 class="suite-title">${escapeHtml(suite)}</h3>
-      <table class="test-table">
-        <thead><tr><th>Status</th><th>Test</th><th>File</th><th>Duration</th></tr></thead>
-        <tbody>${testRows}</tbody>
-      </table>`;
+      <div class="suite-block">
+        <h3 class="suite-title">${escapeHtml(suite)}</h3>
+        <table class="test-table">
+          <thead><tr><th>Status</th><th>Test</th><th>File</th><th>Duration</th></tr></thead>
+          <tbody>${testRows}</tbody>
+        </table>
+      </div>`;
     })
     .join("\n");
 
@@ -176,7 +248,7 @@ function renderHtml(data: {
   header { background: var(--bg); color: #fff; padding: 24px 32px; }
   header h1 { margin: 0 0 4px; font-size: 22px; }
   header .meta { font-size: 13px; color: #94a3b8; }
-  .dashboard { display: flex; gap: 24px; padding: 24px 32px; flex-wrap: wrap; }
+  .dashboard { display: flex; gap: 24px; padding: 24px 32px 8px; flex-wrap: wrap; align-items: center; }
   .card { background: var(--panel); border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,.1); padding: 20px; }
   .donut-card { display: flex; align-items: center; gap: 20px; }
   .donut {
@@ -192,18 +264,42 @@ function renderHtml(data: {
   .stat.fail .num { color: var(--fail); }
   .stat.skip .num { color: var(--skip); }
   .stat .lbl { font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: .03em; }
+  .filter-bar { display: flex; gap: 10px; padding: 8px 32px 20px; flex-wrap: wrap; }
+  .filter-btn { border: 1px solid #cbd5e1; background: #fff; color: #334155; padding: 7px 16px; border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .filter-btn:hover { background: #eef2f7; }
+  .filter-btn.active { background: var(--bg); color: #fff; border-color: var(--bg); }
+  .filter-btn.all.active { background: #334155; border-color: #334155; }
+  .filter-btn.passed.active { background: var(--pass); border-color: var(--pass); }
+  .filter-btn.failed.active { background: var(--fail); border-color: var(--fail); }
+  .filter-btn.skipped.active { background: var(--skip); border-color: var(--skip); color: #1e293b; }
   main { padding: 0 32px 40px; }
   .suite-title { margin: 28px 0 8px; font-size: 15px; color: #334155; }
   .test-table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
   .test-table th { text-align: left; background: #eef2f7; padding: 10px 14px; font-size: 12px; text-transform: uppercase; color: #64748b; }
-  .test-table td { padding: 10px 14px; font-size: 13px; border-top: 1px solid #eef2f7; }
+  .test-table td { padding: 10px 14px; font-size: 13px; border-top: 1px solid #eef2f7; vertical-align: top; }
   .muted { color: #64748b; }
-  .badge { padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; color: #fff; }
+  .badge { padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; color: #fff; white-space: nowrap; }
   .badge.passed { background: var(--pass); }
   .badge.failed { background: var(--fail); }
   .badge.skipped { background: var(--skip); }
-  .detail-box { background: #fff7f7; border: 1px solid #fecaca; border-radius: 6px; padding: 10px 14px; }
-  .detail-box pre { white-space: pre-wrap; word-break: break-word; font-size: 12px; margin: 6px 0; }
+  .api-count { display: inline-block; margin-left: 8px; font-size: 11px; color: #475569; background: #e2e8f0; border-radius: 10px; padding: 1px 8px; }
+  .detail-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px 14px; }
+  .error-block { background: #fff7f7; border: 1px solid #fecaca; border-radius: 6px; padding: 10px 14px; margin-bottom: 12px; }
+  .detail-box pre { white-space: pre-wrap; word-break: break-word; font-size: 12px; margin: 6px 0; background: #0f172a; color: #e2e8f0; padding: 10px 12px; border-radius: 6px; overflow-x: auto; }
+  .error-block pre { background: #fff; color: #7f1d1d; }
+  .api-call { border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 12px; background: #fff; }
+  .api-call-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 14px; border-bottom: 1px solid #eef2f7; font-size: 13px; }
+  .api-call-head .method { font-weight: 700; color: #1d4ed8; }
+  .api-call-head .url { font-family: ui-monospace, Menlo, Consolas, monospace; word-break: break-all; flex: 1; min-width: 200px; }
+  .http-status { font-weight: 700; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+  .http-status.ok { background: #dcfce7; color: #166534; }
+  .http-status.bad { background: #fee2e2; color: #991b1b; }
+  .http-status.err { background: #fef9c3; color: #854d0e; }
+  .api-error { padding: 8px 14px; color: #991b1b; font-size: 12px; }
+  .api-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px 14px; }
+  .api-pane h5 { margin: 0 0 4px; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #64748b; }
+  .api-pane pre { white-space: pre-wrap; word-break: break-word; font-size: 12px; margin: 0; background: #0f172a; color: #e2e8f0; padding: 10px 12px; border-radius: 6px; max-height: 320px; overflow: auto; }
+  @media (max-width: 720px) { .api-grid { grid-template-columns: 1fr; } }
   footer { text-align: center; padding: 16px; color: #94a3b8; font-size: 12px; }
 </style>
 </head>
@@ -223,6 +319,12 @@ function renderHtml(data: {
     </div>
   </div>
 </div>
+<div class="filter-bar">
+  <button class="filter-btn all active" data-filter="all" onclick="applyFilter('all')">All (${total})</button>
+  <button class="filter-btn passed" data-filter="passed" onclick="applyFilter('passed')">Passed (${passed})</button>
+  <button class="filter-btn failed" data-filter="failed" onclick="applyFilter('failed')">Failed (${failed})</button>
+  <button class="filter-btn skipped" data-filter="skipped" onclick="applyFilter('skipped')">Skipped (${skipped})</button>
+</div>
 <main>
 ${rows || "<p>No tests executed.</p>"}
 </main>
@@ -231,6 +333,23 @@ ${rows || "<p>No tests executed.</p>"}
   function toggleDetail(id) {
     var el = document.getElementById('detail-' + id);
     if (el) el.style.display = el.style.display === 'none' ? 'table-row' : 'none';
+  }
+  function applyFilter(status) {
+    document.querySelectorAll('.filter-btn').forEach(function (b) {
+      b.classList.toggle('active', b.dataset.filter === status);
+    });
+    document.querySelectorAll('tr.test-row').forEach(function (row) {
+      var show = status === 'all' || row.dataset.status === status;
+      row.style.display = show ? '' : 'none';
+      var detail = document.getElementById('detail-' + row.dataset.row);
+      if (detail && !show) detail.style.display = 'none';
+    });
+    document.querySelectorAll('.suite-block').forEach(function (block) {
+      var anyVisible = Array.prototype.some.call(block.querySelectorAll('tr.test-row'), function (r) {
+        return r.style.display !== 'none';
+      });
+      block.style.display = anyVisible ? '' : 'none';
+    });
   }
 </script>
 </body>
