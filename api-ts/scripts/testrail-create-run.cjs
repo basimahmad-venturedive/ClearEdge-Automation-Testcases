@@ -5,7 +5,7 @@ const { testRailConfig } = require('../testrail/config/testrailConfig.cjs');
 const { MappingStore } = require('../testrail/mappingStore/mappingStore.cjs');
 const { RunCreator } = require('../testrail/runCreator/runCreator.cjs');
 
-const TC_ID_PATTERN = /TC-[A-Z0-9]+-\d+[a-z]?(?:-\d+)?/g;
+const TC_ID_PATTERN = /TC-[A-Z0-9]+-\d+/g;
 const TESTS_DIR = path.resolve(__dirname, '..', 'tests');
 
 async function main() {

@@ -6,7 +6,7 @@ const { testRailConfig } = require('./config/testrailConfig.cjs');
 
 // ClearEdge TC-IDs only (e.g. TC-AUTH-001, TC-ADMAPI-050). Kept tight so epic
 // ids like CEIQ-FEAT-001 in a title are not misread as case ids.
-const AUTOMATION_ID_PATTERN = /TC-[A-Z0-9]+-\d+[a-z]?(?:-\d+)?/g;
+const AUTOMATION_ID_PATTERN = /TC-[A-Z0-9]+-\d+/g;
 const TESTRAIL_STATUS_PASSED = 1;
 const TESTRAIL_STATUS_FAILED = 5;
 // NOTE: TestRail status_id 3 ("Untested") is the *initial* state of a case in a

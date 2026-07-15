@@ -32,8 +32,8 @@ describe("Vendor secure link", () => {
     expect((response.data as ErrorEnvelope).error.code).toBe("ERR_VENDOR_SCOPE_VIOLATION");
   });
 
-  test.skip.each(["expired", "used", "revoked", "active_but_expires_at_past"].map((state, i) => ({ state, tc: `TC-VENDOR-003-${String(i + 1).padStart(2, "0")}` })))(
-    `$tc — token state=$state rejected 401 (SR-009) [blocked: ${NO_ENV_REASON}] @smoke`,
+  test.skip.each(["expired", "used", "revoked", "active_but_expires_at_past"])(
+    `TC-VENDOR-003 — token state=%s rejected 401 (SR-009) [blocked: ${NO_ENV_REASON}] @smoke`,
     async () => {
       const client = new ControlPlaneClient();
       const { raw } = rawTokenAndHash(); // fixture seeds the row in the given state

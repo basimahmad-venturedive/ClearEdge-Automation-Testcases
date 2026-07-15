@@ -14,12 +14,10 @@ import { randomUUID } from "crypto";
 import type { AxiosResponse } from "axios";
 import { AdminPortalClient } from "../src/clients/adminPortalClient";
 import { JwtFactory } from "../src/utils/jwtHelpers";
-// Valid admin token: on local, signed by the Cognito mock (shared keypair served by the JWKS
-// server, which the app's AdminJwtAuthGuard trusts); on live dev, a real admin ID token minted
-// via Cognito InitiateAuth. (jwtFactory tokens use a random key/issuer — only good for negative
-// rejection cases.)
-import { validAdminToken } from "../src/utils/testTokens";
-import { hasDbAccess } from "../src/config/env";
+// Valid admin token signed by the local Cognito mock (shared keypair served by the
+// JWKS server), so the app's AdminJwtAuthGuard actually accepts it — jwtFactory tokens
+// use a random key/issuer and are only good for negative (rejection) cases.
+import { signAdminToken } from "../local-env/localCognitoMock";
 import { withDbClient } from "../src/utils/dbClient";
 import { createSetupTenant, createHandedOverTenant, teardownTenant } from "../src/utils/adminPortalFixtures";
 import {
@@ -151,7 +149,7 @@ describe("Admin Portal — GET /admin/tenants (list)", () => {
 
   test(`TC-ADMAPI-003 — list boundaries: whitespace-only search, page=0, page past last, page omitted`, async () => {
     const client = new AdminPortalClient();
-    const adminToken = await validAdminToken();
+    const adminToken = await signAdminToken({ sub: randomUUID() });
     const baseline = await client.listTenants({}, adminToken);
     assertResponseTime(baseline);
     expect(baseline.status).toBe(200);
@@ -241,13 +239,11 @@ const endpointProbes: EndpointProbe[] = [
   { endpoint: "4g POST /admin/tenants/:id/handover", invoke: (c, t) => c.triggerHandover(AUTH_PROBE_TENANT_ID, t) },
 ];
 const tokenVariants = ["i missing header", "ii tampered JWT", "iii tenant-pool JWT (wrong pool)"] as const;
-const authMatrix = endpointProbes
-  .flatMap((probe) => tokenVariants.map((variant) => ({ ...probe, variant })))
-  .map((row, i) => ({ ...row, tc: `TC-ADMAPI-004-${String(i + 1).padStart(2, "0")}` }));
+const authMatrix = endpointProbes.flatMap((probe) => tokenVariants.map((variant) => ({ ...probe, variant })));
 
 describe("Admin Portal — auth guard contract (all 7 endpoints)", () => {
   test.each(authMatrix)(
-    `$tc — $endpoint with $variant → 401 ERR_AUTH_INVALID_TOKEN @smoke`,
+    `TC-ADMAPI-004 — $endpoint with $variant → 401 ERR_AUTH_INVALID_TOKEN @smoke`,
     async ({ invoke, variant }) => {
       const client = new AdminPortalClient();
       let token: string | undefined;
@@ -272,14 +268,10 @@ describe("Admin Portal — auth guard contract (all 7 endpoints)", () => {
     const response = await client.createTenant(payload); // no Authorization header
 
     expect(response.status).toBe(401);
-    // "No side effects" is a direct-DB check — runs only where Postgres is reachable (local).
-    // On live dev (no DB) the 401 alone stands; a rejected request never reaches the service.
-    if (hasDbAccess()) {
-      await withDbClient(async (db) => {
-        const { rows } = await db.query("SELECT count(*)::int AS n FROM tenants WHERE domain = $1", [payload.domain]);
-        expect(rows[0].n).toBe(0);
-      });
-    }
+    await withDbClient(async (db) => {
+      const { rows } = await db.query("SELECT count(*)::int AS n FROM tenants WHERE domain = $1", [payload.domain]);
+      expect(rows[0].n).toBe(0);
+    });
   });
 });
 
@@ -343,8 +335,8 @@ describe("Admin Portal — POST /admin/tenants (create)", () => {
     }
   });
 
-  test.skip.each(domainNormalizationVariants().map((row, i) => ({ ...row, tc: `TC-ADMAPI-011-${String(i + 1).padStart(2, "0")}` })))(
-    `$tc — duplicate domain $sub → 409 ERR_TENANT_DOMAIN_DUPLICATE, nothing created [blocked: ${SKIP_REASON}] @smoke`,
+  test.skip.each(domainNormalizationVariants())(
+    `TC-ADMAPI-011 — duplicate domain $sub → 409 ERR_TENANT_DOMAIN_DUPLICATE, nothing created [blocked: ${SKIP_REASON}] @smoke`,
     async ({ value }) => {
       // Arrange — a tenant already owns the bare base domain.
       const client = new AdminPortalClient();
@@ -436,11 +428,11 @@ describe("Admin Portal — POST /admin/tenants (create)", () => {
     }
   });
 
-  test.each(createValidationMatrix().map((row, i) => ({ ...row, tc: `TC-ADMAPI-013-${String(i + 1).padStart(2, "0")}` })))(
-    `$tc — $sub → 400 ERR_VALIDATION_FAILED with exact §5 per-field message`,
+  test.each(createValidationMatrix())(
+    `TC-ADMAPI-013 — $sub → 400 ERR_VALIDATION_FAILED with exact §5 per-field message`,
     async ({ overrides, invalidFields }) => {
       const client = new AdminPortalClient();
-      const adminToken = await validAdminToken();
+      const adminToken = await signAdminToken({ sub: randomUUID() });
       const payload = adminTenantCreatePayload(overrides);
 
       const response = await client.createTenant(payload, adminToken);
@@ -455,8 +447,7 @@ describe("Admin Portal — POST /admin/tenants (create)", () => {
         expect(fields[field]).toBe(message);
       }
       // No side effects — the (valid, unique) domain of the rejected payload never lands in the DB.
-      // Direct-DB check runs only where Postgres is reachable (local); skipped on live dev.
-      if (overrides.domain === undefined && hasDbAccess()) {
+      if (overrides.domain === undefined) {
         await withDbClient(async (db) => {
           const { rows } = await db.query("SELECT count(*)::int AS n FROM tenants WHERE domain = $1", [payload.domain]);
           expect(rows[0].n).toBe(0);
@@ -465,8 +456,8 @@ describe("Admin Portal — POST /admin/tenants (create)", () => {
     },
   );
 
-  test.skip.each(maxLengthBoundaryMatrix().map((row, i) => ({ ...row, tc: `TC-ADMAPI-014-${String(i + 1).padStart(2, "0")}` })))(
-    `$tc — $sub [blocked: ${SKIP_REASON}]`,
+  test.skip.each(maxLengthBoundaryMatrix())(
+    `TC-ADMAPI-014 — $sub [blocked: ${SKIP_REASON}]`,
     async ({ field, length, expectAccept, overLimitMessage }) => {
       const client = new AdminPortalClient();
       const adminToken = await jwtFactory.adminToken();
