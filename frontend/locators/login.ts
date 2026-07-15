@@ -17,8 +17,8 @@ export const LoginLocators = {
   passwordInput: '#password',
   /** antd Input.Password reveal icon (toggles type password<->text). */
   passwordToggle: '.ant-input-password-icon',
-  /** Per-field validation message container (antd). */
-  fieldError: '.ant-form-item-explain-error',
+  /** Invalid-credentials alert — data-testid="login-error" (added to clearedge-admin). */
+  loginError: 'login-error',
   /** role=button[name="Log in"] */
   loginButtonName: 'Log in',
   /** role=button[name="Logout"] — real name TBD (post-login screen not yet verified). */

@@ -49,7 +49,7 @@ export class TenantListPage {
   }
 
   get createTenantButton(): Locator {
-    return this.page.getByRole('button', { name: TenantListLocators.createTenantButtonName });
+    return this.page.getByTestId(TenantListLocators.createTenantButton);
   }
 
   get emptyState(): Locator {

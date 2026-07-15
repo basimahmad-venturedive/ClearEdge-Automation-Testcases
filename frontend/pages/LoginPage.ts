@@ -110,7 +110,7 @@ export class LoginPage {
   }
 
   async errorMessageText(): Promise<string> {
-    return (await this.page.locator(LoginLocators.fieldError).first().innerText()).trim();
+    return (await this.page.getByTestId(LoginLocators.loginError).innerText()).trim();
   }
 
   /** User remains on (or was redirected to) the Login screen. */

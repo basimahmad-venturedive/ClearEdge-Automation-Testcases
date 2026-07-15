@@ -27,8 +27,8 @@ export const TenantListLocators = {
   tenantCount: 'tenant-count',
   /** §6: data-testid="tenant-pagination" */
   pagination: 'tenant-pagination',
-  /** §6: role=button[name="Create Tenant"] */
-  createTenantButtonName: 'Create Tenant',
+  /** data-testid="create-tenant-button" — primary CTA in the list header (added to clearedge-admin) */
+  createTenantButton: 'create-tenant-button',
 
   // ---- App-level elements (§6) — rendered above the Tenant List root and
   // shared by the profile / create flows; kept here as the single source. ----
