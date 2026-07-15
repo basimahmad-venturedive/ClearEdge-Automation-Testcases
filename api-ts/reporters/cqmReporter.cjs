@@ -282,9 +282,14 @@ class CqmReporter {
       }
     }
 
+    // Collapse executions → one row per test case (TC-ID) so CQM counts CASES like
+    // TestRail: a case is Failed if any of its executions failed, Passed if it ran and
+    // none failed, else Skipped. (data-driven test.each rows share one TC-ID.)
+    this.collapseResultsToCaseLevel();
+
     logBoth(
       statusLines,
-      `[CqmReporter] Collected ${this.results.length} test(s) ` +
+      `[CqmReporter] Collected ${this.results.length} case(s) ` +
         `(passed=${this.totalPassed}, failed=${this.totalFailed}, skipped=${this.totalSkipped}).`
     );
 
@@ -491,6 +496,26 @@ class CqmReporter {
         /* best-effort cleanup */
       }
     }
+  }
+
+  // Group executions by TC-ID (worst status wins) → case-level rows + totals, so CQM
+  // matches TestRail's case granularity. Multi-segment ids (TC-UAUTH-API-024) supported.
+  collapseResultsToCaseLevel() {
+    const TC_ID = /TC-(?:[A-Z0-9]+-)+\d+/;
+    const rank = { Skipped: 0, Passed: 1, Failed: 2 };
+    const byId = new Map();
+    for (const r of this.results) {
+      const match = TC_ID.exec(r.test_case_name || '');
+      const key = match ? match[0] : r.test_case_name || '';
+      const existing = byId.get(key);
+      if (!existing || rank[r.test_case_status] > rank[existing.test_case_status]) {
+        byId.set(key, r);
+      }
+    }
+    this.results = [...byId.values()];
+    this.totalPassed = this.results.filter((r) => r.test_case_status === 'Passed').length;
+    this.totalFailed = this.results.filter((r) => r.test_case_status === 'Failed').length;
+    this.totalSkipped = this.results.filter((r) => r.test_case_status === 'Skipped').length;
   }
 
   recordOne(record) {
