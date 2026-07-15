@@ -500,13 +500,25 @@ class CqmReporter {
 
   // Group executions by TC-ID (worst status wins) → case-level rows + totals, so CQM
   // matches TestRail's case granularity. Multi-segment ids (TC-UAUTH-API-024) supported.
+  // Only count TC-IDs present in caseMapping.json (the TestRail run's universe), so
+  // unmapped suites not yet imported to TestRail are excluded everywhere consistently.
   collapseResultsToCaseLevel() {
     const TC_ID = /TC-(?:[A-Z0-9]+-)+\d+/;
     const rank = { Skipped: 0, Passed: 1, Failed: 2 };
+    let mapped = null;
+    try {
+      const mapPath = path.resolve(__dirname, '..', 'testrail', 'mappingStore', 'caseMapping.json');
+      mapped = new Set(Object.keys(JSON.parse(fs.readFileSync(mapPath, 'utf8'))));
+    } catch {
+      mapped = null; // mapping unavailable → count all (no filter)
+    }
     const byId = new Map();
     for (const r of this.results) {
       const match = TC_ID.exec(r.test_case_name || '');
       const key = match ? match[0] : r.test_case_name || '';
+      if (mapped && !mapped.has(key)) {
+        continue;
+      }
       const existing = byId.get(key);
       if (!existing || rank[r.test_case_status] > rank[existing.test_case_status]) {
         byId.set(key, r);
