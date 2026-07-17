@@ -17,4 +17,16 @@ export const AppRoutes = {
   tenantList: '/tenants',
   /** Create Tenant form (US-3.1). */
   createTenant: '/tenants/create',
+  /**
+   * User Management home — tenant-facing app, PO-only (CEIQ-FEAT-003 §5.1).
+   * TODO_ROUTE: confirm with the frontend team. Resolves against APP_BASE_URL
+   * (the tenant app), not the admin portal E2E_BASE_URL. Owner: CEIQ frontend team.
+   */
+  userManagement: '/user-management',
+  /**
+   * Company Settings — tenant-facing app, Procurement-Owner-only
+   * (CEIQ-FEAT-004 §5.1, route `/company-settings`). Resolves against APP_BASE_URL
+   * (the tenant app). TODO_ROUTE: confirm with the frontend team. Owner: CEIQ frontend team.
+   */
+  companySettings: '/company-settings',
 } as const;

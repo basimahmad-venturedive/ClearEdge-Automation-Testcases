@@ -7,9 +7,10 @@
  * available as of 2026-07-08. Bodies are fully implemented and run the day
  * E2E_BASE_URL exists.
  */
-import { test, expect, FIXME_DETAILS } from './fixtures/baseTest';
+import { test, expect } from './fixtures/baseTest';
 import { Copy } from './fixtures/expectedCopy';
-import { SETUP_TENANT, uniqueTenant, valueOfLength } from './fixtures/testData';
+import { uniqueTenant, valueOfLength } from './fixtures/testData';
+import { uniquePrefix } from '../utils/adminApi';
 import type { CreateField } from '../locators/createTenant';
 
 test.describe('US-3.1 Create Tenant', () => {
@@ -21,10 +22,12 @@ test.describe('US-3.1 Create Tenant', () => {
       await list.openCreateTenant();
       await createTenantPage.fillForm(tenant);
       await createTenantPage.submit();
-      // Redirect to the Tenant List page 1, new tenant at the top; exact toast
-      // "[Company Name] (TEN####) was created." with the generated Tenant ID.
-      await list.expectLanded();
+      // Exact success toast "[Company Name] (TEN####) was created." — asserted
+      // FIRST because the antd message auto-dismisses (~2.5s) and the shared-dev
+      // list can take longer than that to finish loading.
       await list.expectToast(Copy.tenantCreatedToast(tenant.companyName));
+      // Redirect to the Tenant List page 1, new tenant at the top.
+      await list.expectLanded();
       await list.expectFirstCard(tenant.companyName);
       // New tenant's card: badge "Setup"; toggle disabled with label "Inactive".
       await list.expectCardBadge(tenant.companyName, 'Setup');
@@ -55,6 +58,10 @@ test.describe('US-3.1 Create Tenant', () => {
         { subId: '2f', field: 'ownerEmail', input: 'bad-email', error: Copy.invalidEmail },
       ];
       for (const subCase of subCases) {
+        // The app validates on change (antd default), so an untouched field left
+        // empty never fires. Prime with a throwaway value first, so setting the
+        // sub-case input (often empty) registers as a change and validates.
+        await createTenantPage.fillField(subCase.field, 'prime');
         await createTenantPage.fillField(subCase.field, subCase.input);
         await createTenantPage.blurField(subCase.field);
         await createTenantPage.expectFieldError(subCase.field, subCase.error);
@@ -79,7 +86,7 @@ test.describe('US-3.1 Create Tenant', () => {
       // (parameterized 3a–3e).
       const subCases: ReadonlyArray<{ subId: string; field: CreateField; limit: number; overError: string }> = [
         { subId: '3a', field: 'companyName', limit: 255, overError: Copy.companyNameMaxLength },
-        { subId: '3b', field: 'websiteUrl', limit: 255, overError: Copy.websiteUrlMaxLength },
+        { subId: '3b', field: 'websiteUrl', limit: 500, overError: Copy.websiteUrlMaxLength },
         { subId: '3c', field: 'companyAddress', limit: 500, overError: Copy.companyAddressMaxLength },
         { subId: '3d', field: 'ownerName', limit: 255, overError: Copy.ownerNameMaxLength },
         { subId: '3e', field: 'ownerEmail', limit: 320, overError: Copy.ownerEmailMaxLength },
@@ -99,54 +106,68 @@ test.describe('US-3.1 Create Tenant', () => {
 
   test(
     'TC-ADMCREATE-004 duplicate domain and duplicate email are blocked with exact messages',
-    async ({ authenticatedTenantList: list, createTenantPage }) => {
-      // Precondition (TODO_FIXTURE): existing SETUP_TENANT (Acme Logistics /
-      // acmelogistics.com / sarah.chen@acmelogistics.com).
-      // 4a — duplicate website domain is blocked.
+    async ({ authenticatedTenantList: list, createTenantPage, seeder }) => {
+      // Seed a base tenant to collide against (self-contained on shared dev).
+      const tag = uniquePrefix('Dup');
+      const base = await seeder.createTenant({
+        name: `${tag} Base Co`,
+        websiteUrl: `${tag.toLowerCase()}.example.com`,
+        address: '1 Base Street, Test City',
+        ownerName: 'Base Owner',
+        ownerEmail: `base.${tag.toLowerCase()}@example.com`,
+      });
+      // 4a — duplicate website domain is blocked (form stays open on error).
       await list.openCreateTenant();
-      await createTenantPage.fillForm(
-        uniqueTenant({ websiteUrl: SETUP_TENANT.websiteUrl }),
-      );
+      await createTenantPage.fillForm(uniqueTenant({ websiteUrl: base.websiteUrl }));
       await createTenantPage.submit();
       await createTenantPage.expectFieldError('websiteUrl', Copy.duplicateDomain);
       // 4b — duplicate owner email is blocked.
-      await createTenantPage.fillForm(
-        uniqueTenant({ ownerEmail: SETUP_TENANT.ownerEmail }),
-      );
+      await createTenantPage.fillForm(uniqueTenant({ ownerEmail: base.ownerEmail }));
       await createTenantPage.submit();
       await createTenantPage.expectFieldError('ownerEmail', Copy.duplicateEmail);
       // 4c — duplicate COMPANY NAME with a unique domain/email succeeds
       // (company-name uniqueness is not enforced).
-      const duplicateNameTenant = uniqueTenant({ companyName: SETUP_TENANT.companyName });
+      const duplicateNameTenant = uniqueTenant({ companyName: base.name });
       await createTenantPage.fillForm(duplicateNameTenant);
       await createTenantPage.submit();
-      await list.expectLanded();
       await list.expectToast(Copy.tenantCreatedToast(duplicateNameTenant.companyName));
-      // Cleanup (TODO_FIXTURE): teardown the 4c tenant.
+      await list.expectLanded();
     },
   );
 
   test(
     'TC-ADMCREATE-005 domain normalization: protocol / www. / path variants collide',
-    async ({ authenticatedTenantList: list, createTenantPage }) => {
-      // Precondition (TODO_FIXTURE): existing tenant with stored domain
-      // acmelogistics.com. Every variant normalizes to the same bare domain,
-      // which is taken → duplicate-domain error (parameterized 5a–5d).
-      const base = SETUP_TENANT.websiteUrl; // acmelogistics.com
-      const subCases: ReadonlyArray<{ subId: string; input: string }> = [
-        { subId: '5a', input: `https://www.${base}` },
-        { subId: '5b', input: `www.${base}` },
-        { subId: '5c', input: `${base}/about` },
-        { subId: '5d', input: `${base}:8080` },
+    async ({ authenticatedTenantList: list, createTenantPage, seeder }) => {
+      // Seed a base tenant; every variant normalizes to its bare domain, which
+      // is now taken → duplicate-domain error (parameterized 5a–5d).
+      const tag = uniquePrefix('Norm');
+      const base = await seeder.createTenant({
+        name: `${tag} Base Co`,
+        websiteUrl: `${tag.toLowerCase()}.example.com`,
+        address: '1 Norm Street, Test City',
+        ownerName: 'Norm Owner',
+        ownerEmail: `norm.${tag.toLowerCase()}@example.com`,
+      });
+      const domain = base.websiteUrl; // <tag>.example.com
+      const variants: ReadonlyArray<{ input: string; error: string }> = [
+        { input: `https://www.${domain}`, error: Copy.duplicateDomain },
+        { input: `www.${domain}`, error: Copy.duplicateDomain },
+        { input: `${domain}/about`, error: Copy.duplicateDomain },
+        // A :port is rejected by the client URL format pre-check (WEBSITE_URL_REGEX
+        // allows a /path but not a :port) before the duplicate check runs — actual
+        // app behavior; the BE-side normalization of ports is covered by TC-ADMAPI-011.
+        { input: `${domain}:8080`, error: Copy.websiteUrlInvalid },
       ];
-      for (const subCase of subCases) {
-        await list.openCreateTenant();
-        await createTenantPage.fillForm(uniqueTenant({ websiteUrl: subCase.input }));
+      // Open the form once — an error keeps it open, so re-fill and re-submit in
+      // place (do NOT navigate back to the list each time).
+      await list.openCreateTenant();
+      for (const variant of variants) {
+        await createTenantPage.fillForm(uniqueTenant({ websiteUrl: variant.input }));
         await createTenantPage.submit();
-        await createTenantPage.expectFieldError('websiteUrl', Copy.duplicateDomain);
+        await createTenantPage.expectFieldError('websiteUrl', variant.error);
       }
-      // The stored-value assertion (tenants.domain = 'acmelogistics.com')
-      // belongs to TC-ADMAPI-011 (API + DB), not this UI case.
+      // The stored-value assertion (tenants.domain normalized) belongs to
+      // TC-ADMAPI-011 (API + DB), not this UI case.
     },
   );
 

@@ -4,7 +4,6 @@
  * Locators: locators/tenantProfile.ts (§6 placeholder contract).
  */
 import { expect, type Locator, type Page } from '@playwright/test';
-import { TenantListLocators } from '../locators/tenantList';
 import { TenantProfileLocators } from '../locators/tenantProfile';
 import { AdminApiPaths } from '../utils/apiPaths';
 import { ConfirmDialog } from '../utils/dialog';
@@ -71,7 +70,9 @@ export class TenantProfilePage {
   }
 
   async closeProfile(): Promise<void> {
-    await this.page.getByTestId(TenantProfileLocators.closeButton).click();
+    // The detail modal is antd's <Modal> (AppModal); its close control is the
+    // built-in `.ant-modal-close` button (no data-testid on the antd internal).
+    await this.page.locator('.ant-modal-close').click();
   }
 
   async expectClosed(): Promise<void> {
@@ -92,9 +93,11 @@ export class TenantProfilePage {
   async saveCompanySectionExpectingPending(): Promise<void> {
     const saveButton = this.page.getByTestId(TenantProfileLocators.companySaveButton);
     await saveButton.click();
-    await expect(saveButton, 'Save disabled while the call is in flight').toBeDisabled();
+    await expect(saveButton, 'Save shows loading while the call is in flight').toHaveClass(
+      /ant-btn-loading/,
+    );
     await expect(
-      this.page.getByTestId(TenantListLocators.loadingIndicator),
+      saveButton.locator('.ant-btn-loading-icon'),
       'loading indicator visible during the call',
     ).toBeVisible();
   }
@@ -167,9 +170,11 @@ export class TenantProfilePage {
   async saveOwnerSectionExpectingPending(): Promise<void> {
     const saveButton = this.page.getByTestId(TenantProfileLocators.ownerSaveButton);
     await saveButton.click();
-    await expect(saveButton, 'Save disabled while the call is in flight').toBeDisabled();
+    await expect(saveButton, 'Save shows loading while the call is in flight').toHaveClass(
+      /ant-btn-loading/,
+    );
     await expect(
-      this.page.getByTestId(TenantListLocators.loadingIndicator),
+      saveButton.locator('.ant-btn-loading-icon'),
       'loading indicator visible during the call',
     ).toBeVisible();
   }

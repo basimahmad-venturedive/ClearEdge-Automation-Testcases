@@ -7,6 +7,7 @@ import { CreateTenantPage } from '../../pages/CreateTenantPage';
 import { LoginPage } from '../../pages/LoginPage';
 import { TenantListPage } from '../../pages/TenantListPage';
 import { TenantProfilePage } from '../../pages/TenantProfilePage';
+import { AdminApiSeeder } from '../../utils/adminApi';
 import { hasVar, paEmail, paPassword } from '../../utils/env';
 
 /** Single reason string used by every fixme'd spec in this suite. */
@@ -34,6 +35,12 @@ interface PageFixtures {
    * storageState setup project) only if the frontend later persists tokens.
    */
   authenticatedTenantList: TenantListPage;
+  /**
+   * Admin-API seeding harness for controlled tenant data. Reads the logged-in
+   * SPA's ID token lazily (on first call), so a test must also use
+   * `authenticatedTenantList` (or otherwise log in) before seeding.
+   */
+  seeder: AdminApiSeeder;
 }
 
 export const test = base.extend<PageFixtures>({
@@ -60,6 +67,9 @@ export const test = base.extend<PageFixtures>({
     await loginPage.login(paEmail(), paPassword());
     await tenantListPage.expectLanded();
     await use(tenantListPage);
+  },
+  seeder: async ({ page, request }, use) => {
+    await use(new AdminApiSeeder(page, request));
   },
 });
 

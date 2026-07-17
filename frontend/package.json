@@ -9,8 +9,11 @@
     "test:headed": "npm run clean:reports && playwright test --headed",
     "test:local": "node scripts/run-env.mjs local",
     "test:dev": "node scripts/run-env.mjs dev",
+    "test:dev:usermgmt": "node scripts/run-env.mjs dev tests/user-management-home.spec.ts tests/user-management-create.spec.ts tests/user-management-edit.spec.ts tests/user-management-email.spec.ts tests/user-management-status.spec.ts",
+    "test:dev:auth": "node scripts/run-env.mjs dev tests/login.spec.ts",
     "test:qa": "node scripts/run-env.mjs qa",
     "test:prod": "node scripts/run-env.mjs prod",
+    "jira:bug": "node ../scripts/jira-log-bug.mjs",
     "testrail:import": "node scripts/testrail-import.js",
     "testrail:create-run": "node scripts/testrail-create-run.js",
     "testrail:execute": "node scripts/testrail-execute.js"

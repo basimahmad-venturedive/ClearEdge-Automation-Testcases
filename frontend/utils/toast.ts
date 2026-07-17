@@ -1,12 +1,13 @@
 /**
- * App-level toast (data-testid="toast" — TC-CEIQ-FEAT-001 §6).
- * Composed into page objects; specs assert through page-object methods.
+ * App-level toast. The admin app shows these via antd `message.success/error`
+ * (App message API), which render in a portal as `.ant-message-notice` with no
+ * data-testid available — so we target antd's stable notice class. `.last()`
+ * picks the most recent notice when several stack.
  */
 import { expect, type Locator, type Page } from '@playwright/test';
-import { TenantListLocators } from '../locators/tenantList';
 
 export function toastLocator(page: Page): Locator {
-  return page.getByTestId(TenantListLocators.toast);
+  return page.locator('.ant-message-notice').last();
 }
 
 /** Assert the toast shows the EXACT expected copy. */

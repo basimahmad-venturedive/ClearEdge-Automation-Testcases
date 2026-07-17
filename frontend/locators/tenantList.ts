@@ -34,8 +34,8 @@ export const TenantListLocators = {
   // shared by the profile / create flows; kept here as the single source. ----
   /** §6: data-testid="toast" */
   toast: 'toast',
-  /** §6: role=dialog confirm button — exact label TBD (TC file Gaps) */
-  dialogConfirmName: 'Confirm',
+  /** role=dialog confirm button — antd Modal.confirm default okText is "OK". */
+  dialogConfirmName: 'OK',
   /** §6: role=dialog cancel button — exact label TBD (TC file Gaps) */
   dialogCancelName: 'Cancel',
 

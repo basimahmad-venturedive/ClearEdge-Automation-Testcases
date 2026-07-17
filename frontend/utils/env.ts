@@ -112,6 +112,16 @@ export function appBaseUrl(): string {
   return requireVar('APP_BASE_URL');
 }
 
+/**
+ * Admin backend API origin (ADMIN_API_BASE_URL) — the host the admin SPA calls
+ * for `/api/v1/admin/*` (a separate origin from the SPA on dev/prod). Used by
+ * the API seeding harness (utils/adminApi.ts) to create controlled test data.
+ * Fails loud when missing.
+ */
+export function adminApiBaseUrl(): string {
+  return requireVar('ADMIN_API_BASE_URL');
+}
+
 /** Platform Admin email — SECRET. Guard with hasVar('PA_EMAIL') + test.skip before calling. */
 export function paEmail(): string {
   return requireVar('PA_EMAIL');

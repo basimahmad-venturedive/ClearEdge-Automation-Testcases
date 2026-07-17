@@ -30,7 +30,7 @@ export const CreateTenantLocators = {
 
   // ---- TODO_LOCATOR — NOT in §6; button labels pending frontend
   // confirmation (US-3.1 story text says "Submit" / "Cancel"). ----
-  submitButtonName: 'Submit',
+  submitButtonName: 'Create Tenant',
   cancelButtonName: 'Cancel',
 } as const;
 

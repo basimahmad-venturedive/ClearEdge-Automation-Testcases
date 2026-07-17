@@ -23,11 +23,12 @@ export const SETUP_TENANT: TenantFormData = {
 
 /** Tenant in `Handed Over` state (badge "Handed Over", toggle unlocked). */
 export const HANDED_OVER_TENANT: TenantFormData = {
-  companyName: 'Orbit Media Group',
-  websiteUrl: 'orbitmediagroup.com',
-  companyAddress: '42 Collins Street, Melbourne, VIC, Australia',
-  ownerName: 'Tom Delaney',
-  ownerEmail: 'tom@orbitmediagroup.com',
+   
+  companyName: 'demo tenant',
+  websiteUrl: 'zenithfreight.com',
+  companyAddress: 'lahore',
+  ownerName: 'demo tenant',
+  ownerEmail: 'demo.tenant@yopmail.com',
 };
 
 /**

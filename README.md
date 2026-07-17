@@ -83,6 +83,24 @@ npm run test:local -- tests/auth.test.ts    # single file
 
 Other run modes (from `automation/api-ts/package.json`): `npm test` (default `vitest run`), `npm run test:watch`, `npm run test:coverage`, `npm run test:qa` / `test:prod` (select `envs/.env.qa` / `.env.prod`).
 
+### Run the auth (CEIQ-FEAT-002) suite on dev
+
+Both layers have a `dev` env and a per-suite `test:dev:auth` script (mirrors `test:dev:usermgmt`):
+
+```bash
+# API — the two FEAT-002 auth specs (login/set-password + forgot/refresh/logout) on dev
+cd automation/api-ts && npm run test:dev:auth
+#   → cross-env TEST_ENV=dev vitest run tests/auth.login-setpw.test.ts tests/auth.forgot-refresh-logout.test.ts
+
+# Frontend — the auth/login UI spec on dev
+cd automation/frontend && npm run test:dev:auth
+#   → node scripts/run-env.mjs dev tests/login.spec.ts
+```
+
+Notes:
+- **Frontend scope:** `test:dev:auth` currently runs only `tests/login.spec.ts` (the admin-portal login/session flow) — the **23 FEAT-002 user-auth UI specs are not scaffolded yet**. Add their files to this script once they exist.
+- **API FOUND-001 guards** (`tests/auth.test.ts`) are a *different* auth surface (identity/RBAC) and are intentionally not in `test:dev:auth`; run them with `npm run test:dev -- tests/auth.test.ts` when needed.
+
 **Current known state of a local run:** `auth.test.ts` → 7/8 pass. The CEIQ-FEAT-001 admin-portal specs stay `test.skip` until the `/api/v1/admin/*` endpoints ship; DB-backed FOUND-001 tests are blocked by a backend defect (`column Tenant.setupStatus does not exist` — missing `name:` column mappings in `codebase/clearedge-backend/src/tenant/entities/tenant.entity.ts`).
 
 ## Once a shared (QA/staging) environment exists

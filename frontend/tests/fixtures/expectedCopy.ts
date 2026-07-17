@@ -32,7 +32,9 @@ export const Copy = {
   companyAddressRequired: 'Company address is required.',
   ownerNameRequired: 'Owner name is required.',
   companyNameMaxLength: 'Company name must not exceed 255 characters.',
-  websiteUrlMaxLength: 'Website URL must not exceed 255 characters.',
+  // App contract (schemas/tenant.schema.ts) caps the raw websiteUrl at 500 — the BE derives
+  // the normalized bare domain from it. (The TC file's 255 referred to the domain; drift noted.)
+  websiteUrlMaxLength: 'Website URL must not exceed 500 characters.',
   companyAddressMaxLength: 'Company address must not exceed 500 characters.',
   ownerNameMaxLength: 'Owner name must not exceed 255 characters.',
   ownerEmailMaxLength: 'Email must not exceed 320 characters.',

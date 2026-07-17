@@ -10,31 +10,44 @@
  * API-based seed/teardown fixtures (automation/api-ts) once the backend
  * environment exists.
  */
-import { test, expect, FIXME_DETAILS } from './fixtures/baseTest';
-import { Copy } from './fixtures/expectedCopy';
-import { SETUP_TENANT, HANDED_OVER_TENANT, uniqueTenant } from './fixtures/testData';
+import { test, expect } from './fixtures/baseTest';
+import { uniqueTenant } from './fixtures/testData';
+import { uniquePrefix } from '../utils/adminApi';
 
 test.describe('US-2.1 Tenant List', () => {
   test(
     'TC-ADMLIST-001 tenant card renders every specified element',
-    async ({ authenticatedTenantList: list }) => {
-      // Precondition (TODO_FIXTURE): SETUP_TENANT seeded in Setup;
-      // HANDED_OVER_TENANT seeded Handed Over.
+    async ({ authenticatedTenantList: list, seeder }) => {
+      // Seed a Setup tenant + a Handed-Over tenant under a per-run prefix, then
+      // search that prefix to isolate exactly these two cards (dev is shared).
+      const tag = uniquePrefix('List001');
+      const setup = await seeder.createTenant({
+        name: `${tag} Setup Co`,
+        websiteUrl: `${tag.toLowerCase()}setup.example.com`,
+        address: '221B Baker Street, London, UK',
+        ownerName: 'Sarah Chen',
+        ownerEmail: `sarah.${tag.toLowerCase()}@example.com`,
+      });
+      const handedOver = await seeder.createTenant({
+        name: `${tag} HandedOver Co`,
+        websiteUrl: `${tag.toLowerCase()}ho.example.com`,
+        address: '1 Harbour Front Avenue, Singapore',
+        ownerName: 'Priya Nair',
+        ownerEmail: `priya.${tag.toLowerCase()}@example.com`,
+      });
+      await seeder.handover(handedOver.id);
+
+      await list.searchTenants(tag);
       // Setup tenant card: all elements + "Setup" badge top-right.
-      await list.expectCardCoreElements(SETUP_TENANT.companyName);
-      await list.expectCardBadge(SETUP_TENANT.companyName, 'Setup');
-      // Handed-Over tenant card: same layout, badge "Handed Over" (the badge
-      // slot never shows Active/Inactive — status is the plain-text label).
-      await list.expectCardCoreElements(HANDED_OVER_TENANT.companyName);
-      await list.expectCardBadge(HANDED_OVER_TENANT.companyName, 'Handed Over');
-      // Website link opens in a NEW TAB with protocol auto-normalized.
-      const popup = await list.openCardWebsiteLink(SETUP_TENANT.companyName);
-      expect(popup.url(), 'website link protocol-normalized to https').toContain(
-        `https://${SETUP_TENANT.websiteUrl}`,
-      );
-      await popup.close();
+      await list.expectCardCoreElements(setup.name);
+      await list.expectCardBadge(setup.name, 'Setup');
+      // Handed-Over tenant card: same layout, badge "Handed Over".
+      await list.expectCardBadge(handedOver.name, 'Handed Over');
+      // Website link href is protocol-normalized and opens in a new tab.
+      await list.expectCardWebsiteHref(setup.name, `https://${setup.websiteUrl}`);
       // Owner email is a mailto: link.
-      await list.expectCardOwnerEmailIsMailto(SETUP_TENANT.companyName, SETUP_TENANT.ownerEmail);
+      await list.expectCardOwnerEmailIsMailto(setup.name, setup.ownerEmail);
+      await list.clearSearch();
     },
   );
 
@@ -67,41 +80,50 @@ test.describe('US-2.1 Tenant List', () => {
 
   test(
     'TC-ADMLIST-003 pagination boundary: 12 per page; controls appear only above 12',
-    async ({ authenticatedTenantList: list }) => {
-      // 3a — Precondition (TODO_FIXTURE): EXACTLY 12 tenants seeded.
+    async ({ authenticatedTenantList: list, seeder }) => {
+      // 3a — EXACTLY 12 tenants under one prefix -> no pagination in that set.
+      const tag12 = uniquePrefix('Pg12');
+      await seeder.seedTenants(12, tag12);
+      await list.searchTenants(tag12);
       await list.expectCardCount(12);
       await list.expectPaginationHidden();
-      // 3b — Precondition (TODO_FIXTURE): a 13th tenant seeded, then reload.
-      await list.reload();
+      // 3b — 13 under another prefix -> paginate: 12 on page 1, 1 on page 2.
+      const tag13 = uniquePrefix('Pg13');
+      await seeder.seedTenants(13, tag13);
+      await list.searchTenants(tag13);
       await list.expectCardCount(12);
       await list.expectPaginationVisible();
       await list.goToPage(2);
-      // Page 2 shows exactly 1 card — the OLDEST tenant (newest-first across pages).
       await list.expectCardCount(1);
+      await list.clearSearch();
     },
   );
 
   test(
     'TC-ADMLIST-004 search filters by Company Name only, partial and case-insensitive',
-    async ({ authenticatedTenantList: list }) => {
-      // Precondition (TODO_FIXTURE): SETUP_TENANT ("Acme Logistics", owner
-      // "Sarah Chen"), plus tenants whose owner email contains "acme" but whose
-      // company name does not.
-      const subCases: ReadonlyArray<{ subId: string; input: string; matches: boolean }> = [
-        { subId: '4a', input: 'acme', matches: true }, // lowercase, partial
-        { subId: '4b', input: 'ACME', matches: true }, // case-insensitive
-        { subId: '4c', input: 'Sarah', matches: false }, // owner name is NOT searched
-        { subId: '4d', input: 'TEN00', matches: false }, // tenant ID is NOT searched
-      ];
-      for (const subCase of subCases) {
-        await list.searchTenants(subCase.input);
-        if (subCase.matches) {
-          await list.expectCardCount(1);
-          await list.expectFirstCard(SETUP_TENANT.companyName);
-        } else {
-          await list.expectCardCount(0);
-          await list.expectNoMatchMessage(subCase.input);
-        }
+    async ({ authenticatedTenantList: list, seeder }) => {
+      // Seed one tenant with a unique company-name fragment (dev is shared and
+      // has other "Acme" tenants from prior runs — so we search our own tag).
+      const tag = uniquePrefix('Acme');
+      const created = await seeder.createTenant({
+        name: `${tag} Logistics`,
+        websiteUrl: `${tag.toLowerCase()}.example.com`,
+        address: '221B Baker Street, London, UK',
+        ownerName: `Sarah ${tag}`,
+        ownerEmail: `sarah.${tag.toLowerCase()}@example.com`,
+      });
+      // 4a lowercase partial + 4b uppercase — match on Company Name.
+      for (const input of [tag.toLowerCase(), tag.toUpperCase()]) {
+        await list.searchTenants(input);
+        await list.expectCardCount(1);
+        await list.expectFirstCard(created.name);
+        await list.clearSearch();
+      }
+      // 4c owner name is NOT searched · 4d tenant ID is NOT searched → zero matches.
+      for (const input of [`Sarah ${tag}`, created.displayId]) {
+        await list.searchTenants(input);
+        await list.expectCardCount(0);
+        await list.expectNoMatchMessage(input);
         await list.clearSearch();
       }
     },
@@ -148,32 +170,41 @@ test.describe('US-2.1 Tenant List', () => {
 
   test(
     'TC-ADMLIST-008 search resets to page 1; filtered results paginate',
-    async ({ authenticatedTenantList: list }) => {
-      // Precondition (TODO_FIXTURE): ≥ 14 tenants seeded, ≥ 13 sharing the
-      // searchable fragment "Fixture" (e.g. "Fixture Co NN").
-      // 8a — searching from page 2 resets the view to page 1 of the results.
-      await list.goToPage(2);
-      await list.searchTenants('Fixture');
-      await list.expectActivePage(1);
+    async ({ authenticatedTenantList: list, seeder }) => {
+      // Seed 14 tenants sharing a fragment -> the filtered set paginates (12 + 2).
+      const tag = uniquePrefix('Fixture');
+      await seeder.seedTenants(14, tag);
       // 8b — > 12 matches paginate: 12 on page 1, remainder on page 2.
+      await list.searchTenants(tag);
       await list.expectCardCount(12);
       await list.expectPaginationVisible();
       await list.goToPage(2);
-      await list.expectCardCountAtLeast(1);
+      await list.expectActivePage(2); // wait for page 2 to load before counting
+      await list.expectCardCountAtLeast(2);
+      // 8a — changing the search resets the view to page 1 of the results.
+      await list.searchTenants(tag);
+      await list.expectActivePage(1);
+      await list.expectCardCount(12);
       await list.clearSearch();
     },
   );
 
   test(
     'TC-ADMLIST-009 running tenant count updates with search',
-    async ({ authenticatedTenantList: list }) => {
-      // Precondition (TODO_FIXTURE): N total tenants, M matching "acme" (M < N).
+    async ({ authenticatedTenantList: list, seeder }) => {
+      // Seed a small known set under a unique prefix; the running count must
+      // drop to exactly that set when the prefix is searched.
+      const tag = uniquePrefix('Cnt');
+      await seeder.seedTenants(3, tag);
+      await list.reload();
+      await list.expectCardCountAtLeast(1); // wait for the unfiltered list to load before reading the count
       const total = await list.tenantCountValue();
-      await list.searchTenants('acme');
+      await list.searchTenants(tag);
+      await list.expectCardCount(3); // wait for the filtered results to settle
       const filtered = await list.tenantCountValue();
-      expect(filtered, 'filtered count reflects matches only').toBeLessThan(total);
-      // Count matches the visible filtered results.
-      await list.expectCardCount(filtered);
+      expect(filtered, 'filtered count reflects matches only').toBe(3);
+      expect(filtered, 'filtered count is less than the unfiltered total').toBeLessThan(total);
+      await list.expectCardCount(3);
       await list.clearSearch();
       await list.expectTenantCount(total);
     },
@@ -194,15 +225,20 @@ test.describe('US-2.1 Tenant List', () => {
 
   test(
     'TC-ADMLIST-011 responsive grid: multi-column desktop, single column mobile',
-    async ({ authenticatedTenantList: list }) => {
-      // Precondition (TODO_FIXTURE): ≥ 4 tenants seeded.
+    async ({ authenticatedTenantList: list, seeder }) => {
+      // Seed ≥ 4 tenants under a unique prefix and isolate them by search.
+      const tag = uniquePrefix('Grid');
+      const seeded = await seeder.seedTenants(4, tag);
       // Desktop viewport 1440×900 — cards render in more than one column.
       await list.setViewport(1440, 900);
+      await list.searchTenants(tag);
+      await list.expectCardCount(4); // wait for the filtered set before measuring layout
       await list.expectMultiColumnLayout();
       // Mobile viewport 375×812 — single column; card content remains visible.
       await list.setViewport(375, 812);
       await list.expectSingleColumnLayout();
-      await list.expectCardCoreElements(SETUP_TENANT.companyName);
+      await list.expectCardCoreElements(seeded[0].name);
+      await list.clearSearch();
     },
   );
 });

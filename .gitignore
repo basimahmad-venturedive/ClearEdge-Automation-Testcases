@@ -17,6 +17,7 @@ node_modules/
 **/credentials.json
 **/storageState.json
 *.pem
+zubair.amin@venturedive.com_accessKeys.csv
 *.key
 *.p12
 *.jks

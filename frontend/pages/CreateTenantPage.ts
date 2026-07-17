@@ -7,7 +7,6 @@ import { CreateTenantLocators, type CreateField } from '../locators/createTenant
 import { AdminApiPaths } from '../utils/apiPaths';
 import { mockApiFailure, trackRequests, type RequestCounter } from '../utils/network';
 import { AppRoutes } from '../utils/routes';
-import { TenantListLocators } from '../locators/tenantList';
 import { expectToast } from '../utils/toast';
 
 export interface TenantFormData {
@@ -26,14 +25,6 @@ const FIELD_INPUT_TESTIDS: Record<CreateField, string> = {
   ownerEmail: CreateTenantLocators.ownerEmailInput,
 };
 
-const FIELD_ERROR_TESTIDS: Record<CreateField, string> = {
-  companyName: CreateTenantLocators.companyNameError,
-  websiteUrl: CreateTenantLocators.websiteUrlError,
-  companyAddress: CreateTenantLocators.companyAddressError,
-  ownerName: CreateTenantLocators.ownerNameError,
-  ownerEmail: CreateTenantLocators.ownerEmailError,
-};
-
 export class CreateTenantPage {
   readonly page: Page;
 
@@ -46,7 +37,12 @@ export class CreateTenantPage {
   }
 
   fieldError(field: CreateField): Locator {
-    return this.page.getByTestId(FIELD_ERROR_TESTIDS[field]);
+    // The app has no per-field error testids — antd renders the message in the
+    // field's `.ant-form-item-explain-error`. Anchor on the field's own input
+    // (which does have a testid) to scope the error to that Form.Item.
+    return this.page
+      .locator('.ant-form-item', { has: this.fieldInput(field) })
+      .locator('.ant-form-item-explain-error');
   }
 
   get submitButton(): Locator {
@@ -102,9 +98,15 @@ export class CreateTenantPage {
     await expect(this.fieldInput('ownerEmail')).toBeVisible();
   }
 
-  /** Assert the inline error under a field shows the EXACT §5 copy. */
+  /**
+   * Assert the inline error under a field shows the EXACT §5 copy. Matched by
+   * text within the field's Form.Item so it is unaffected by antd's error
+   * enter/leave animation (during which a leaving + appearing error briefly
+   * coexist), which broke a plain toHaveText on the explain node.
+   */
   async expectFieldError(field: CreateField, message: string): Promise<void> {
-    await expect(this.fieldError(field), `${field} inline error copy`).toHaveText(message);
+    const item = this.page.locator('.ant-form-item', { has: this.fieldInput(field) });
+    await expect(item.getByText(message, { exact: true }), `${field} inline error copy`).toBeVisible();
   }
 
   async expectNoFieldError(field: CreateField): Promise<void> {
@@ -120,13 +122,15 @@ export class CreateTenantPage {
     await expect(this.submitButton).toBeEnabled();
   }
 
-  /** §10 pending state: button disabled + loading indicator during the call. */
+  /**
+   * §10 pending state during the call. antd renders a loading button with the
+   * `ant-btn-loading` class + a spinner (it is NOT `disabled` in the DOM sense —
+   * clicks are blocked via pointer-events), so assert the loading class.
+   */
   async expectSubmitDisabledWithLoading(): Promise<void> {
-    await expect(this.submitButton, 'submit disabled while the call is in flight').toBeDisabled();
-    await expect(
-      this.page.getByTestId(TenantListLocators.loadingIndicator),
-      'loading indicator visible during the call',
-    ).toBeVisible();
+    await expect(this.submitButton, 'submit shows loading while the call is in flight').toHaveClass(
+      /ant-btn-loading/,
+    );
   }
 
   async expectToast(text: string | RegExp): Promise<void> {

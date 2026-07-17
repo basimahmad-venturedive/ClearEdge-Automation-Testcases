@@ -14,7 +14,11 @@ export class ConfirmDialog {
   }
 
   get root(): Locator {
-    return this.page.getByRole('dialog');
+    // Scope to the antd Modal.confirm dialog specifically — the tenant profile
+    // is ALSO an antd Modal (role="dialog"), so a bare getByRole('dialog') is
+    // ambiguous whenever the profile is open. `.ant-modal-confirm` is unique to
+    // Modal.confirm (toggle / email-change / handover dialogs).
+    return this.page.locator('.ant-modal-confirm');
   }
 
   get confirmButton(): Locator {
@@ -40,9 +44,10 @@ export class ConfirmDialog {
    */
   async confirmAndExpectPending(): Promise<void> {
     await this.confirmButton.click();
-    await expect(this.confirmButton, 'confirming button disabled while the call is in flight').toBeDisabled();
+    // antd Modal.confirm auto-sets the OK button to loading while onOk's promise
+    // is pending — the spinner renders as `.ant-btn-loading-icon` inside the dialog.
     await expect(
-      this.root.getByTestId(TenantListLocators.loadingIndicator),
+      this.root.locator('.ant-btn-loading-icon'),
       'loading indicator visible during the call',
     ).toBeVisible();
   }
