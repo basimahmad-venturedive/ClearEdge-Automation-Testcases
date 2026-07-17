@@ -134,3 +134,55 @@ def parse_tc_markdown(path: Path | str) -> tuple[str | None, list[Case]]:
 def is_api_case(case: Case) -> bool:
     """True when the case's Module / Layer mentions API (drives the API template)."""
     return "API" in (case.module or "").upper()
+
+
+# `ToBeAutomated: Yes` / `Partial` -> automated; `No` -> not automated.
+_AUTOMATED_TRUE_RE = re.compile(r"tobeautomated\s*:\s*(?:yes|partial)", re.IGNORECASE)
+_AUTOMATED_FALSE_RE = re.compile(r"tobeautomated\s*:\s*no", re.IGNORECASE)
+
+
+def case_type_id(case: Case, *, api_id: int, ui_id: int) -> int | None:
+    """Resolve the TestRail case *type* id (Type column) for a case.
+
+    Priority:
+      1. an explicit ``| **TestRail Type** | API/UI |`` row, then
+      2. the ``Module / Layer`` value (``API`` -> ``api_id``, ``UI`` -> ``ui_id``).
+
+    Returns ``None`` when neither indicates API or UI, so the project's default
+    case type is left untouched rather than guessed.
+    """
+    explicit = (case.fields.get("testrail type") or "").strip().upper()
+    if "API" in explicit:
+        return api_id
+    if "UI" in explicit:
+        return ui_id
+    layer = (case.module or "").upper()
+    if "API" in layer:
+        return api_id
+    if "UI" in layer:
+        return ui_id
+    return None
+
+
+def case_is_automated(case: Case) -> bool | None:
+    """Resolve the TestRail ``custom_automated`` checkbox for a case.
+
+    Priority:
+      1. an explicit ``| **Automated** | Yes/No |`` row, then
+      2. the ``Automation readiness`` row (``ToBeAutomated: Yes``/``Partial``
+         -> ``True``, ``No`` -> ``False``).
+
+    Returns ``None`` when neither is present, so the case's current TestRail
+    Automated value is left untouched rather than forced to a default.
+    """
+    explicit = (case.fields.get("automated") or "").strip().lower()
+    if explicit in ("yes", "true", "1", "y"):
+        return True
+    if explicit in ("no", "false", "0", "n"):
+        return False
+    readiness = case.fields.get("automation readiness") or ""
+    if _AUTOMATED_TRUE_RE.search(readiness):
+        return True
+    if _AUTOMATED_FALSE_RE.search(readiness):
+        return False
+    return None

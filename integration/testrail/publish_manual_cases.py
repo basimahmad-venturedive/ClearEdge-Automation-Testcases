@@ -43,7 +43,13 @@ if __package__ in (None, ""):
 from . import coverage_review_gate as gate
 from . import testrail_settings as settings
 from .client import TestRailClient
-from .parse_tc_markdown import Case, is_api_case, parse_tc_markdown
+from .parse_tc_markdown import (
+    Case,
+    case_is_automated,
+    case_type_id,
+    is_api_case,
+    parse_tc_markdown,
+)
 from .tc_id import REPO_ROOT, load_testrail_map, save_testrail_map
 
 log = logging.getLogger("publish_manual_cases")
@@ -139,10 +145,24 @@ def _group_by_prefix(cases: list[Case]) -> "OrderedDict[str, list[Case]]":
     return groups
 
 
-def _build_payload(case: Case, api_template_id: int | None) -> dict:
+def _build_payload(
+    case: Case,
+    api_template_id: int | None,
+    *,
+    api_type_id: int,
+    ui_type_id: int,
+) -> dict:
     payload: dict = {"title": case.title, **case.custom}
     if api_template_id is not None and is_api_case(case):
         payload["template_id"] = api_template_id
+    # Type column: API cases -> Type "API", UI cases -> Type "UI".
+    type_id = case_type_id(case, api_id=api_type_id, ui_id=ui_type_id)
+    if type_id is not None:
+        payload["type_id"] = type_id
+    # Automated checkbox: reflect the case's automation intent onto TestRail.
+    automated = case_is_automated(case)
+    if automated is not None:
+        payload["custom_automated"] = automated
     return payload
 
 
@@ -179,25 +199,58 @@ def publish_file(
         len(to_publish),
     )
 
+    # Type-id defaults (15/16) need no env, so the dry-run plan can show the
+    # Type and Automated each case will publish with — no network required.
+    api_type_id = settings.testrail_api_type_id()
+    ui_type_id = settings.testrail_ui_type_id()
+
     if dry_run:
-        _print_dry_run_plan(us_root, to_publish)
+        _print_dry_run_plan(us_root, to_publish, api_type_id=api_type_id, ui_type_id=ui_type_id)
         if sync_existing and already:
             log.info("[DRY RUN] --sync-existing would update %d existing case(s)", len(already))
         return 0
 
     return _publish_live(
-        tc_file, us_root, to_publish, already, sync_existing=sync_existing
+        tc_file,
+        us_root,
+        to_publish,
+        already,
+        sync_existing=sync_existing,
+        api_type_id=api_type_id,
+        ui_type_id=ui_type_id,
     )
 
 
-def _print_dry_run_plan(us_root: str, to_publish: list[Case]) -> None:
+def _type_label(type_id: int | None, api_type_id: int, ui_type_id: int) -> str:
+    if type_id == api_type_id:
+        return "API"
+    if type_id == ui_type_id:
+        return "UI"
+    return "default"
+
+
+def _print_dry_run_plan(
+    us_root: str,
+    to_publish: list[Case],
+    *,
+    api_type_id: int,
+    ui_type_id: int,
+) -> None:
     log.info("[DRY RUN] Root section: %s", us_root)
     if not to_publish:
         log.info("  (nothing to publish — all cases already in testrail_map.json)")
         return
     for prefix, group in _group_by_prefix(to_publish).items():
-        ids = ", ".join(c.tc_id for c in group)
-        log.info("  [%s] %d cases: %s", prefix, len(group), ids)
+        log.info("  [%s] %d cases:", prefix, len(group))
+        for case in group:
+            type_id = case_type_id(case, api_id=api_type_id, ui_id=ui_type_id)
+            automated = case_is_automated(case)
+            log.info(
+                "    %s (Type=%s, Automated=%s)",
+                case.tc_id,
+                _type_label(type_id, api_type_id, ui_type_id),
+                "Yes" if automated else "No" if automated is False else "unset",
+            )
 
 
 def _publish_live(
@@ -207,6 +260,8 @@ def _publish_live(
     already: list[Case],
     *,
     sync_existing: bool,
+    api_type_id: int,
+    ui_type_id: int,
 ) -> int:
     # Fail loud on missing configuration before any network call.
     client = TestRailClient(
@@ -218,13 +273,18 @@ def _publish_live(
     )
     api_template_id = settings.testrail_api_template_id()
 
+    def payload_for(case: Case) -> dict:
+        return _build_payload(
+            case, api_template_id, api_type_id=api_type_id, ui_type_id=ui_type_id
+        )
+
     root_id = client.get_or_create_root_section(us_root)
     new_entries: dict[str, int] = {}
 
     for prefix, group in _group_by_prefix(to_publish).items():
         section_id = client.get_or_create_subsection(root_id, prefix)
         for case in group:
-            created = client.add_case(section_id, _build_payload(case, api_template_id))
+            created = client.add_case(section_id, payload_for(case))
             case_id = int(created["id"])
             log.info("Published %s -> TestRail case C%d", case.tc_id, case_id)
             new_entries[case.tc_id] = case_id
@@ -239,7 +299,7 @@ def _publish_live(
         tr_map = load_testrail_map()
         for case in already:
             case_id = tr_map[case.tc_id]
-            client.update_case(case_id, _build_payload(case, api_template_id))
+            client.update_case(case_id, payload_for(case))
             log.info("Synced existing %s -> TestRail case C%d", case.tc_id, case_id)
 
     return 0

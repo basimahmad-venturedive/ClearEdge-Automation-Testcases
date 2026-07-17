@@ -109,6 +109,26 @@ def testrail_api_template_id() -> int | None:
     return int(raw) if raw else None
 
 
+def testrail_api_type_id() -> int:
+    """TestRail case *type* id for API cases (default 15 = the "API" type).
+
+    Drives ``type_id`` on published cases so API cases show as Type = API in
+    TestRail. Override via ``TESTRAIL_API_TYPE_ID`` if your instance differs
+    (confirm with GET /get_case_types)."""
+    raw = _get("TESTRAIL_API_TYPE_ID")
+    return int(raw) if raw else 15
+
+
+def testrail_ui_type_id() -> int:
+    """TestRail case *type* id for UI cases (default 16 = the "UI" type).
+
+    Drives ``type_id`` on published cases so UI automation cases show as
+    Type = UI in TestRail. Override via ``TESTRAIL_UI_TYPE_ID`` if your instance
+    differs (confirm with GET /get_case_types)."""
+    raw = _get("TESTRAIL_UI_TYPE_ID")
+    return int(raw) if raw else 16
+
+
 # --- Required accessors (raise on a live publish) --------------------------
 
 def require_url() -> str:
