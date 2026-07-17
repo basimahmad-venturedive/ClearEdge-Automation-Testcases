@@ -32,14 +32,17 @@ describe("Vendor secure link", () => {
     expect((response.data as ErrorEnvelope).error.code).toBe("ERR_VENDOR_SCOPE_VIOLATION");
   });
 
-  test.skip.each(["expired", "used", "revoked", "active_but_expires_at_past"])(
-    `TC-VENDOR-003 — token state=%s rejected 401 (SR-009) [blocked: ${NO_ENV_REASON}] @smoke`,
-    async () => {
-      const client = new ControlPlaneClient();
-      const { raw } = rawTokenAndHash(); // fixture seeds the row in the given state
-      const response = await client.get(TODO_ENDPOINT_VENDOR_PORTAL, raw);
-      expect(response.status).toBe(401);
-      expect((response.data as ErrorEnvelope).error.code).toBe("ERR_VENDOR_LINK_INVALID");
-    },
-  );
+  // TC-VENDOR-003-1..4 — one explicit test case per rejected token state (no data-driven .each).
+  async function assertTokenStateRejected(): Promise<void> {
+    const client = new ControlPlaneClient();
+    const { raw } = rawTokenAndHash(); // fixture seeds the row in the named state
+    const response = await client.get(TODO_ENDPOINT_VENDOR_PORTAL, raw);
+    expect(response.status).toBe(401);
+    expect((response.data as ErrorEnvelope).error.code).toBe("ERR_VENDOR_LINK_INVALID");
+  }
+
+  test.skip(`TC-VENDOR-003-1 — token state=expired rejected 401 (SR-009) [blocked: ${NO_ENV_REASON}] @smoke`, () => assertTokenStateRejected());
+  test.skip(`TC-VENDOR-003-2 — token state=used rejected 401 (SR-009) [blocked: ${NO_ENV_REASON}] @smoke`, () => assertTokenStateRejected());
+  test.skip(`TC-VENDOR-003-3 — token state=revoked rejected 401 (SR-009) [blocked: ${NO_ENV_REASON}] @smoke`, () => assertTokenStateRejected());
+  test.skip(`TC-VENDOR-003-4 — token state=active_but_expires_at_past rejected 401 (SR-009) [blocked: ${NO_ENV_REASON}] @smoke`, () => assertTokenStateRejected());
 });

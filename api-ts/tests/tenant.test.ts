@@ -128,21 +128,19 @@ describe("Tenant isolation, context, and lifecycle", () => {
     expect([401, 403]).toContain(response.status);
   });
 
-  test.skip.each([
-    { length: 255, expectSuccess: true },
-    { length: 256, expectSuccess: false },
-  ])(
-    `TC-TENANT-013 — tenant name/domain length=$length boundary (§5.2 varchar(255)) [blocked: ${NO_ENV_REASON}]`,
-    async ({ length, expectSuccess }) => {
-      const client = new ControlPlaneClient();
-      const adminToken = await jwtFactory.adminToken();
-      const payload = tenantCreationPayload({ name: nameOfLength(length) });
-      const response = await client.post(ENDPOINT_TENANT_CREATE, payload, adminToken);
-      if (expectSuccess) {
-        expect(response.status).toBe(201);
-      } else {
-        expect(response.status).not.toBe(201);
-      }
-    },
-  );
+  // TC-TENANT-013-1..2 — at/over the varchar(255) boundary, one explicit test case each.
+  async function assertNameLengthBoundary(length: number, expectSuccess: boolean): Promise<void> {
+    const client = new ControlPlaneClient();
+    const adminToken = await jwtFactory.adminToken();
+    const payload = tenantCreationPayload({ name: nameOfLength(length) });
+    const response = await client.post(ENDPOINT_TENANT_CREATE, payload, adminToken);
+    if (expectSuccess) {
+      expect(response.status).toBe(201);
+    } else {
+      expect(response.status).not.toBe(201);
+    }
+  }
+
+  test.skip(`TC-TENANT-013-1 — tenant name/domain length=255 boundary (§5.2 varchar(255)) [blocked: ${NO_ENV_REASON}]`, () => assertNameLengthBoundary(255, true));
+  test.skip(`TC-TENANT-013-2 — tenant name/domain length=256 boundary (§5.2 varchar(255)) [blocked: ${NO_ENV_REASON}]`, () => assertNameLengthBoundary(256, false));
 });

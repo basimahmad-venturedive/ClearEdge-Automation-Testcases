@@ -126,22 +126,27 @@ describe("Auth — POST /api/v1/auth/forgot-password", () => {
     expect(body.data.message).toBe(forgotPasswordSuccessMessage(payload.email));
   });
 
-  liveTest.each(forgotValidationMatrix())(
-    `TC-UAUTH-API-024 — $sub → 400 ERR_VALIDATION_FAILED, email field message`,
-    async ({ overrides, message }) => {
-      // Executable as soon as the endpoint ships — validation is §3.2 step 1, before any Cognito call.
-      const client = new AuthClient();
-      const payload = forgotPasswordPayload(overrides);
+  // TC-UAUTH-API-024-1..2 — one explicit test case per validation sub-case (24a/24b).
+  // Executable as soon as the endpoint ships — validation is §3.2 step 1, before any Cognito call.
+  async function assertForgotValidationRejected(variantSub: string): Promise<void> {
+    const variant = forgotValidationMatrix().find((v) => v.sub === variantSub);
+    if (!variant) throw new Error(`Unknown forgot-validation sub-case: ${variantSub}`);
+    const { overrides, message } = variant;
 
-      const response = await client.forgotPassword(payload);
+    const client = new AuthClient();
+    const payload = forgotPasswordPayload(overrides);
 
-      assertResponseTime(response);
-      expect(response.status).toBe(400);
-      ErrorEnvelopeSchema.parse(response.data);
-      assertErrorEnvelope(response, ERR_VALIDATION_FAILED);
-      expect(validationFields(response).email).toBe(message);
-    },
-  );
+    const response = await client.forgotPassword(payload);
+
+    assertResponseTime(response);
+    expect(response.status).toBe(400);
+    ErrorEnvelopeSchema.parse(response.data);
+    assertErrorEnvelope(response, ERR_VALIDATION_FAILED);
+    expect(validationFields(response).email).toBe(message);
+  }
+
+  liveTest(`TC-UAUTH-API-024-1 — 24a email empty → 400 ERR_VALIDATION_FAILED, email field message`, () => assertForgotValidationRejected("24a email empty"));
+  liveTest(`TC-UAUTH-API-024-2 — 24b email invalid format → 400 ERR_VALIDATION_FAILED, email field message`, () => assertForgotValidationRejected("24b email invalid format"));
 });
 
 describe("Auth — POST /api/v1/auth/refresh", () => {
@@ -163,30 +168,27 @@ describe("Auth — POST /api/v1/auth/refresh", () => {
     expect(JSON.stringify(response.data)).not.toContain("refreshToken");
   });
 
-  // TC-UAUTH-API-031 sub-cases 31a/31b — garbage vs revoked refresh token.
-  const invalidRefreshMatrix = [
-    { sub: "31a garbage refresh token", refreshToken: "garbage-refresh-token" },
-    { sub: "31b token revoked by a prior GlobalSignOut", refreshToken: "revoked-refresh-token" },
-  ];
+  // TC-UAUTH-API-031-1..2 — garbage vs revoked refresh token, one explicit test case each.
+  async function assertInvalidRefreshRejected(refreshToken: string): Promise<void> {
+    // Arrange
+    const client = new AuthClient();
+    const payload = refreshPayload({ refreshToken });
 
-  liveTest.each(invalidRefreshMatrix)(
-    `TC-UAUTH-API-031 — $sub → 401 ERR_AUTH_INVALID_TOKEN`,
-    async ({ refreshToken }) => {
-      // Arrange
-      const client = new AuthClient();
-      const payload = refreshPayload({ refreshToken });
+    // Act
+    const response = await client.refresh(payload);
 
-      // Act
-      const response = await client.refresh(payload);
+    // Assert — F1-reused ERR_AUTH_INVALID_TOKEN with the §3.2 refresh 401 message.
+    assertResponseTime(response);
+    expect(response.status).toBe(401);
+    ErrorEnvelopeSchema.parse(response.data);
+    assertErrorEnvelope(response, ERR_AUTH_INVALID_TOKEN);
+    expect((response.data as ErrorEnvelope).error.message).toBe(MSG_REFRESH_INVALID_TOKEN);
+  }
 
-      // Assert — F1-reused ERR_AUTH_INVALID_TOKEN with the §3.2 refresh 401 message.
-      assertResponseTime(response);
-      expect(response.status).toBe(401);
-      ErrorEnvelopeSchema.parse(response.data);
-      assertErrorEnvelope(response, ERR_AUTH_INVALID_TOKEN);
-      expect((response.data as ErrorEnvelope).error.message).toBe(MSG_REFRESH_INVALID_TOKEN);
-    },
-  );
+  liveTest(`TC-UAUTH-API-031-1 — 31a garbage refresh token → 401 ERR_AUTH_INVALID_TOKEN`, () =>
+    assertInvalidRefreshRejected("garbage-refresh-token"));
+  liveTest(`TC-UAUTH-API-031-2 — 31b token revoked by a prior GlobalSignOut → 401 ERR_AUTH_INVALID_TOKEN`, () =>
+    assertInvalidRefreshRejected("revoked-refresh-token"));
 
   liveTest(`TC-UAUTH-API-032 — missing refreshToken → 400 validation (no 5xx)`, async () => {
     // Executable as soon as the endpoint ships — no Cognito call fires for an empty body.

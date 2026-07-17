@@ -23,7 +23,6 @@ import {
   PUT_MISSING_CONTENT,
   PUT_NULL_CONTENT,
   PUT_HTML_VERBATIM,
-  INVALID_SECTION_KEYS,
 } from "../src/payloads/companySettingsPayloads";
 import {
   getAllResponseSchema,
@@ -85,17 +84,18 @@ describe("GET /company-settings", () => {
     expect(intro?.content).toBeNull(); // never saved
   });
 
-  test.skip.each(["<none>", "expired"] as const)(
-    `TC-CSAPI-004 — no/invalid JWT (%s) → 401 ERR_AUTH_INVALID_TOKEN [blocked: ${NO_ENV_REASON}]`,
-    async (variant) => {
-      const client = new CompanySettingsClient();
-      const token =
-        variant === "expired" ? await jwtFactory.expiredTenantToken({ tenantId: TENANT_A }) : undefined;
-      const res = await client.getAll(token);
-      expect(res.status).toBe(401);
-      assertErrorEnvelope(res, "ERR_AUTH_INVALID_TOKEN");
-    },
-  );
+  // TC-CSAPI-004-1..2 — no-token vs expired-token, one explicit test case each.
+  async function assertGetAllRejects401(variant: "<none>" | "expired"): Promise<void> {
+    const client = new CompanySettingsClient();
+    const token =
+      variant === "expired" ? await jwtFactory.expiredTenantToken({ tenantId: TENANT_A }) : undefined;
+    const res = await client.getAll(token);
+    expect(res.status).toBe(401);
+    assertErrorEnvelope(res, "ERR_AUTH_INVALID_TOKEN");
+  }
+
+  test.skip(`TC-CSAPI-004-1 — no/invalid JWT (<none>) → 401 ERR_AUTH_INVALID_TOKEN [blocked: ${NO_ENV_REASON}]`, () => assertGetAllRejects401("<none>"));
+  test.skip(`TC-CSAPI-004-2 — no/invalid JWT (expired) → 401 ERR_AUTH_INVALID_TOKEN [blocked: ${NO_ENV_REASON}]`, () => assertGetAllRejects401("expired"));
 
   test.skip(`TC-CSAPI-005 — non-Owner (no manage_company_settings) → 403 ERR_RBAC_FORBIDDEN [blocked: ${NO_ENV_REASON}]`, async () => {
     const client = new CompanySettingsClient();
@@ -151,18 +151,21 @@ describe("PUT /company-settings/:sectionKey", () => {
     expect(intro?.content).toBe("");
   });
 
-  test.skip.each(INVALID_SECTION_KEYS)(
-    `TC-CSAPI-012 — invalid sectionKey "%s" → 400 ERR_INVALID_SECTION_KEY [blocked: ${NO_ENV_REASON}]`,
-    async (key) => {
-      const client = new CompanySettingsClient();
-      const res = await client.putSection(key, newSectionContent(), await poToken());
-      expect(res.status).toBe(400);
-      assertErrorEnvelope(res, "ERR_INVALID_SECTION_KEY");
-      // details.allowed lists the three valid keys; no internal/tenant info leaked (SR-004).
-      const body = res.data as { error: { details?: { allowed?: string[] } } };
-      expect(body.error.details?.allowed).toEqual([...SECTION_KEYS]);
-    },
-  );
+  // TC-CSAPI-012-1..4 — one explicit test case per invalid sectionKey (see INVALID_SECTION_KEYS).
+  async function assertInvalidSectionKeyRejected(key: string): Promise<void> {
+    const client = new CompanySettingsClient();
+    const res = await client.putSection(key, newSectionContent(), await poToken());
+    expect(res.status).toBe(400);
+    assertErrorEnvelope(res, "ERR_INVALID_SECTION_KEY");
+    // details.allowed lists the three valid keys; no internal/tenant info leaked (SR-004).
+    const body = res.data as { error: { details?: { allowed?: string[] } } };
+    expect(body.error.details?.allowed).toEqual([...SECTION_KEYS]);
+  }
+
+  test.skip(`TC-CSAPI-012-1 — invalid sectionKey "invalid_key" → 400 ERR_INVALID_SECTION_KEY [blocked: ${NO_ENV_REASON}]`, () => assertInvalidSectionKeyRejected("invalid_key"));
+  test.skip(`TC-CSAPI-012-2 — invalid sectionKey "Background" (case-sensitive) → 400 ERR_INVALID_SECTION_KEY [blocked: ${NO_ENV_REASON}]`, () => assertInvalidSectionKeyRejected("Background"));
+  test.skip(`TC-CSAPI-012-3 — invalid sectionKey "BACKGROUND" (case-sensitive) → 400 ERR_INVALID_SECTION_KEY [blocked: ${NO_ENV_REASON}]`, () => assertInvalidSectionKeyRejected("BACKGROUND"));
+  test.skip(`TC-CSAPI-012-4 — invalid sectionKey "../etc" (path-shaped) → 400 ERR_INVALID_SECTION_KEY [blocked: ${NO_ENV_REASON}]`, () => assertInvalidSectionKeyRejected("../etc"));
 
   test.skip(`TC-CSAPI-013 — missing content field → 400 ERR_VALIDATION_FAILED [blocked: ${NO_ENV_REASON}]`, async () => {
     const client = new CompanySettingsClient();
@@ -193,17 +196,18 @@ describe("PUT /company-settings/:sectionKey", () => {
     );
   });
 
-  test.skip.each(["<none>", "expired"] as const)(
-    `TC-CSAPI-016 — no/invalid JWT (%s) → 401 [blocked: ${NO_ENV_REASON}]`,
-    async (variant) => {
-      const client = new CompanySettingsClient();
-      const token =
-        variant === "expired" ? await jwtFactory.expiredTenantToken({ tenantId: TENANT_A }) : undefined;
-      const res = await client.putSection("background", newSectionContent(), token);
-      expect(res.status).toBe(401);
-      assertErrorEnvelope(res, "ERR_AUTH_INVALID_TOKEN");
-    },
-  );
+  // TC-CSAPI-016-1..2 — no-token vs expired-token on the write path, one explicit test case each.
+  async function assertPutRejects401(variant: "<none>" | "expired"): Promise<void> {
+    const client = new CompanySettingsClient();
+    const token =
+      variant === "expired" ? await jwtFactory.expiredTenantToken({ tenantId: TENANT_A }) : undefined;
+    const res = await client.putSection("background", newSectionContent(), token);
+    expect(res.status).toBe(401);
+    assertErrorEnvelope(res, "ERR_AUTH_INVALID_TOKEN");
+  }
+
+  test.skip(`TC-CSAPI-016-1 — no/invalid JWT (<none>) → 401 [blocked: ${NO_ENV_REASON}]`, () => assertPutRejects401("<none>"));
+  test.skip(`TC-CSAPI-016-2 — no/invalid JWT (expired) → 401 [blocked: ${NO_ENV_REASON}]`, () => assertPutRejects401("expired"));
 
   test.skip(`TC-CSAPI-017 — non-Owner → 403 ERR_RBAC_FORBIDDEN, no row written [blocked: ${NO_ENV_REASON}]`, async () => {
     const client = new CompanySettingsClient();

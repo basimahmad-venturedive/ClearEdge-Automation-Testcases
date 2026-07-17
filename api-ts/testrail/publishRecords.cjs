@@ -4,9 +4,11 @@ const { MappingStore } = require('./mappingStore/mappingStore.cjs');
 const { ResultPublisher } = require('./resultPublisher/resultPublisher.cjs');
 const { testRailConfig } = require('./config/testrailConfig.cjs');
 
-// ClearEdge TC-IDs only (e.g. TC-AUTH-001, TC-ADMAPI-050). Kept tight so epic
-// ids like CEIQ-FEAT-001 in a title are not misread as case ids.
-const AUTOMATION_ID_PATTERN = /TC-[A-Z0-9]+-\d+/g;
+// ClearEdge TC-IDs only (e.g. TC-AUTH-001, TC-ADMAPI-050, TC-UAUTH-API-002,
+// flattened data-set ids like TC-ADMAPI-013-4). Kept tight so epic ids like
+// CEIQ-FEAT-001 in a title are not misread as case ids. Greedy: the longest id
+// at a position wins, so TC-ADMAPI-013-4 is one id, not TC-ADMAPI-013 plus "-4".
+const AUTOMATION_ID_PATTERN = /TC-[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*-\d+(?:-\d+)?/g;
 const TESTRAIL_STATUS_PASSED = 1;
 const TESTRAIL_STATUS_FAILED = 5;
 // NOTE: TestRail status_id 3 ("Untested") is the *initial* state of a case in a
@@ -16,7 +18,9 @@ const TESTRAIL_STATUS_FAILED = 5;
 const SKIPPED_STATUSES = new Set(['skipped', 'pending']);
 
 function extractAutomationIds(title) {
-  return title.match(AUTOMATION_ID_PATTERN) || [];
+  // TC-CEIQ-* are spec/testcase DOCUMENT references (e.g. "see TC-CEIQ-FEAT-003.md"
+  // inside skip reasons), never automation case ids.
+  return (title.match(AUTOMATION_ID_PATTERN) || []).filter((id) => !id.startsWith('TC-CEIQ-'));
 }
 
 function isSkippedStatus(status) {

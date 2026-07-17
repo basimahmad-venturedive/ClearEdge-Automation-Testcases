@@ -82,52 +82,39 @@ describe("Auth — POST /api/v1/auth/login", () => {
     expect(typeof body.data.expiresIn).toBe("number");
   });
 
-  // TC-UAUTH-API-002 sub-cases 2a/2b/2c — invalid-credentials and lockout mapping.
-  const invalidCredentialsMatrix = [
-    {
-      sub: "2a wrong password (existing user)",
-      overrides: { password: "WrongP@ss9" } as const,
-      expectedStatus: 401,
-      expectedCode: ERR_INVALID_CREDENTIALS,
-      expectedMessage: MSG_INVALID_CREDENTIALS,
-    },
-    {
-      sub: "2b nonexistent user",
-      overrides: {} as const,
-      expectedStatus: 401,
-      expectedCode: ERR_INVALID_CREDENTIALS,
-      expectedMessage: MSG_INVALID_CREDENTIALS,
-    },
-    {
-      sub: "2c lockout (repeated failures → Cognito TooManyRequests)",
-      overrides: {} as const,
-      expectedStatus: 429,
-      expectedCode: ERR_TOO_MANY_ATTEMPTS,
-      expectedMessage: MSG_TOO_MANY_ATTEMPTS,
-    },
-  ];
+  // TC-UAUTH-API-002-1..3 — invalid-credentials and lockout mapping, one explicit test case
+  // per sub-case (2a/2b/2c). 2a and 2b assert the IDENTICAL generic message (non-enumeration, SR-002).
+  async function assertInvalidCredentialsMapped(
+    overrides: Parameters<typeof loginPayload>[0],
+    expectedStatus: number,
+    expectedCode: string,
+    expectedMessage: string,
+  ): Promise<void> {
+    // Arrange
+    const client = new AuthClient();
+    const payload = loginPayload(overrides);
 
-  // 2c (lockout/429) is excluded from the live run — it needs deliberate repeated failures and
-  // would risk tripping Cognito throttling for the rest of the suite. 2a/2b assert the same
-  // generic 401 (non-enumeration), which holds for a nonexistent email too.
-  liveTest.each(invalidCredentialsMatrix.filter((c) => c.expectedStatus !== 429))(
-    `TC-UAUTH-API-002 — $sub → mapped error, no enumeration @smoke`,
-    async ({ overrides, expectedStatus, expectedCode, expectedMessage }) => {
-      // Arrange
-      const client = new AuthClient();
-      const payload = loginPayload(overrides);
+    // Act
+    const response = await client.login(payload);
 
-      // Act
-      const response = await client.login(payload);
+    // Assert
+    assertResponseTime(response);
+    expect(response.status).toBe(expectedStatus);
+    ErrorEnvelopeSchema.parse(response.data);
+    assertErrorEnvelope(response, expectedCode);
+    expect((response.data as ErrorEnvelope).error.message).toBe(expectedMessage);
+  }
 
-      // Assert — 2a and 2b both assert the IDENTICAL generic message (non-enumeration, SR-002).
-      assertResponseTime(response);
-      expect(response.status).toBe(expectedStatus);
-      ErrorEnvelopeSchema.parse(response.data);
-      assertErrorEnvelope(response, expectedCode);
-      expect((response.data as ErrorEnvelope).error.message).toBe(expectedMessage);
-    },
-  );
+  liveTest(`TC-UAUTH-API-002-1 — 2a wrong password (existing user) → mapped error, no enumeration @smoke`, () =>
+    assertInvalidCredentialsMapped({ password: "WrongP@ss9" }, 401, ERR_INVALID_CREDENTIALS, MSG_INVALID_CREDENTIALS));
+
+  liveTest(`TC-UAUTH-API-002-2 — 2b nonexistent user → mapped error, no enumeration @smoke`, () =>
+    assertInvalidCredentialsMapped({}, 401, ERR_INVALID_CREDENTIALS, MSG_INVALID_CREDENTIALS));
+
+  // 2c (lockout/429) is excluded from automated runs — it needs deliberate repeated failures and
+  // would risk tripping Cognito throttling for the rest of the suite.
+  test.skip(`TC-UAUTH-API-002-3 — 2c lockout (repeated failures → Cognito TooManyRequests) → 429 ERR_TOO_MANY_ATTEMPTS [blocked: deliberate repeated failures would trip Cognito throttling for the rest of the suite]`, () =>
+    assertInvalidCredentialsMapped({}, 429, ERR_TOO_MANY_ATTEMPTS, MSG_TOO_MANY_ATTEMPTS));
 
   test.skip(`TC-UAUTH-API-003 — correct-credential inactive user → 403 ERR_ACCOUNT_INACTIVE [blocked: ${SKIP_REASON}] @smoke`, async () => {
     // Arrange — users.status='inactive' but Cognito still authenticates (§3.2 step 5e race).
@@ -145,23 +132,29 @@ describe("Auth — POST /api/v1/auth/login", () => {
     expect((response.data as ErrorEnvelope).error.message).toBe(MSG_ACCOUNT_INACTIVE);
   });
 
-  liveTest.each(loginValidationMatrix())(
-    `TC-UAUTH-API-004 — $sub → 400 ERR_VALIDATION_FAILED with exact §3.2 per-field message`,
-    async ({ overrides, field, message }) => {
-      // Executable as soon as the endpoint ships — validation happens at §3.2 step 1,
-      // BEFORE any Cognito call, so this case has no Cognito dependency.
-      const client = new AuthClient();
-      const payload = loginPayload(overrides);
+  // TC-UAUTH-API-004-1..3 — one explicit test case per §3.2 validation sub-case (4a/4b/4c).
+  // Executable as soon as the endpoint ships — validation happens at §3.2 step 1,
+  // BEFORE any Cognito call, so these cases have no Cognito dependency.
+  async function assertLoginValidationRejected(variantSub: string): Promise<void> {
+    const variant = loginValidationMatrix().find((v) => v.sub === variantSub);
+    if (!variant) throw new Error(`Unknown login-validation sub-case: ${variantSub}`);
+    const { overrides, field, message } = variant;
 
-      const response = await client.login(payload);
+    const client = new AuthClient();
+    const payload = loginPayload(overrides);
 
-      assertResponseTime(response);
-      expect(response.status).toBe(400);
-      ErrorEnvelopeSchema.parse(response.data);
-      assertErrorEnvelope(response, ERR_VALIDATION_FAILED);
-      expect(validationFields(response)[field]).toBe(message);
-    },
-  );
+    const response = await client.login(payload);
+
+    assertResponseTime(response);
+    expect(response.status).toBe(400);
+    ErrorEnvelopeSchema.parse(response.data);
+    assertErrorEnvelope(response, ERR_VALIDATION_FAILED);
+    expect(validationFields(response)[field]).toBe(message);
+  }
+
+  liveTest(`TC-UAUTH-API-004-1 — 4a email empty → 400 ERR_VALIDATION_FAILED with exact §3.2 per-field message`, () => assertLoginValidationRejected("4a email empty"));
+  liveTest(`TC-UAUTH-API-004-2 — 4b email invalid format → 400 ERR_VALIDATION_FAILED with exact §3.2 per-field message`, () => assertLoginValidationRejected("4b email invalid format"));
+  liveTest(`TC-UAUTH-API-004-3 — 4c password empty → 400 ERR_VALIDATION_FAILED with exact §3.2 per-field message`, () => assertLoginValidationRejected("4c password empty"));
 
   test.skip(`TC-UAUTH-API-005 — missing/malformed custom:tenant_id → 401 ERR_INVALID_CREDENTIALS (fail closed) [blocked: ${SKIP_REASON}]`, async () => {
     // Arrange — Cognito user with a correct password but missing/blank/non-UUID custom:tenant_id (§3.2 step 5c).
@@ -231,30 +224,27 @@ describe("Auth — POST /api/v1/auth/set-password", () => {
     expect((response.data as ErrorEnvelope).error.details).toHaveProperty("cognitoMessage");
   });
 
-  // TC-UAUTH-API-012 sub-cases 12a/12b — expired vs garbage challenge session.
-  const sessionExpiredMatrix = [
-    { sub: "12a expired challenge session (past Cognito ~3-min window)", session: "expired-challenge-session-token" },
-    { sub: "12b garbage session string", session: "!!!not-a-real-session!!!" },
-  ];
+  // TC-UAUTH-API-012-1..2 — expired vs garbage challenge session, one explicit test case each.
+  async function assertSessionExpired(session: string): Promise<void> {
+    // Arrange
+    const client = new AuthClient();
+    const payload = setPasswordPayload({ session });
 
-  liveTest.each(sessionExpiredMatrix)(
-    `TC-UAUTH-API-012 — $sub → 401 ERR_SESSION_EXPIRED`,
-    async ({ session }) => {
-      // Arrange
-      const client = new AuthClient();
-      const payload = setPasswordPayload({ session });
+    // Act
+    const response = await client.setPassword(payload);
 
-      // Act
-      const response = await client.setPassword(payload);
+    // Assert
+    assertResponseTime(response);
+    expect(response.status).toBe(401);
+    ErrorEnvelopeSchema.parse(response.data);
+    assertErrorEnvelope(response, ERR_SESSION_EXPIRED);
+    expect((response.data as ErrorEnvelope).error.message).toBe(MSG_SESSION_EXPIRED);
+  }
 
-      // Assert
-      assertResponseTime(response);
-      expect(response.status).toBe(401);
-      ErrorEnvelopeSchema.parse(response.data);
-      assertErrorEnvelope(response, ERR_SESSION_EXPIRED);
-      expect((response.data as ErrorEnvelope).error.message).toBe(MSG_SESSION_EXPIRED);
-    },
-  );
+  liveTest(`TC-UAUTH-API-012-1 — 12a expired challenge session (past Cognito ~3-min window) → 401 ERR_SESSION_EXPIRED`, () =>
+    assertSessionExpired("expired-challenge-session-token"));
+  liveTest(`TC-UAUTH-API-012-2 — 12b garbage session string → 401 ERR_SESSION_EXPIRED`, () =>
+    assertSessionExpired("!!!not-a-real-session!!!"));
 
   test.skip(`TC-UAUTH-API-013 — old temp password rejected after successful set; new password works (single-use) [blocked: ${SKIP_REASON}] @smoke`, async () => {
     // Arrange — chains after TC-UAUTH-API-010: password has been set, holding the retired temp password.

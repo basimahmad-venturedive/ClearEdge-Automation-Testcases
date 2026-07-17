@@ -16,19 +16,20 @@ const SENDGRID_REASON = `${NO_ENV_REASON} — SendGrid dispatch also needs a tes
 const jwtFactory = new JwtFactory();
 
 describe("User lifecycle", () => {
-  test.skip.each(["procurement_manager", "procurement_analyst"] as const)(
-    `TC-USER-001 — PO creates role=%s, active immediately, notification email sent (US-RBAC-003 AC-001) [blocked: ${SENDGRID_REASON}] @smoke`,
-    async (role) => {
-      const client = new ControlPlaneClient();
-      const ownerToken = await jwtFactory.tenantToken({ tenantId: "t1", roleId: "role-owner" });
-      const payload = userCreationPayload({ role });
-      const response = await client.post<SuccessEnvelope<UserResponse>>(TODO_ENDPOINT_USER_CREATE, payload, ownerToken);
-      assertResponseTime(response);
-      expect(response.status).toBe(201);
-      assertRequestEchoedInResponse(payload, response);
-      expect(response.data.data.status).toBe("active");
-    },
-  );
+  // TC-USER-001-1..2 — one explicit test case per created role (no data-driven .each).
+  async function assertPoCreatesActiveUser(role: "procurement_manager" | "procurement_analyst"): Promise<void> {
+    const client = new ControlPlaneClient();
+    const ownerToken = await jwtFactory.tenantToken({ tenantId: "t1", roleId: "role-owner" });
+    const payload = userCreationPayload({ role });
+    const response = await client.post<SuccessEnvelope<UserResponse>>(TODO_ENDPOINT_USER_CREATE, payload, ownerToken);
+    assertResponseTime(response);
+    expect(response.status).toBe(201);
+    assertRequestEchoedInResponse(payload, response);
+    expect(response.data.data.status).toBe("active");
+  }
+
+  test.skip(`TC-USER-001-1 — PO creates role=procurement_manager, active immediately, notification email sent (US-RBAC-003 AC-001) [blocked: ${SENDGRID_REASON}] @smoke`, () => assertPoCreatesActiveUser("procurement_manager"));
+  test.skip(`TC-USER-001-2 — PO creates role=procurement_analyst, active immediately, notification email sent (US-RBAC-003 AC-001) [blocked: ${SENDGRID_REASON}] @smoke`, () => assertPoCreatesActiveUser("procurement_analyst"));
 
   test.skip(`TC-USER-002 — PO-initiated creation with role=procurement_owner rejected (BR-11) [blocked: ${NO_ENV_REASON}]`, async () => {
     const client = new ControlPlaneClient();

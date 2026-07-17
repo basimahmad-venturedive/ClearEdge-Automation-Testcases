@@ -2,7 +2,12 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const AUTOMATION_PATH_PATTERN = /automation\/api-ts\//;
-const TC_ID_IN_TEST_PATTERN = /TC-[A-Z0-9]+-\d+/g;
+// Must stay in sync with AUTOMATION_ID_PATTERN in testrail/publishRecords.cjs.
+const TC_ID_IN_TEST_PATTERN = /TC-[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*-\d+(?:-\d+)?/g;
+// Only lines that declare a test carry real case ids — file headers / TODO comments
+// reference related-but-not-automated ids (e.g. fault-injection cases) and must not
+// be treated as automated.
+const TEST_DECLARATION_PATTERN = /\b(?:test|liveTest|it)(?:\.\w+)*\s*(?:\([^)]*\))?\s*\(/;
 
 /**
  * Parse testcases/TRACEABILITY.md and return TC-IDs with a real backend automation path.
@@ -61,11 +66,16 @@ function loadAutomatedCaseIdsFromTestSuites(layerRoot) {
   }
 
   walkTestFiles(testsDir, (filePath) => {
-    const contents = fs.readFileSync(filePath, 'utf8');
-    const matches = contents.match(TC_ID_IN_TEST_PATTERN);
-    if (matches) {
-      for (const id of matches) {
-        automated.add(id);
+    const lines = fs.readFileSync(filePath, 'utf8').split(/\r?\n/);
+    for (const line of lines) {
+      if (!TEST_DECLARATION_PATTERN.test(line)) {
+        continue;
+      }
+      for (const id of line.match(TC_ID_IN_TEST_PATTERN) || []) {
+        // TC-CEIQ-* are spec-document references inside skip reasons, not case ids.
+        if (!id.startsWith('TC-CEIQ-')) {
+          automated.add(id);
+        }
       }
     }
   });

@@ -223,45 +223,64 @@ describe("Admin Portal — GET /admin/tenants (list)", () => {
   });
 });
 
-// TC-ADMAPI-004 — endpoint × token-variant matrix (4a–4g × i–iii).
+// TC-ADMAPI-004-1..22 — endpoint (4a–4g) × token-variant (i–iii) guard checks.
+// One explicit test case per combination (no data-driven .each — each data set is its own case).
 interface EndpointProbe {
   endpoint: string;
   invoke: (client: AdminPortalClient, token?: string) => Promise<AxiosResponse>;
 }
 const AUTH_PROBE_TENANT_ID = "00000000-0000-0000-0000-000000000000";
-const endpointProbes: EndpointProbe[] = [
-  { endpoint: "4a GET /admin/tenants", invoke: (c, t) => c.listTenants({}, t) },
-  { endpoint: "4b POST /admin/tenants", invoke: (c, t) => c.createTenant(adminTenantCreatePayload(), t) },
-  { endpoint: "4c GET /admin/tenants/:id", invoke: (c, t) => c.getTenantDetail(AUTH_PROBE_TENANT_ID, t) },
-  { endpoint: "4d PATCH /admin/tenants/:id/company", invoke: (c, t) => c.updateCompany(AUTH_PROBE_TENANT_ID, companyUpdatePayload(), t) },
-  { endpoint: "4e PATCH /admin/tenants/:id/status", invoke: (c, t) => c.updateStatus(AUTH_PROBE_TENANT_ID, { status: "active" }, t) },
-  { endpoint: "4f PATCH /admin/tenants/:id/owner", invoke: (c, t) => c.updateOwner(AUTH_PROBE_TENANT_ID, ownerUpdatePayload(), t) },
-  { endpoint: "4g POST /admin/tenants/:id/handover", invoke: (c, t) => c.triggerHandover(AUTH_PROBE_TENANT_ID, t) },
-];
-const tokenVariants = ["i missing header", "ii tampered JWT", "iii tenant-pool JWT (wrong pool)"] as const;
-const authMatrix = endpointProbes.flatMap((probe) => tokenVariants.map((variant) => ({ ...probe, variant })));
+const endpointProbes: Record<string, EndpointProbe> = {
+  "4a": { endpoint: "4a GET /admin/tenants", invoke: (c, t) => c.listTenants({}, t) },
+  "4b": { endpoint: "4b POST /admin/tenants", invoke: (c, t) => c.createTenant(adminTenantCreatePayload(), t) },
+  "4c": { endpoint: "4c GET /admin/tenants/:id", invoke: (c, t) => c.getTenantDetail(AUTH_PROBE_TENANT_ID, t) },
+  "4d": { endpoint: "4d PATCH /admin/tenants/:id/company", invoke: (c, t) => c.updateCompany(AUTH_PROBE_TENANT_ID, companyUpdatePayload(), t) },
+  "4e": { endpoint: "4e PATCH /admin/tenants/:id/status", invoke: (c, t) => c.updateStatus(AUTH_PROBE_TENANT_ID, { status: "active" }, t) },
+  "4f": { endpoint: "4f PATCH /admin/tenants/:id/owner", invoke: (c, t) => c.updateOwner(AUTH_PROBE_TENANT_ID, ownerUpdatePayload(), t) },
+  "4g": { endpoint: "4g POST /admin/tenants/:id/handover", invoke: (c, t) => c.triggerHandover(AUTH_PROBE_TENANT_ID, t) },
+};
+type TokenVariant = "i missing header" | "ii tampered JWT" | "iii tenant-pool JWT (wrong pool)";
+
+async function assertGuardRejects401(probeKey: keyof typeof endpointProbes, variant: TokenVariant): Promise<void> {
+  const client = new AdminPortalClient();
+  let token: string | undefined;
+  if (variant === "ii tampered JWT") token = jwtFactory.tamperedToken(await jwtFactory.adminToken());
+  if (variant === "iii tenant-pool JWT (wrong pool)") {
+    token = await jwtFactory.tenantToken({ tenantId: randomUUID(), roleId: randomUUID() });
+  }
+
+  const response = await endpointProbes[probeKey].invoke(client, token);
+
+  assertResponseTime(response);
+  expect(response.status).toBe(401);
+  ErrorEnvelopeSchema.parse(response.data);
+  assertErrorEnvelope(response, ERR_AUTH_INVALID_TOKEN);
+}
 
 describe("Admin Portal — auth guard contract (all 7 endpoints)", () => {
-  test.each(authMatrix)(
-    `TC-ADMAPI-004 — $endpoint with $variant → 401 ERR_AUTH_INVALID_TOKEN @smoke`,
-    async ({ invoke, variant }) => {
-      const client = new AdminPortalClient();
-      let token: string | undefined;
-      if (variant === "ii tampered JWT") token = jwtFactory.tamperedToken(await jwtFactory.adminToken());
-      if (variant === "iii tenant-pool JWT (wrong pool)") {
-        token = await jwtFactory.tenantToken({ tenantId: randomUUID(), roleId: randomUUID() });
-      }
+  test(`TC-ADMAPI-004-1 — 4a GET /admin/tenants with i missing header → 401 ERR_AUTH_INVALID_TOKEN @smoke`, () => assertGuardRejects401("4a", "i missing header"));
+  test(`TC-ADMAPI-004-2 — 4a GET /admin/tenants with ii tampered JWT → 401 ERR_AUTH_INVALID_TOKEN @smoke`, () => assertGuardRejects401("4a", "ii tampered JWT"));
+  test(`TC-ADMAPI-004-3 — 4a GET /admin/tenants with iii tenant-pool JWT (wrong pool) → 401 ERR_AUTH_INVALID_TOKEN @smoke`, () => assertGuardRejects401("4a", "iii tenant-pool JWT (wrong pool)"));
+  test(`TC-ADMAPI-004-4 — 4b POST /admin/tenants with i missing header → 401 ERR_AUTH_INVALID_TOKEN @smoke`, () => assertGuardRejects401("4b", "i missing header"));
+  test(`TC-ADMAPI-004-5 — 4b POST /admin/tenants with ii tampered JWT → 401 ERR_AUTH_INVALID_TOKEN @smoke`, () => assertGuardRejects401("4b", "ii tampered JWT"));
+  test(`TC-ADMAPI-004-6 — 4b POST /admin/tenants with iii tenant-pool JWT (wrong pool) → 401 ERR_AUTH_INVALID_TOKEN @smoke`, () => assertGuardRejects401("4b", "iii tenant-pool JWT (wrong pool)"));
+  test(`TC-ADMAPI-004-7 — 4c GET /admin/tenants/:id with i missing header → 401 ERR_AUTH_INVALID_TOKEN @smoke`, () => assertGuardRejects401("4c", "i missing header"));
+  test(`TC-ADMAPI-004-8 — 4c GET /admin/tenants/:id with ii tampered JWT → 401 ERR_AUTH_INVALID_TOKEN @smoke`, () => assertGuardRejects401("4c", "ii tampered JWT"));
+  test(`TC-ADMAPI-004-9 — 4c GET /admin/tenants/:id with iii tenant-pool JWT (wrong pool) → 401 ERR_AUTH_INVALID_TOKEN @smoke`, () => assertGuardRejects401("4c", "iii tenant-pool JWT (wrong pool)"));
+  test(`TC-ADMAPI-004-10 — 4d PATCH /admin/tenants/:id/company with i missing header → 401 ERR_AUTH_INVALID_TOKEN @smoke`, () => assertGuardRejects401("4d", "i missing header"));
+  test(`TC-ADMAPI-004-11 — 4d PATCH /admin/tenants/:id/company with ii tampered JWT → 401 ERR_AUTH_INVALID_TOKEN @smoke`, () => assertGuardRejects401("4d", "ii tampered JWT"));
+  test(`TC-ADMAPI-004-12 — 4d PATCH /admin/tenants/:id/company with iii tenant-pool JWT (wrong pool) → 401 ERR_AUTH_INVALID_TOKEN @smoke`, () => assertGuardRejects401("4d", "iii tenant-pool JWT (wrong pool)"));
+  test(`TC-ADMAPI-004-13 — 4e PATCH /admin/tenants/:id/status with i missing header → 401 ERR_AUTH_INVALID_TOKEN @smoke`, () => assertGuardRejects401("4e", "i missing header"));
+  test(`TC-ADMAPI-004-14 — 4e PATCH /admin/tenants/:id/status with ii tampered JWT → 401 ERR_AUTH_INVALID_TOKEN @smoke`, () => assertGuardRejects401("4e", "ii tampered JWT"));
+  test(`TC-ADMAPI-004-15 — 4e PATCH /admin/tenants/:id/status with iii tenant-pool JWT (wrong pool) → 401 ERR_AUTH_INVALID_TOKEN @smoke`, () => assertGuardRejects401("4e", "iii tenant-pool JWT (wrong pool)"));
+  test(`TC-ADMAPI-004-16 — 4f PATCH /admin/tenants/:id/owner with i missing header → 401 ERR_AUTH_INVALID_TOKEN @smoke`, () => assertGuardRejects401("4f", "i missing header"));
+  test(`TC-ADMAPI-004-17 — 4f PATCH /admin/tenants/:id/owner with ii tampered JWT → 401 ERR_AUTH_INVALID_TOKEN @smoke`, () => assertGuardRejects401("4f", "ii tampered JWT"));
+  test(`TC-ADMAPI-004-18 — 4f PATCH /admin/tenants/:id/owner with iii tenant-pool JWT (wrong pool) → 401 ERR_AUTH_INVALID_TOKEN @smoke`, () => assertGuardRejects401("4f", "iii tenant-pool JWT (wrong pool)"));
+  test(`TC-ADMAPI-004-19 — 4g POST /admin/tenants/:id/handover with i missing header → 401 ERR_AUTH_INVALID_TOKEN @smoke`, () => assertGuardRejects401("4g", "i missing header"));
+  test(`TC-ADMAPI-004-20 — 4g POST /admin/tenants/:id/handover with ii tampered JWT → 401 ERR_AUTH_INVALID_TOKEN @smoke`, () => assertGuardRejects401("4g", "ii tampered JWT"));
+  test(`TC-ADMAPI-004-21 — 4g POST /admin/tenants/:id/handover with iii tenant-pool JWT (wrong pool) → 401 ERR_AUTH_INVALID_TOKEN @smoke`, () => assertGuardRejects401("4g", "iii tenant-pool JWT (wrong pool)"));
 
-      const response = await invoke(client, token);
-
-      assertResponseTime(response);
-      expect(response.status).toBe(401);
-      ErrorEnvelopeSchema.parse(response.data);
-      assertErrorEnvelope(response, ERR_AUTH_INVALID_TOKEN);
-    },
-  );
-
-  test(`TC-ADMAPI-004 — rejected unauthenticated create has no side effects @smoke`, async () => {
+  test(`TC-ADMAPI-004-22 — rejected unauthenticated create has no side effects @smoke`, async () => {
     const client = new AdminPortalClient();
     const payload = adminTenantCreatePayload();
 
@@ -335,43 +354,50 @@ describe("Admin Portal — POST /admin/tenants (create)", () => {
     }
   });
 
-  test.skip.each(domainNormalizationVariants())(
-    `TC-ADMAPI-011 — duplicate domain $sub → 409 ERR_TENANT_DOMAIN_DUPLICATE, nothing created [blocked: ${SKIP_REASON}] @smoke`,
-    async ({ value }) => {
-      // Arrange — a tenant already owns the bare base domain.
-      const client = new AdminPortalClient();
-      const adminToken = await jwtFactory.adminToken();
-      const baseDomain = uniqueDomain("dup");
-      const base = await createSetupTenant(client, adminToken, { domain: baseDomain });
-      const attempt = adminTenantCreatePayload({ domain: value(baseDomain) });
+  // TC-ADMAPI-011-1..5 — one explicit test case per §5 domain-normalization variant (11a–11e).
+  async function assertDuplicateDomainRejected(variantSub: string): Promise<void> {
+    const variant = domainNormalizationVariants().find((v) => v.sub === variantSub);
+    if (!variant) throw new Error(`Unknown domain-normalization variant: ${variantSub}`);
 
-      try {
-        // Act
-        const response = await client.createTenant(attempt, adminToken);
+    // Arrange — a tenant already owns the bare base domain.
+    const client = new AdminPortalClient();
+    const adminToken = await jwtFactory.adminToken();
+    const baseDomain = uniqueDomain("dup");
+    const base = await createSetupTenant(client, adminToken, { domain: baseDomain });
+    const attempt = adminTenantCreatePayload({ domain: variant.value(baseDomain) });
 
-        // Assert — exact §4.2 409 contract
-        assertResponseTime(response);
-        expect(response.status).toBe(409);
-        ErrorEnvelopeSchema.parse(response.data);
-        assertErrorEnvelope(response, ERR_TENANT_DOMAIN_DUPLICATE);
-        const err = response.data as ErrorEnvelope;
-        expect(err.error.message).toBe(MSG_DOMAIN_DUPLICATE);
-        expect(err.error.details).toHaveProperty("domain");
+    try {
+      // Act
+      const response = await client.createTenant(attempt, adminToken);
 
-        // No tenant and no user were created for the rejected attempt.
-        await withDbClient(async (db) => {
-          const tenants = await db.query("SELECT count(*)::int AS n FROM tenants WHERE domain = $1", [baseDomain]);
-          expect(tenants.rows[0].n).toBe(1);
-          const users = await db.query("SELECT count(*)::int AS n FROM users WHERE email = $1", [attempt.ownerEmail]);
-          expect(users.rows[0].n).toBe(0);
-        });
-      } finally {
-        await teardownTenant(base.tenant.id);
-      }
-    },
-  );
+      // Assert — exact §4.2 409 contract
+      assertResponseTime(response);
+      expect(response.status).toBe(409);
+      ErrorEnvelopeSchema.parse(response.data);
+      assertErrorEnvelope(response, ERR_TENANT_DOMAIN_DUPLICATE);
+      const err = response.data as ErrorEnvelope;
+      expect(err.error.message).toBe(MSG_DOMAIN_DUPLICATE);
+      expect(err.error.details).toHaveProperty("domain");
 
-  test.skip(`TC-ADMAPI-011 — stored value is the bare domain (protocol/www/path/query stripped) [blocked: ${SKIP_REASON}] @smoke`, async () => {
+      // No tenant and no user were created for the rejected attempt.
+      await withDbClient(async (db) => {
+        const tenants = await db.query("SELECT count(*)::int AS n FROM tenants WHERE domain = $1", [baseDomain]);
+        expect(tenants.rows[0].n).toBe(1);
+        const users = await db.query("SELECT count(*)::int AS n FROM users WHERE email = $1", [attempt.ownerEmail]);
+        expect(users.rows[0].n).toBe(0);
+      });
+    } finally {
+      await teardownTenant(base.tenant.id);
+    }
+  }
+
+  test.skip(`TC-ADMAPI-011-1 — duplicate domain 11a bare domain → 409 ERR_TENANT_DOMAIN_DUPLICATE, nothing created [blocked: ${SKIP_REASON}] @smoke`, () => assertDuplicateDomainRejected("11a bare domain"));
+  test.skip(`TC-ADMAPI-011-2 — duplicate domain 11b https + www → 409 ERR_TENANT_DOMAIN_DUPLICATE, nothing created [blocked: ${SKIP_REASON}] @smoke`, () => assertDuplicateDomainRejected("11b https + www"));
+  test.skip(`TC-ADMAPI-011-3 — duplicate domain 11c www prefix → 409 ERR_TENANT_DOMAIN_DUPLICATE, nothing created [blocked: ${SKIP_REASON}] @smoke`, () => assertDuplicateDomainRejected("11c www prefix"));
+  test.skip(`TC-ADMAPI-011-4 — duplicate domain 11d path + query → 409 ERR_TENANT_DOMAIN_DUPLICATE, nothing created [blocked: ${SKIP_REASON}] @smoke`, () => assertDuplicateDomainRejected("11d path + query"));
+  test.skip(`TC-ADMAPI-011-5 — duplicate domain 11e port suffix → 409 ERR_TENANT_DOMAIN_DUPLICATE, nothing created [blocked: ${SKIP_REASON}] @smoke`, () => assertDuplicateDomainRejected("11e port suffix"));
+
+  test.skip(`TC-ADMAPI-011-6 — stored value is the bare domain (protocol/www/path/query stripped) [blocked: ${SKIP_REASON}] @smoke`, async () => {
     const client = new AdminPortalClient();
     const adminToken = await jwtFactory.adminToken();
     const bare = uniqueDomain("zenith");
@@ -428,61 +454,84 @@ describe("Admin Portal — POST /admin/tenants (create)", () => {
     }
   });
 
-  test.each(createValidationMatrix())(
-    `TC-ADMAPI-013 — $sub → 400 ERR_VALIDATION_FAILED with exact §5 per-field message`,
-    async ({ overrides, invalidFields }) => {
-      const client = new AdminPortalClient();
-      const adminToken = await signAdminToken({ sub: randomUUID() });
-      const payload = adminTenantCreatePayload(overrides);
+  // TC-ADMAPI-013-1..7 — one explicit test case per §5 validation sub-case (13a–13g).
+  async function assertCreateValidationRejected(variantSub: string): Promise<void> {
+    const variant = createValidationMatrix().find((v) => v.sub === variantSub);
+    if (!variant) throw new Error(`Unknown create-validation sub-case: ${variantSub}`);
+    const { overrides, invalidFields } = variant;
 
-      const response = await client.createTenant(payload, adminToken);
+    const client = new AdminPortalClient();
+    const adminToken = await signAdminToken({ sub: randomUUID() });
+    const payload = adminTenantCreatePayload(overrides);
 
-      assertResponseTime(response);
+    const response = await client.createTenant(payload, adminToken);
+
+    assertResponseTime(response);
+    expect(response.status).toBe(400);
+    ErrorEnvelopeSchema.parse(response.data);
+    assertErrorEnvelope(response, ERR_VALIDATION_FAILED);
+    expect((response.data as ErrorEnvelope).error.message).toBe(MSG_VALIDATION_FAILED);
+    const fields = validationFields(response);
+    for (const { field, message } of invalidFields) {
+      expect(fields[field]).toBe(message);
+    }
+    // No side effects — the (valid, unique) domain of the rejected payload never lands in the DB.
+    if (overrides.domain === undefined) {
+      await withDbClient(async (db) => {
+        const { rows } = await db.query("SELECT count(*)::int AS n FROM tenants WHERE domain = $1", [payload.domain]);
+        expect(rows[0].n).toBe(0);
+      });
+    }
+  }
+
+  test(`TC-ADMAPI-013-1 — 13a name empty → 400 ERR_VALIDATION_FAILED with exact §5 per-field message`, () => assertCreateValidationRejected("13a name empty"));
+  test(`TC-ADMAPI-013-2 — 13b domain empty → 400 ERR_VALIDATION_FAILED with exact §5 per-field message`, () => assertCreateValidationRejected("13b domain empty"));
+  test(`TC-ADMAPI-013-3 — 13c domain invalid format → 400 ERR_VALIDATION_FAILED with exact §5 per-field message`, () => assertCreateValidationRejected("13c domain invalid format"));
+  test(`TC-ADMAPI-013-4 — 13d address empty → 400 ERR_VALIDATION_FAILED with exact §5 per-field message`, () => assertCreateValidationRejected("13d address empty"));
+  test(`TC-ADMAPI-013-5 — 13e ownerName empty → 400 ERR_VALIDATION_FAILED with exact §5 per-field message`, () => assertCreateValidationRejected("13e ownerName empty"));
+  test(`TC-ADMAPI-013-6 — 13f ownerEmail invalid → 400 ERR_VALIDATION_FAILED with exact §5 per-field message`, () => assertCreateValidationRejected("13f ownerEmail invalid"));
+  test(`TC-ADMAPI-013-7 — 13g multiple invalid fields → 400 ERR_VALIDATION_FAILED with exact §5 per-field message`, () => assertCreateValidationRejected("13g multiple invalid fields"));
+
+  // TC-ADMAPI-014-1..10 — one explicit test case per §5 max-length boundary (at/over limit × 5 fields).
+  async function assertMaxLengthBoundary(variantSub: string): Promise<void> {
+    const variant = maxLengthBoundaryMatrix().find((v) => v.sub === variantSub);
+    if (!variant) throw new Error(`Unknown max-length boundary sub-case: ${variantSub}`);
+    const { field, length, expectAccept, overLimitMessage } = variant;
+
+    const client = new AdminPortalClient();
+    const adminToken = await jwtFactory.adminToken();
+    const payload = adminTenantCreatePayload();
+    payload[field] = boundaryValueFor(field, length);
+    expect(payload[field]).toHaveLength(length); // builder sanity
+
+    const response = await client.createTenant(payload, adminToken);
+
+    assertResponseTime(response);
+    if (expectAccept) {
+      // Note (TC-ADMAPI-014): 320-char emails may be rejected by Cognito itself — if so, record
+      // the actual behavior and flag to the PM; do not weaken this assertion silently.
+      expect(response.status).toBe(201);
+      const body = TenantDetailEnvelopeSchema.parse(response.data);
+      assertRequestEchoedInResponse(payload, response);
+      await teardownTenant(body.data.id);
+    } else {
       expect(response.status).toBe(400);
       ErrorEnvelopeSchema.parse(response.data);
       assertErrorEnvelope(response, ERR_VALIDATION_FAILED);
-      expect((response.data as ErrorEnvelope).error.message).toBe(MSG_VALIDATION_FAILED);
-      const fields = validationFields(response);
-      for (const { field, message } of invalidFields) {
-        expect(fields[field]).toBe(message);
-      }
-      // No side effects — the (valid, unique) domain of the rejected payload never lands in the DB.
-      if (overrides.domain === undefined) {
-        await withDbClient(async (db) => {
-          const { rows } = await db.query("SELECT count(*)::int AS n FROM tenants WHERE domain = $1", [payload.domain]);
-          expect(rows[0].n).toBe(0);
-        });
-      }
-    },
-  );
+      expect(validationFields(response)[field]).toBe(overLimitMessage);
+    }
+  }
 
-  test.skip.each(maxLengthBoundaryMatrix())(
-    `TC-ADMAPI-014 — $sub [blocked: ${SKIP_REASON}]`,
-    async ({ field, length, expectAccept, overLimitMessage }) => {
-      const client = new AdminPortalClient();
-      const adminToken = await jwtFactory.adminToken();
-      const payload = adminTenantCreatePayload();
-      payload[field] = boundaryValueFor(field, length);
-      expect(payload[field]).toHaveLength(length); // builder sanity
-
-      const response = await client.createTenant(payload, adminToken);
-
-      assertResponseTime(response);
-      if (expectAccept) {
-        // Note (TC-ADMAPI-014): 320-char emails may be rejected by Cognito itself — if so, record
-        // the actual behavior and flag to the PM; do not weaken this assertion silently.
-        expect(response.status).toBe(201);
-        const body = TenantDetailEnvelopeSchema.parse(response.data);
-        assertRequestEchoedInResponse(payload, response);
-        await teardownTenant(body.data.id);
-      } else {
-        expect(response.status).toBe(400);
-        ErrorEnvelopeSchema.parse(response.data);
-        assertErrorEnvelope(response, ERR_VALIDATION_FAILED);
-        expect(validationFields(response)[field]).toBe(overLimitMessage);
-      }
-    },
-  );
+  test.skip(`TC-ADMAPI-014-1 — name at limit (255) [blocked: ${SKIP_REASON}]`, () => assertMaxLengthBoundary("name at limit (255)"));
+  test.skip(`TC-ADMAPI-014-2 — name over limit (256) [blocked: ${SKIP_REASON}]`, () => assertMaxLengthBoundary("name over limit (256)"));
+  test.skip(`TC-ADMAPI-014-3 — domain at limit (255) [blocked: ${SKIP_REASON}]`, () => assertMaxLengthBoundary("domain at limit (255)"));
+  test.skip(`TC-ADMAPI-014-4 — domain over limit (256) [blocked: ${SKIP_REASON}]`, () => assertMaxLengthBoundary("domain over limit (256)"));
+  test.skip(`TC-ADMAPI-014-5 — address at limit (500) [blocked: ${SKIP_REASON}]`, () => assertMaxLengthBoundary("address at limit (500)"));
+  test.skip(`TC-ADMAPI-014-6 — address over limit (501) [blocked: ${SKIP_REASON}]`, () => assertMaxLengthBoundary("address over limit (501)"));
+  test.skip(`TC-ADMAPI-014-7 — ownerName at limit (255) [blocked: ${SKIP_REASON}]`, () => assertMaxLengthBoundary("ownerName at limit (255)"));
+  test.skip(`TC-ADMAPI-014-8 — ownerName over limit (256) [blocked: ${SKIP_REASON}]`, () => assertMaxLengthBoundary("ownerName over limit (256)"));
+  test.skip(`TC-ADMAPI-014-9 — ownerEmail at limit (320) [blocked: ${SKIP_REASON}]`, () => assertMaxLengthBoundary("ownerEmail at limit (320)"));
+  test.skip(`TC-ADMAPI-014-10 — ownerEmail over limit (321) [blocked: ${SKIP_REASON}]`, () => assertMaxLengthBoundary("ownerEmail over limit (321)"));
 
   test.skip(`TC-ADMAPI-015 — setup password stored encrypted; audit snapshot strips it [blocked: ${SKIP_REASON}] @smoke`, async () => {
     // Arrange — chains with TC-ADMAPI-010: create a tenant and hold the plaintext setupPassword.

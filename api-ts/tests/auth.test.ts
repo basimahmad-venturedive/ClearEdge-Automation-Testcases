@@ -50,36 +50,36 @@ describe("Auth guards — real local backend", () => {
     expect(response.data.data.roleId).toBe(fixture.roleId);
   });
 
+  // TC-AUTH-002/003/004 — invalid-JWT variants, one explicit test case each (no data-driven .each).
   // On live dev only "tampered_signature" is constructible (tamper a real admin token). The
   // "wrong_issuer"/"expired" variants must be minted with the local mock's key, so they run
   // on local only — the untrusted-signer path they exercise is also covered live by TC-AUTH-008.
-  const INVALID_JWT_VARIANTS = isLiveEnv()
-    ? (["tampered_signature"] as const)
-    : (["tampered_signature", "wrong_issuer", "expired"] as const);
+  async function assertInvalidJwtRejected(token: string): Promise<void> {
+    const response = await client.get(ENDPOINT_USER_ME, token);
 
-  test.each(INVALID_JWT_VARIANTS)(
-    "TC-AUTH-002/003/004 — invalid JWT variant=%s rejected 401 ERR_AUTH_INVALID_TOKEN (SR-002) @smoke",
-    async (variant) => {
-      let token: string;
-      if (variant === "tampered_signature") {
-        // Live: tamper a genuine admin ID token. Local: tamper a mock-signed tenant token.
-        token = tamperToken(
-          isLiveEnv() ? await validAdminToken() : await signTenantToken({ sub: "x", tenantId: "y", roleId: "z" }),
-        );
-      } else if (variant === "wrong_issuer") {
-        // Real backend only trusts COGNITO_TENANT_JWKS_URI's issuer — any other issuer fails
-        // signature/issuer validation the same way an unrecognized signer would.
-        token = tamperToken(await signAdminToken({ sub: "x" }));
-      } else {
-        token = await signTenantToken({ sub: "x", tenantId: "y", roleId: "z", expiresInSeconds: -3600 });
-      }
+    expect(response.status).toBe(401);
+    expect((response.data as { error: { code: string } }).error.code).toBe("ERR_AUTH_INVALID_TOKEN");
+  }
 
-      const response = await client.get(ENDPOINT_USER_ME, token);
+  test("TC-AUTH-002 — invalid JWT variant=tampered_signature rejected 401 ERR_AUTH_INVALID_TOKEN (SR-002) @smoke", async () => {
+    // Live: tamper a genuine admin ID token. Local: tamper a mock-signed tenant token.
+    const token = tamperToken(
+      isLiveEnv() ? await validAdminToken() : await signTenantToken({ sub: "x", tenantId: "y", roleId: "z" }),
+    );
+    await assertInvalidJwtRejected(token);
+  });
 
-      expect(response.status).toBe(401);
-      expect((response.data as { error: { code: string } }).error.code).toBe("ERR_AUTH_INVALID_TOKEN");
-    },
-  );
+  test.skipIf(REQUIRES_TENANT_FIXTURE)(`TC-AUTH-003 — invalid JWT variant=wrong_issuer rejected 401 ERR_AUTH_INVALID_TOKEN (SR-002) [live-skip: constructible only with the local mock key] @smoke`, async () => {
+    // Real backend only trusts COGNITO_TENANT_JWKS_URI's issuer — any other issuer fails
+    // signature/issuer validation the same way an unrecognized signer would.
+    const token = tamperToken(await signAdminToken({ sub: "x" }));
+    await assertInvalidJwtRejected(token);
+  });
+
+  test.skipIf(REQUIRES_TENANT_FIXTURE)(`TC-AUTH-004 — invalid JWT variant=expired rejected 401 ERR_AUTH_INVALID_TOKEN (SR-002) [live-skip: constructible only with the local mock key] @smoke`, async () => {
+    const token = await signTenantToken({ sub: "x", tenantId: "y", roleId: "z", expiresInSeconds: -3600 });
+    await assertInvalidJwtRejected(token);
+  });
 
   test.skipIf(REQUIRES_TENANT_FIXTURE)(`TC-AUTH-005 — missing role_id claim (SR-006) — DEVIATION FOUND: real code returns 401 ERR_AUTH_INVALID_TOKEN, not 403 as spec states [live-skip: ${TENANT_SKIP_REASON}] @smoke`, async () => {
     fixture = await createFixtureTenantAndUser({ roleSlug: "procurement_manager" });

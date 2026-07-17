@@ -15,7 +15,6 @@ import {
   newEditUser,
   CREATE_INVALID_EMAIL,
   CREATE_NAME_MAX_255,
-  SEARCH_INJECTION_INPUTS,
   STATUS_DEACTIVATE,
   STATUS_ACTIVATE,
 } from "../src/payloads/userManagementPayloads";
@@ -85,27 +84,34 @@ describe("GET /users", () => {
     for (const u of parsed.data.users) expect(u.name.toLowerCase()).toContain("ann");
   });
 
-  test.skip.each(SEARCH_INJECTION_INPUTS)(
-    `TC-UMAPI-012 — ILIKE %%/_ escaping + parameterization; input=%s treated as literal [blocked: ${NO_ENV_REASON}]`,
-    async (input) => {
-      const client = new UserManagementClient();
-      const res = await client.listUsers({ search: input }, await poToken());
-      // No 500, no SQL error; `%`/`_` are escaped so they match literally, not as wildcards.
-      expect(res.status).toBe(200);
-      listResponseSchema.parse(res.data);
-    },
-  );
+  // TC-UMAPI-012-1..5 — one explicit test case per injection-shaped search input
+  // (see SEARCH_INJECTION_INPUTS). `%`/`_` must be escaped to match literally, not as wildcards.
+  async function assertSearchInputLiteral(input: string): Promise<void> {
+    const client = new UserManagementClient();
+    const res = await client.listUsers({ search: input }, await poToken());
+    // No 500, no SQL error; the input is parameterized and treated as a literal.
+    expect(res.status).toBe(200);
+    listResponseSchema.parse(res.data);
+  }
 
-  test.skip.each(["procurement_manager", "procurement_analyst", ""] as const)(
-    `TC-UMAPI-013 — role filter by slug=%s (empty = all) [blocked: ${NO_ENV_REASON}]`,
-    async (role) => {
-      const client = new UserManagementClient();
-      const res = await client.listUsers({ role }, await poToken());
-      expect(res.status).toBe(200);
-      listResponseSchema.parse(res.data);
-      // NOTE: whether `roles` exposes a `slug` column vs matching on name is F1-owned — contract-TBD in TC file.
-    },
-  );
+  test.skip(`TC-UMAPI-012-1 — ILIKE escaping; input="100% match" treated as literal [blocked: ${NO_ENV_REASON}]`, () => assertSearchInputLiteral("100% match"));
+  test.skip(`TC-UMAPI-012-2 — ILIKE escaping; input="under_score" treated as literal [blocked: ${NO_ENV_REASON}]`, () => assertSearchInputLiteral("under_score"));
+  test.skip(`TC-UMAPI-012-3 — ILIKE escaping; input="'; DROP TABLE users;--" treated as literal [blocked: ${NO_ENV_REASON}]`, () => assertSearchInputLiteral("'; DROP TABLE users;--"));
+  test.skip(`TC-UMAPI-012-4 — ILIKE escaping; input="%" treated as literal [blocked: ${NO_ENV_REASON}]`, () => assertSearchInputLiteral("%"));
+  test.skip(`TC-UMAPI-012-5 — ILIKE escaping; input="_" treated as literal [blocked: ${NO_ENV_REASON}]`, () => assertSearchInputLiteral("_"));
+
+  // TC-UMAPI-013-1..3 — one explicit test case per role-filter slug (manager / analyst / empty=all).
+  async function assertRoleFilter(role: "procurement_manager" | "procurement_analyst" | ""): Promise<void> {
+    const client = new UserManagementClient();
+    const res = await client.listUsers({ role }, await poToken());
+    expect(res.status).toBe(200);
+    listResponseSchema.parse(res.data);
+    // NOTE: whether `roles` exposes a `slug` column vs matching on name is F1-owned — contract-TBD in TC file.
+  }
+
+  test.skip(`TC-UMAPI-013-1 — role filter by slug=procurement_manager [blocked: ${NO_ENV_REASON}]`, () => assertRoleFilter("procurement_manager"));
+  test.skip(`TC-UMAPI-013-2 — role filter by slug=procurement_analyst [blocked: ${NO_ENV_REASON}]`, () => assertRoleFilter("procurement_analyst"));
+  test.skip(`TC-UMAPI-013-3 — role filter by empty slug (empty = all) [blocked: ${NO_ENV_REASON}]`, () => assertRoleFilter(""));
 
   test.skip(`TC-UMAPI-014 — self-exclusion: PO's own record never in the list (SR-003) [blocked: ${COGNITO_REASON}]`, async () => {
     const client = new UserManagementClient();

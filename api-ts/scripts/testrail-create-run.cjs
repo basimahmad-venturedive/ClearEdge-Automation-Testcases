@@ -5,7 +5,11 @@ const { testRailConfig } = require('../testrail/config/testrailConfig.cjs');
 const { MappingStore } = require('../testrail/mappingStore/mappingStore.cjs');
 const { RunCreator } = require('../testrail/runCreator/runCreator.cjs');
 
-const TC_ID_PATTERN = /TC-[A-Z0-9]+-\d+/g;
+// Must stay in sync with AUTOMATION_ID_PATTERN in testrail/publishRecords.cjs.
+const TC_ID_PATTERN = /TC-[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*-\d+(?:-\d+)?/g;
+// Only lines that declare a test carry real case ids — file headers / TODO comments
+// reference related-but-not-automated ids and must not be collected.
+const TEST_DECLARATION_PATTERN = /\b(?:test|liveTest|it)(?:\.\w+)*\s*(?:\([^)]*\))?\s*\(/;
 const TESTS_DIR = path.resolve(__dirname, '..', 'tests');
 
 async function main() {
@@ -60,11 +64,16 @@ function collectActiveTcIds(testsDir) {
   }
   const found = new Set();
   walkTestFiles(testsDir, (filePath) => {
-    const contents = fs.readFileSync(filePath, 'utf8');
-    const matches = contents.match(TC_ID_PATTERN);
-    if (matches) {
-      for (const id of matches) {
-        found.add(id);
+    const lines = fs.readFileSync(filePath, 'utf8').split(/\r?\n/);
+    for (const line of lines) {
+      if (!TEST_DECLARATION_PATTERN.test(line)) {
+        continue;
+      }
+      for (const id of line.match(TC_ID_PATTERN) || []) {
+        // TC-CEIQ-* are spec-document references inside skip reasons, not case ids.
+        if (!id.startsWith('TC-CEIQ-')) {
+          found.add(id);
+        }
       }
     }
   });
