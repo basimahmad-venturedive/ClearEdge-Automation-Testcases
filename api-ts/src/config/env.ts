@@ -67,3 +67,11 @@ export const cognitoRegion = (): string => getOptional("AWS_REGION", "us-east-1"
 export const cognitoAdminAppClientIdLive = (): string => getRequired("COGNITO_ADMIN_APP_CLIENT_ID");
 export const devAdminUsername = (): string => getRequired("DEV_ADMIN_USERNAME");
 export const devAdminPassword = (): string => getRequired("DEV_ADMIN_PASSWORD");
+
+// --- Live Cognito (tenant pool) — used by tokenProvider to mint a real PO tenant ID token. ---
+export const cognitoTenantAppClientIdLive = (): string => getRequired("COGNITO_TENANT_APP_CLIENT_ID");
+export const devTenantUsername = (): string => getRequired("DEV_TENANT_USERNAME");
+export const devTenantPassword = (): string => getRequired("DEV_TENANT_PASSWORD");
+// True when a real dev tenant-pool user is configured (enables live tenant-scoped runs).
+export const hasLiveTenantUser = (): boolean =>
+  isEnvVarSet("DEV_TENANT_USERNAME") && isEnvVarSet("DEV_TENANT_PASSWORD");

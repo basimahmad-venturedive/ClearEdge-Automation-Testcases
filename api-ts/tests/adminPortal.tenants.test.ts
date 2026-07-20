@@ -14,11 +14,12 @@ import { randomUUID } from "crypto";
 import type { AxiosResponse } from "axios";
 import { AdminPortalClient } from "../src/clients/adminPortalClient";
 import { JwtFactory } from "../src/utils/jwtHelpers";
-// Valid admin token signed by the local Cognito mock (shared keypair served by the
-// JWKS server), so the app's AdminJwtAuthGuard actually accepts it — jwtFactory tokens
-// use a random key/issuer and are only good for negative (rejection) cases.
-import { signAdminToken } from "../local-env/localCognitoMock";
+// validAdminToken() returns a token the app's AdminJwtAuthGuard accepts on EITHER target:
+// local → signed by the local Cognito mock; live → a real admin ID token via Cognito
+// InitiateAuth. (jwtFactory tokens use a random key/issuer — only good for negative cases.)
+import { validAdminToken } from "../src/utils/testTokens";
 import { withDbClient } from "../src/utils/dbClient";
+import { hasDbAccess } from "../src/config/env";
 import { createSetupTenant, createHandedOverTenant, teardownTenant } from "../src/utils/adminPortalFixtures";
 import {
   adminTenantCreatePayload,
@@ -149,7 +150,7 @@ describe("Admin Portal — GET /admin/tenants (list)", () => {
 
   test(`TC-ADMAPI-003 — list boundaries: whitespace-only search, page=0, page past last, page omitted`, async () => {
     const client = new AdminPortalClient();
-    const adminToken = await signAdminToken({ sub: randomUUID() });
+    const adminToken = await validAdminToken();
     const baseline = await client.listTenants({}, adminToken);
     assertResponseTime(baseline);
     expect(baseline.status).toBe(200);
@@ -249,7 +250,7 @@ async function assertGuardRejects401(probeKey: keyof typeof endpointProbes, vari
     token = await jwtFactory.tenantToken({ tenantId: randomUUID(), roleId: randomUUID() });
   }
 
-  const response = await endpointProbes[probeKey].invoke(client, token);
+  const response = await endpointProbes[probeKey]!.invoke(client, token);
 
   assertResponseTime(response);
   expect(response.status).toBe(401);
@@ -287,10 +288,13 @@ describe("Admin Portal — auth guard contract (all 7 endpoints)", () => {
     const response = await client.createTenant(payload); // no Authorization header
 
     expect(response.status).toBe(401);
-    await withDbClient(async (db) => {
-      const { rows } = await db.query("SELECT count(*)::int AS n FROM tenants WHERE domain = $1", [payload.domain]);
-      expect(rows[0].n).toBe(0);
-    });
+    // The no-side-effect DB check needs a direct connection (local only); on live the 401 alone stands.
+    if (hasDbAccess()) {
+      await withDbClient(async (db) => {
+        const { rows } = await db.query("SELECT count(*)::int AS n FROM tenants WHERE domain = $1", [payload.domain]);
+        expect(rows[0].n).toBe(0);
+      });
+    }
   });
 });
 
@@ -461,7 +465,7 @@ describe("Admin Portal — POST /admin/tenants (create)", () => {
     const { overrides, invalidFields } = variant;
 
     const client = new AdminPortalClient();
-    const adminToken = await signAdminToken({ sub: randomUUID() });
+    const adminToken = await validAdminToken();
     const payload = adminTenantCreatePayload(overrides);
 
     const response = await client.createTenant(payload, adminToken);
@@ -476,7 +480,8 @@ describe("Admin Portal — POST /admin/tenants (create)", () => {
       expect(fields[field]).toBe(message);
     }
     // No side effects — the (valid, unique) domain of the rejected payload never lands in the DB.
-    if (overrides.domain === undefined) {
+    // Only assertable where a direct DB connection exists (local); skipped on live (dev has none).
+    if (overrides.domain === undefined && hasDbAccess()) {
       await withDbClient(async (db) => {
         const { rows } = await db.query("SELECT count(*)::int AS n FROM tenants WHERE domain = $1", [payload.domain]);
         expect(rows[0].n).toBe(0);

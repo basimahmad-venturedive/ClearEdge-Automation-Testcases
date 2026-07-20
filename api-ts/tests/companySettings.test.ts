@@ -5,20 +5,33 @@
  * /api/v1/company-settings), §4 error codes, §7 security (SR-001..004),
  * §2 database (company_settings). Manual suite: testcases/TC-CEIQ-FEAT-004.md.
  *
- * SCAFFOLDED — every test is `test.skip` because no environment, PO token, or
- * deployed Company Settings controllers / migration exist yet (§5/§9 TBD).
- * Matches the FEAT-003 pattern (tests/userManagement.test.ts). Un-skip once a live
- * env + a real PO JWT (manage_company_settings) + tenant-scoped test DB are wired.
+ * RUNNING FOR REAL against codebase/clearedge-backend on Local (2026-07-20).
+ * Each case seeds an active tenant + PO (manage_company_settings) user row directly
+ * in Postgres (createFixtureTenantAndUser) and mints a tenant-pool token signed by
+ * the local JWKS mock (signTenantToken) — the same pattern as tests/auth.test.ts.
+ * The whole suite is LOCAL-ONLY: live targets (dev/qa/prod) have no DB reachability
+ * and no provisioned tenant-pool user, so it skips there (isLiveEnv()).
+ *
+ * NOTE (backend behaviour, dev pull 2026-07-20): JwtAuthGuard now fails CLOSED when the
+ * token's sub has no users row (TokenValidityService) — hence every token below is
+ * signed with fixture.cognitoSub, which the fixture inserts as a real users row.
  *
  * (TC-CSSEC-003 — plain-text render / no-XSS — is a UI case; see the Playwright
  *  suite automation/frontend/tests/company-settings-edit.spec.ts.)
  */
-import { describe, test, expect } from "vitest";
+import { afterEach, beforeAll, describe, test, expect } from "vitest";
 import { CompanySettingsClient, SECTION_KEYS } from "../src/clients/companySettingsClient";
-import { JwtFactory } from "../src/utils/jwtHelpers";
+import { signTenantToken } from "../local-env/localCognitoMock";
+import {
+  createFixtureTenantAndUser,
+  deleteFixtureTenant,
+  type FixtureTenant,
+} from "../src/utils/dbFixtures";
+import { withDbClient } from "../src/utils/dbClient";
+import { isLiveEnv, hasDbAccess } from "../src/config/env";
+import { liveOwnerContext } from "../src/utils/poContext";
 import {
   newSectionContent,
-  newLargeContent,
   PUT_EMPTY,
   PUT_MISSING_CONTENT,
   PUT_NULL_CONTENT,
@@ -31,28 +44,93 @@ import {
 } from "../src/schemas/companySettings.schema";
 import { assertResponseTime, assertErrorEnvelope } from "../src/utils/assertions";
 
-const NO_ENV_REASON =
-  "no environment / deployed Company Settings controllers / PO token yet — see TC-CEIQ-FEAT-004.md";
-const DB_REASON = `${NO_ENV_REASON}; also needs tenant-scoped DB access to assert the persisted row / RLS / audit`;
-const TWO_TENANT_REASON = `${NO_ENV_REASON}; also needs two seeded tenants (A/B) for isolation`;
+// The suite runs on BOTH local and a live target with a real DEV_TENANT_* Procurement Owner.
+// - `test`      → env-agnostic (read shape, auth 401, section-key/body validation — non-mutating).
+// - `localOnly` → needs a DB fixture (seeding, multi-tenant/isolation, non-owner, inactive,
+//                 or a write that would mutate the live tenant). Skipped on live.
+// - `dbOnly`    → direct company_settings row/RLS/audit assertions (needs TEST_DATABASE_URL).
+const d = describe;
+const localOnly = isLiveEnv() ? test.skip : test;
+const dbOnly = hasDbAccess() ? test : test.skip;
 
-const jwtFactory = new JwtFactory();
-const TENANT_A = "tenant-a";
-const TENANT_B = "tenant-b";
-const PO_ROLE = "role-po"; // holds manage_company_settings (F1 §4)
-const NON_OWNER_ROLE = "role-manager"; // Manager/Analyst — no manage_company_settings
-const PO_SUB = "po-sub-0001";
+const client = new CompanySettingsClient();
 
-const poToken = () => jwtFactory.tenantToken({ tenantId: TENANT_A, roleId: PO_ROLE, sub: PO_SUB });
-const poTokenB = () => jwtFactory.tenantToken({ tenantId: TENANT_B, roleId: PO_ROLE, sub: "po-sub-b" });
-const nonOwnerToken = () =>
-  jwtFactory.tenantToken({ tenantId: TENANT_A, roleId: NON_OWNER_ROLE, sub: "mgr-sub-1" });
+// On a live target, pre-mint (and cache) the tenant token so the first test doesn't eat the
+// cold Cognito-login latency and time out.
+beforeAll(async () => {
+  if (isLiveEnv()) await liveOwnerContext();
+}, 30000);
+
+// Every fixture tenant created in a test is torn down afterEach (best-effort).
+const createdTenants: string[] = [];
+afterEach(async () => {
+  while (createdTenants.length > 0) {
+    const id = createdTenants.pop();
+    if (id) {
+      try {
+        await deleteFixtureTenant(id);
+      } catch {
+        /* best-effort teardown; a failed delete must not mask the test result */
+      }
+    }
+  }
+});
+
+interface Ctx extends FixtureTenant {
+  token: string;
+}
+
+async function seed(
+  roleSlug: "procurement_owner" | "procurement_manager" | "procurement_analyst",
+  tenantStatus: "active" | "inactive" = "active",
+): Promise<Ctx> {
+  const fx = await createFixtureTenantAndUser({ roleSlug, tenantStatus });
+  createdTenants.push(fx.tenantId);
+  const token = await signTenantToken({ sub: fx.cognitoSub, tenantId: fx.tenantId, roleId: fx.roleId });
+  return { ...fx, token };
+}
+
+/**
+ * A PO (Owner) with manage_company_settings on an active tenant.
+ * Live → the real DEV_TENANT_* Cognito login; Local → a fresh DB fixture + mock token.
+ * Only used by env-agnostic tests (`test`), so the live branch never needs seeding.
+ */
+const owner = async (): Promise<Ctx> => {
+  if (isLiveEnv()) {
+    const po = await liveOwnerContext();
+    return { token: po.token, tenantId: po.tenantId, roleId: "", cognitoSub: po.cognitoSub };
+  }
+  return seed("procurement_owner");
+};
+/** A Manager — deliberately WITHOUT manage_company_settings (for 403 cases). Local-only. */
+const nonOwner = () => seed("procurement_manager");
+
+/** Reads company_settings rows for a tenant under RLS (SET LOCAL app.current_tenant). */
+async function readSettingRows(
+  tenantId: string,
+): Promise<Array<{ section_key: string; content: string | null; updated_by: string | null; updated_at: Date | null }>> {
+  return withDbClient(async (c) => {
+    await c.query("BEGIN");
+    try {
+      await c.query(`SET LOCAL app.current_tenant = '${tenantId}'`);
+      const res = await c.query(
+        `SELECT section_key, content, updated_by, updated_at FROM company_settings WHERE tenant_id = $1 ORDER BY section_key`,
+        [tenantId],
+      );
+      await c.query("COMMIT");
+      return res.rows;
+    } catch (err) {
+      await c.query("ROLLBACK");
+      throw err;
+    }
+  });
+}
 
 // ── GET /company-settings ───────────────────────────────────────────────────
-describe("GET /company-settings", () => {
-  test.skip(`TC-CSAPI-001 — 200 envelope: 3 sections in fixed order + displayName mapping [blocked: ${NO_ENV_REASON}] @smoke`, async () => {
-    const client = new CompanySettingsClient();
-    const res = await client.getAll(await poToken());
+d("GET /company-settings", () => {
+  test("TC-CSAPI-001 — 200 envelope: 3 sections in fixed order + displayName mapping @smoke", async () => {
+    const po = await owner();
+    const res = await client.getAll(po.token);
     assertResponseTime(res);
     expect(res.status).toBe(200);
     const parsed = getAllResponseSchema.parse(res.data);
@@ -62,9 +140,9 @@ describe("GET /company-settings", () => {
     }
   });
 
-  test.skip(`TC-CSAPI-002 — new tenant: content:null / updatedAt:null per section [blocked: ${NO_ENV_REASON}]`, async () => {
-    const client = new CompanySettingsClient();
-    const res = await client.getAll(await poToken());
+  localOnly("TC-CSAPI-002 — new tenant: content:null / updatedAt:null per section", async () => {
+    const po = await owner();
+    const res = await client.getAll(po.token);
     const parsed = getAllResponseSchema.parse(res.data);
     for (const s of parsed.data.sections) {
       expect(s.content).toBeNull();
@@ -72,10 +150,10 @@ describe("GET /company-settings", () => {
     }
   });
 
-  test.skip(`TC-CSAPI-003 — distinguishes explicitly-cleared "" from never-saved null [blocked: ${DB_REASON}]`, async () => {
-    const client = new CompanySettingsClient();
-    await client.putSection("background", PUT_EMPTY, await poToken()); // clear → ""
-    const res = await client.getAll(await poToken());
+  localOnly("TC-CSAPI-003 — distinguishes explicitly-cleared \"\" from never-saved null", async () => {
+    const po = await owner();
+    await client.putSection("background", PUT_EMPTY, po.token); // clear → ""
+    const res = await client.getAll(po.token);
     const parsed = getAllResponseSchema.parse(res.data);
     const bg = parsed.data.sections.find((s) => s.sectionKey === "background");
     const intro = parsed.data.sections.find((s) => s.sectionKey === "introduction");
@@ -86,219 +164,291 @@ describe("GET /company-settings", () => {
 
   // TC-CSAPI-004-1..2 — no-token vs expired-token, one explicit test case each.
   async function assertGetAllRejects401(variant: "<none>" | "expired"): Promise<void> {
-    const client = new CompanySettingsClient();
     const token =
-      variant === "expired" ? await jwtFactory.expiredTenantToken({ tenantId: TENANT_A }) : undefined;
+      variant === "expired"
+        ? await signTenantToken({ sub: "x", tenantId: "y", roleId: "z", expiresInSeconds: -3600 })
+        : undefined;
     const res = await client.getAll(token);
     expect(res.status).toBe(401);
     assertErrorEnvelope(res, "ERR_AUTH_INVALID_TOKEN");
   }
 
-  test.skip(`TC-CSAPI-004-1 — no/invalid JWT (<none>) → 401 ERR_AUTH_INVALID_TOKEN [blocked: ${NO_ENV_REASON}]`, () => assertGetAllRejects401("<none>"));
-  test.skip(`TC-CSAPI-004-2 — no/invalid JWT (expired) → 401 ERR_AUTH_INVALID_TOKEN [blocked: ${NO_ENV_REASON}]`, () => assertGetAllRejects401("expired"));
+  test("TC-CSAPI-004-1 — no/invalid JWT (<none>) → 401 ERR_AUTH_INVALID_TOKEN", () => assertGetAllRejects401("<none>"));
+  test("TC-CSAPI-004-2 — no/invalid JWT (expired) → 401 ERR_AUTH_INVALID_TOKEN", () => assertGetAllRejects401("expired"));
 
-  test.skip(`TC-CSAPI-005 — non-Owner (no manage_company_settings) → 403 ERR_RBAC_FORBIDDEN [blocked: ${NO_ENV_REASON}]`, async () => {
-    const client = new CompanySettingsClient();
-    const res = await client.getAll(await nonOwnerToken());
+  localOnly("TC-CSAPI-005 — non-Owner (no manage_company_settings) → 403 ERR_RBAC_FORBIDDEN", async () => {
+    const mgr = await nonOwner();
+    const res = await client.getAll(mgr.token);
     expect(res.status).toBe(403);
     assertErrorEnvelope(res, "ERR_RBAC_FORBIDDEN");
   });
 
-  test.skip(`TC-CSAPI-006 — inactive tenant → 403 ERR_TENANT_INACTIVE [blocked: ${NO_ENV_REASON}]`, async () => {
-    // Precondition (TODO_FIXTURE): PO JWT whose tenant status is inactive.
-    const client = new CompanySettingsClient();
-    const res = await client.getAll(await poToken());
+  localOnly("TC-CSAPI-006 — inactive tenant → 403 ERR_TENANT_INACTIVE", async () => {
+    const po = await seed("procurement_owner", "inactive");
+    const res = await client.getAll(po.token);
     expect(res.status).toBe(403);
     assertErrorEnvelope(res, "ERR_TENANT_INACTIVE");
   });
 
-  test.skip(`TC-CSAPI-007 — tenant-isolated: PO of A never sees B rows (SR-002, RLS) [blocked: ${TWO_TENANT_REASON}]`, async () => {
-    const client = new CompanySettingsClient();
-    // Seed B with recognizable content (TODO_FIXTURE), then read as A.
-    await client.putSection("background", newSectionContent({ content: "TENANT-B-ONLY" }), await poTokenB());
-    const res = await client.getAll(await poToken());
+  localOnly("TC-CSAPI-007 — tenant-isolated: PO of A never sees B rows (SR-002, RLS)", async () => {
+    const a = await owner();
+    const b = await owner();
+    await client.putSection("background", newSectionContent({ content: "TENANT-B-ONLY" }), b.token);
+    const res = await client.getAll(a.token);
     const parsed = getAllResponseSchema.parse(res.data);
     for (const s of parsed.data.sections) expect(s.content).not.toBe("TENANT-B-ONLY");
   });
 });
 
 // ── PUT /company-settings/:sectionKey ───────────────────────────────────────
-describe("PUT /company-settings/:sectionKey", () => {
-  test.skip(`TC-CSAPI-010 — valid content upserts, echoes section + confirmation message [blocked: ${NO_ENV_REASON}] @smoke`, async () => {
-    const client = new CompanySettingsClient();
+d("PUT /company-settings/:sectionKey", () => {
+  localOnly("TC-CSAPI-010 — valid content upserts, echoes section + confirmation message @smoke", async () => {
+    const po = await owner();
     const body = newSectionContent();
-    const res = await client.putSection("background", body, await poToken());
+    const res = await client.putSection("background", body, po.token);
     assertResponseTime(res);
     expect(res.status).toBe(200);
     const parsed = putSectionResponseSchema.parse(res.data);
     expect(parsed.data.section.sectionKey).toBe("background");
     expect(parsed.data.section.displayName).toBe("Company Background");
-    // Echo assertion (api-automation.rules): the sent content is reflected back in data.section.
     expect(parsed.data.section.content).toBe(body.content);
-    expect(parsed.data.message).toBe(
+    // Confirmation message is at the envelope top level (@ResponseMessage hoisting), not data.
+    expect(parsed.message).toBe(
       "'Company Background' has been updated. New sourcing events you create from now on will include this updated information.",
     );
   });
 
-  test.skip(`TC-CSAPI-011 — empty content "" is valid and clears the section (BR-05) [blocked: ${DB_REASON}]`, async () => {
-    const client = new CompanySettingsClient();
-    const res = await client.putSection("introduction", PUT_EMPTY, await poToken());
+  localOnly("TC-CSAPI-011 — empty content \"\" is valid and clears the section (BR-05)", async () => {
+    const po = await owner();
+    const res = await client.putSection("introduction", PUT_EMPTY, po.token);
     expect(res.status).toBe(200);
     const parsed = putSectionResponseSchema.parse(res.data);
     expect(parsed.data.section.content).toBe("");
-    const get = await client.getAll(await poToken());
+    const get = await client.getAll(po.token);
     const intro = getAllResponseSchema.parse(get.data).data.sections.find((s) => s.sectionKey === "introduction");
     expect(intro?.content).toBe("");
   });
 
-  // TC-CSAPI-012-1..4 — one explicit test case per invalid sectionKey (see INVALID_SECTION_KEYS).
+  // TC-CSAPI-012-1..4 — one explicit test case per invalid sectionKey.
   async function assertInvalidSectionKeyRejected(key: string): Promise<void> {
-    const client = new CompanySettingsClient();
-    const res = await client.putSection(key, newSectionContent(), await poToken());
+    const po = await owner();
+    const res = await client.putSection(key, newSectionContent(), po.token);
     expect(res.status).toBe(400);
     assertErrorEnvelope(res, "ERR_INVALID_SECTION_KEY");
-    // details.allowed lists the three valid keys; no internal/tenant info leaked (SR-004).
     const body = res.data as { error: { details?: { allowed?: string[] } } };
     expect(body.error.details?.allowed).toEqual([...SECTION_KEYS]);
   }
 
-  test.skip(`TC-CSAPI-012-1 — invalid sectionKey "invalid_key" → 400 ERR_INVALID_SECTION_KEY [blocked: ${NO_ENV_REASON}]`, () => assertInvalidSectionKeyRejected("invalid_key"));
-  test.skip(`TC-CSAPI-012-2 — invalid sectionKey "Background" (case-sensitive) → 400 ERR_INVALID_SECTION_KEY [blocked: ${NO_ENV_REASON}]`, () => assertInvalidSectionKeyRejected("Background"));
-  test.skip(`TC-CSAPI-012-3 — invalid sectionKey "BACKGROUND" (case-sensitive) → 400 ERR_INVALID_SECTION_KEY [blocked: ${NO_ENV_REASON}]`, () => assertInvalidSectionKeyRejected("BACKGROUND"));
-  test.skip(`TC-CSAPI-012-4 — invalid sectionKey "../etc" (path-shaped) → 400 ERR_INVALID_SECTION_KEY [blocked: ${NO_ENV_REASON}]`, () => assertInvalidSectionKeyRejected("../etc"));
+  test("TC-CSAPI-012-1 — invalid sectionKey \"invalid_key\" → 400 ERR_INVALID_SECTION_KEY", () => assertInvalidSectionKeyRejected("invalid_key"));
+  test("TC-CSAPI-012-2 — invalid sectionKey \"Background\" (case-sensitive) → 400 ERR_INVALID_SECTION_KEY", () => assertInvalidSectionKeyRejected("Background"));
+  test("TC-CSAPI-012-3 — invalid sectionKey \"BACKGROUND\" (case-sensitive) → 400 ERR_INVALID_SECTION_KEY", () => assertInvalidSectionKeyRejected("BACKGROUND"));
+  test("TC-CSAPI-012-4 — path-shaped sectionKey \"../etc\" is rejected (HTTP path-normalizes → 404, never reaches the handler)", async () => {
+    // A `..`-shaped key is collapsed by URL path normalization before routing, so it never
+    // reaches SectionKeyPipe (which would give 400 ERR_INVALID_SECTION_KEY). The security
+    // intent (SR-004: traversal-shaped input must not be accepted or leak data) still holds —
+    // it resolves to a non-matching route (404), not a processed section.
+    const po = await owner();
+    const res = await client.putSection("../etc", newSectionContent(), po.token);
+    expect(res.status).toBe(404);
+    const serialized = JSON.stringify(res.data);
+    expect(serialized).not.toMatch(/company_settings|SELECT|stack/i); // no internals disclosed
+  });
 
-  test.skip(`TC-CSAPI-013 — missing content field → 400 ERR_VALIDATION_FAILED [blocked: ${NO_ENV_REASON}]`, async () => {
-    const client = new CompanySettingsClient();
-    const res = await client.putSection("background", PUT_MISSING_CONTENT, await poToken());
+  test("TC-CSAPI-013 — missing content field → 400 ERR_VALIDATION_FAILED", async () => {
+    const po = await owner();
+    const res = await client.putSection("background", PUT_MISSING_CONTENT, po.token);
     expect(res.status).toBe(400);
     assertErrorEnvelope(res, "ERR_VALIDATION_FAILED");
   });
 
-  test.skip(`TC-CSAPI-014 — content:null → 400 ERR_VALIDATION_FAILED (not null) [blocked: ${NO_ENV_REASON}]`, async () => {
-    const client = new CompanySettingsClient();
-    const res = await client.putSection("background", PUT_NULL_CONTENT, await poToken());
+  test("TC-CSAPI-014 — content:null → 400 ERR_VALIDATION_FAILED (not null)", async () => {
+    const po = await owner();
+    const res = await client.putSection("background", PUT_NULL_CONTENT, po.token);
     expect(res.status).toBe(400);
     assertErrorEnvelope(res, "ERR_VALIDATION_FAILED");
   });
 
-  test.skip(`TC-CSAPI-015 — upsert: first save creates, second updates (updated_at advances) [blocked: ${DB_REASON}]`, async () => {
-    const client = new CompanySettingsClient();
-    const first = await client.putSection("terms_and_conditions", { content: "v1" }, await poToken());
-    const second = await client.putSection("terms_and_conditions", { content: "v2" }, await poToken());
+  localOnly("TC-CSAPI-015 — upsert: first save creates, second updates (updated_at advances)", async () => {
+    const po = await owner();
+    const first = await client.putSection("terms_and_conditions", { content: "v1" }, po.token);
+    const second = await client.putSection("terms_and_conditions", { content: "v2" }, po.token);
     expect(first.status).toBe(200);
     expect(second.status).toBe(200);
     const p1 = putSectionResponseSchema.parse(first.data);
     const p2 = putSectionResponseSchema.parse(second.data);
     expect(p2.data.section.content).toBe("v2");
-    // DB assertion (TODO_FIXTURE): exactly one row; updated_at(p2) > updated_at(p1); updated_by = PO id.
     expect(new Date(p2.data.section.updatedAt ?? 0).getTime()).toBeGreaterThanOrEqual(
       new Date(p1.data.section.updatedAt ?? 0).getTime(),
     );
+    // DB: exactly one row for (tenant, section); updated_by = PO's users.id.
+    const rows = await readSettingRows(po.tenantId);
+    const tc = rows.filter((r) => r.section_key === "terms_and_conditions");
+    expect(tc).toHaveLength(1);
+    expect(tc[0]?.updated_by).not.toBeNull();
   });
 
-  // TC-CSAPI-016-1..2 — no-token vs expired-token on the write path, one explicit test case each.
+  // TC-CSAPI-016-1..2 — no-token vs expired-token on the write path.
   async function assertPutRejects401(variant: "<none>" | "expired"): Promise<void> {
-    const client = new CompanySettingsClient();
     const token =
-      variant === "expired" ? await jwtFactory.expiredTenantToken({ tenantId: TENANT_A }) : undefined;
+      variant === "expired"
+        ? await signTenantToken({ sub: "x", tenantId: "y", roleId: "z", expiresInSeconds: -3600 })
+        : undefined;
     const res = await client.putSection("background", newSectionContent(), token);
     expect(res.status).toBe(401);
     assertErrorEnvelope(res, "ERR_AUTH_INVALID_TOKEN");
   }
 
-  test.skip(`TC-CSAPI-016-1 — no/invalid JWT (<none>) → 401 [blocked: ${NO_ENV_REASON}]`, () => assertPutRejects401("<none>"));
-  test.skip(`TC-CSAPI-016-2 — no/invalid JWT (expired) → 401 [blocked: ${NO_ENV_REASON}]`, () => assertPutRejects401("expired"));
+  test("TC-CSAPI-016-1 — no/invalid JWT (<none>) → 401", () => assertPutRejects401("<none>"));
+  test("TC-CSAPI-016-2 — no/invalid JWT (expired) → 401", () => assertPutRejects401("expired"));
 
-  test.skip(`TC-CSAPI-017 — non-Owner → 403 ERR_RBAC_FORBIDDEN, no row written [blocked: ${NO_ENV_REASON}]`, async () => {
-    const client = new CompanySettingsClient();
-    const res = await client.putSection("background", newSectionContent(), await nonOwnerToken());
+  localOnly("TC-CSAPI-017 — non-Owner → 403 ERR_RBAC_FORBIDDEN, no row written", async () => {
+    const mgr = await nonOwner();
+    const res = await client.putSection("background", newSectionContent(), mgr.token);
     expect(res.status).toBe(403);
     assertErrorEnvelope(res, "ERR_RBAC_FORBIDDEN");
+    const rows = await readSettingRows(mgr.tenantId);
+    expect(rows).toHaveLength(0);
   });
 
-  test.skip(`TC-CSAPI-018 — tenant-isolated write: A cannot alter B's row (SR-002) [blocked: ${TWO_TENANT_REASON}]`, async () => {
-    const client = new CompanySettingsClient();
-    await client.putSection("background", { content: "B-original" }, await poTokenB());
-    await client.putSection("background", { content: "A-owned" }, await poToken());
-    const getB = await client.getAll(await poTokenB());
+  localOnly("TC-CSAPI-018 — tenant-isolated write: A cannot alter B's row (SR-002)", async () => {
+    const a = await owner();
+    const b = await owner();
+    await client.putSection("background", { content: "B-original" }, b.token);
+    await client.putSection("background", { content: "A-owned" }, a.token);
+    const getB = await client.getAll(b.token);
     const bBg = getAllResponseSchema.parse(getB.data).data.sections.find((s) => s.sectionKey === "background");
     expect(bBg?.content).toBe("B-original"); // B unchanged by A's write
   });
 
-  test.skip(`TC-CSAPI-019 — large content accepted (no char limit), round-trips [blocked: ${NO_ENV_REASON}]`, async () => {
-    const client = new CompanySettingsClient();
-    const body = newLargeContent(100_000);
-    const res = await client.putSection("background", body, await poToken());
-    assertResponseTime(res);
-    expect(res.status).toBe(200);
-    const get = await client.getAll(await poToken());
+  localOnly("TC-CSAPI-019 — content length limit enforced per section (background=3000): max accepted & round-trips, over-limit → 400", async () => {
+    // SPEC DEVIATION from the scaffold's original "no char limit" premise: the shipped
+    // contract (docs/contracts/company-settings.contract.md §2, PM-confirmed 2026-07-19)
+    // caps background/introduction at 3,000 chars and terms_and_conditions at 6,000, all as
+    // ERR_VALIDATION_FAILED. The manual case TC-CEIQ-FEAT-004 assumed unlimited — reconcile it.
+    const po = await owner();
+    const atLimit = { content: "x".repeat(3000) };
+    const accepted = await client.putSection("background", atLimit, po.token);
+    assertResponseTime(accepted);
+    expect(accepted.status).toBe(200);
+    const get = await client.getAll(po.token);
     const bg = getAllResponseSchema.parse(get.data).data.sections.find((s) => s.sectionKey === "background");
-    expect(bg?.content).toBe(body.content); // verbatim, no truncation
+    expect(bg?.content).toBe(atLimit.content); // verbatim at the boundary, no truncation
+
+    const overLimit = { content: "x".repeat(3001) };
+    const rejected = await client.putSection("background", overLimit, po.token);
+    expect(rejected.status).toBe(400);
+    assertErrorEnvelope(rejected, "ERR_VALIDATION_FAILED");
   });
 
-  test.skip(`TC-CSAPI-020 — HTML/special chars stored VERBATIM as plain text (SR-003, BR-09) [blocked: ${NO_ENV_REASON}]`, async () => {
-    const client = new CompanySettingsClient();
-    const res = await client.putSection("background", PUT_HTML_VERBATIM, await poToken());
+  localOnly("TC-CSAPI-020 — HTML/special chars stored VERBATIM as plain text (SR-003, BR-09)", async () => {
+    const po = await owner();
+    const res = await client.putSection("background", PUT_HTML_VERBATIM, po.token);
     expect(res.status).toBe(200);
-    const get = await client.getAll(await poToken());
+    const get = await client.getAll(po.token);
     const bg = getAllResponseSchema.parse(get.data).data.sections.find((s) => s.sectionKey === "background");
     expect(bg?.content).toBe(PUT_HTML_VERBATIM.content); // no sanitization/encoding at storage
   });
 
-  test.skip(`TC-CSAPI-021 — PUT on inactive tenant → 403 ERR_TENANT_INACTIVE (write-path parity, REC-01) [blocked: ${NO_ENV_REASON}]`, async () => {
-    // Precondition (TODO_FIXTURE): PO JWT whose tenant status is fully inactive (not setup-phase).
-    const client = new CompanySettingsClient();
-    const res = await client.putSection("background", newSectionContent(), await poToken());
+  localOnly("TC-CSAPI-021 — PUT on inactive tenant → 403 ERR_TENANT_INACTIVE (write-path parity, REC-01)", async () => {
+    const po = await seed("procurement_owner", "inactive");
+    const res = await client.putSection("background", newSectionContent(), po.token);
     expect(res.status).toBe(403);
     assertErrorEnvelope(res, "ERR_TENANT_INACTIVE");
   });
 });
 
 // ── Database — company_settings (paired with API layer) ─────────────────────
-describe("company_settings (DB)", () => {
-  test.skip(`TC-CSDB-001 — upsert maintains exactly one row per (tenant_id, section_key) [blocked: ${DB_REASON}]`, async () => {
-    // 1. PUT background twice. 2. SELECT count(*) WHERE tenant_id AND section_key='background' === 1.
-    expect(true).toBe(true); // TODO_DB: assert row count via dbClient with SET LOCAL app.current_tenant.
+d("company_settings (DB)", () => {
+  dbOnly("TC-CSDB-001 — upsert maintains exactly one row per (tenant_id, section_key)", async () => {
+    const po = await owner();
+    await client.putSection("background", { content: "v1" }, po.token);
+    await client.putSection("background", { content: "v2" }, po.token);
+    const rows = (await readSettingRows(po.tenantId)).filter((r) => r.section_key === "background");
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.content).toBe("v2");
   });
 
-  test.skip(`TC-CSDB-002 — content NULL (never saved) vs '' (cleared); updated_by/updated_at set [blocked: ${DB_REASON}]`, async () => {
-    expect(true).toBe(true); // TODO_DB: never-saved → no row; after PUT "" → content='' (not NULL), updated_by=PO, updated_at not null.
+  dbOnly("TC-CSDB-002 — content NULL (never saved) vs '' (cleared); updated_by/updated_at set", async () => {
+    const po = await owner();
+    // never saved → no row at all
+    let rows = await readSettingRows(po.tenantId);
+    expect(rows.find((r) => r.section_key === "introduction")).toBeUndefined();
+    // cleared → row with content='' (not NULL), updated_by + updated_at set
+    await client.putSection("introduction", PUT_EMPTY, po.token);
+    rows = await readSettingRows(po.tenantId);
+    const intro = rows.find((r) => r.section_key === "introduction");
+    expect(intro?.content).toBe("");
+    expect(intro?.updated_by).not.toBeNull();
+    expect(intro?.updated_at).not.toBeNull();
   });
 
-  test.skip(`TC-CSDB-003 — section_key CHECK constraint rejects disallowed values [blocked: ${DB_REASON}]`, async () => {
-    expect(true).toBe(true); // TODO_DB: direct INSERT with section_key='invalid' raises a CHECK violation.
+  dbOnly("TC-CSDB-003 — section_key CHECK constraint rejects disallowed values", async () => {
+    const po = await owner();
+    await expect(
+      withDbClient(async (c) => {
+        await c.query("BEGIN");
+        await c.query(`SET LOCAL app.current_tenant = '${po.tenantId}'`);
+        await c.query(
+          `INSERT INTO company_settings (tenant_id, section_key, content) VALUES ($1, 'invalid_section', 'x')`,
+          [po.tenantId],
+        );
+        await c.query("COMMIT");
+      }),
+    ).rejects.toThrow();
   });
 
-  test.skip(`TC-CSDB-004 — RLS: rows visible/modifiable only within app.current_tenant (SR-002) [blocked: ${TWO_TENANT_REASON}]`, async () => {
-    expect(true).toBe(true); // TODO_DB: SET LOCAL app.current_tenant=A sees only A; cross-tenant UPDATE affects 0 rows.
+  dbOnly("TC-CSDB-004 — RLS: rows visible/modifiable only within app.current_tenant (SR-002)", async () => {
+    const a = await owner();
+    const b = await owner();
+    await client.putSection("background", { content: "A-content" }, a.token);
+    // Reading under B's tenant context must not see A's row.
+    const bRows = await readSettingRows(b.tenantId);
+    expect(bRows.find((r) => r.content === "A-content")).toBeUndefined();
+    // Reading under A's tenant context sees exactly A's row.
+    const aRows = await readSettingRows(a.tenantId);
+    expect(aRows.find((r) => r.content === "A-content")).toBeDefined();
   });
 
-  test.skip(`TC-CSDB-005 — each PUT write captured in tenant_audit_logs (F1 §13) [blocked: ${DB_REASON}]`, async () => {
-    expect(true).toBe(true); // TODO_DB: audit count increases by 1, attributable to the PO principal, after a PUT.
+  dbOnly("TC-CSDB-005 — each PUT write captured in tenant_audit_logs (F1 §13)", async () => {
+    const po = await owner();
+    await client.putSection("background", { content: "audit-me" }, po.token);
+    const rows = await withDbClient(async (c) => {
+      const res = await c.query(
+        `SELECT action, table_name, actor_sub FROM tenant_audit_logs WHERE tenant_id = $1 AND table_name = 'company_settings'`,
+        [po.tenantId],
+      );
+      return res.rows;
+    });
+    expect(rows.length).toBeGreaterThanOrEqual(1);
+    expect(rows[0]?.actor_sub).toBe(po.cognitoSub);
   });
 });
 
 // ── Security roll-ups (SR-001, SR-002, SR-004) ──────────────────────────────
-describe("Company Settings security (SR)", () => {
-  test.skip(`TC-CSSEC-001 — SR-001: right enforced on BOTH endpoints (non-Owner → 403) [blocked: ${NO_ENV_REASON}]`, async () => {
-    const client = new CompanySettingsClient();
-    const token = await nonOwnerToken();
-    const getRes = await client.getAll(token);
+d("Company Settings security (SR)", () => {
+  localOnly("TC-CSSEC-001 — SR-001: right enforced on BOTH endpoints (non-Owner → 403)", async () => {
+    const mgr = await nonOwner();
+    const getRes = await client.getAll(mgr.token);
     expect(getRes.status).toBe(403);
     assertErrorEnvelope(getRes, "ERR_RBAC_FORBIDDEN");
-    const putRes = await client.putSection("background", newSectionContent(), token);
+    const putRes = await client.putSection("background", newSectionContent(), mgr.token);
     expect(putRes.status).toBe(403);
     assertErrorEnvelope(putRes, "ERR_RBAC_FORBIDDEN");
   });
 
-  test.skip(`TC-CSSEC-002 — SR-002: isolation across read + write (roll-up of 007/018/DB-004) [blocked: ${TWO_TENANT_REASON}]`, async () => {
-    // Covered end-to-end by TC-CSAPI-007 (read), TC-CSAPI-018 (write), TC-CSDB-004 (RLS).
-    expect(true).toBe(true);
+  localOnly("TC-CSSEC-002 — SR-002: isolation across read + write (roll-up of 007/018/DB-004)", async () => {
+    // End-to-end isolation: A writes, B never sees it on read, and B's own write is independent.
+    const a = await owner();
+    const b = await owner();
+    await client.putSection("background", { content: "A-secret" }, a.token);
+    const getB = await client.getAll(b.token);
+    const bBg = getAllResponseSchema.parse(getB.data).data.sections.find((s) => s.sectionKey === "background");
+    expect(bBg?.content).toBeNull();
   });
 
-  test.skip(`TC-CSSEC-004 — SR-004: invalid key → generic 400, no data leakage [blocked: ${NO_ENV_REASON}]`, async () => {
-    const client = new CompanySettingsClient();
-    const res = await client.putSection("other_tenants_data", newSectionContent(), await poToken());
+  test("TC-CSSEC-004 — SR-004: invalid key → generic 400, no data leakage", async () => {
+    const po = await owner();
+    const res = await client.putSection("other_tenants_data", newSectionContent(), po.token);
     expect(res.status).toBe(400);
     assertErrorEnvelope(res, "ERR_INVALID_SECTION_KEY");
     const serialized = JSON.stringify(res.data);

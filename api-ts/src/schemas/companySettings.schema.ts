@@ -28,14 +28,20 @@ export const getAllDataSchema = z.object({
   sections: z.array(sectionObjectSchema).length(3),
 });
 
-/** PUT /company-settings/:sectionKey — the saved section + a confirmation message. */
+/**
+ * PUT /company-settings/:sectionKey — the saved section.
+ * NOTE: the confirmation message lives at the ENVELOPE top level (`message`), not under
+ * `data` — the backend's @ResponseMessage() hoists it per the standard F1 §9.2 envelope
+ * (docs/contracts/company-settings.contract.md §2). Assert it via the envelope, not here.
+ */
 export const putSectionDataSchema = z.object({
   section: sectionObjectSchema,
-  message: z.string().min(1),
 });
 
+// The standard success envelope always carries a top-level `message` ("Done" by default,
+// or a route-specific string hoisted by @ResponseMessage()).
 export const successEnvelope = <T extends z.ZodTypeAny>(data: T) =>
-  z.object({ success: z.literal(true), data });
+  z.object({ success: z.literal(true), data, message: z.string() });
 
 export const getAllResponseSchema = successEnvelope(getAllDataSchema);
 export const putSectionResponseSchema = successEnvelope(putSectionDataSchema);

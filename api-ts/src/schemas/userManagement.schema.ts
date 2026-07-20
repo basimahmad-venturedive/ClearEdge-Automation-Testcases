@@ -24,7 +24,9 @@ export const userObjectSchema = z.object({
 export const paginationSchema = z.object({
   page: z.number().int().min(1),
   limit: z.number().int(),
-  totalRecords: z.number().int().min(0),
+  // Contract field is `totalCount` (PaginatedUsersResponseDto.UsersPaginationMetaDto),
+  // not `totalRecords` — count of the filtered/searched set, not the tenant total.
+  totalCount: z.number().int().min(0),
   totalPages: z.number().int().min(0),
 });
 
