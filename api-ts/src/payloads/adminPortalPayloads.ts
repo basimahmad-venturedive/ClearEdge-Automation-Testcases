@@ -15,7 +15,9 @@ import { faker } from "@faker-js/faker";
 
 export interface AdminTenantCreatePayload {
   name: string;
-  domain: string;
+  // Request field is `websiteUrl` (CreateTenantDto, dev pull 2026-07). The backend derives a
+  // normalized `domain` (hostname) from it for the uniqueness key; the response carries both.
+  websiteUrl: string;
   address: string;
   ownerName: string;
   ownerEmail: string;
@@ -23,7 +25,7 @@ export interface AdminTenantCreatePayload {
 
 export interface CompanyUpdatePayload {
   name: string;
-  domain: string;
+  websiteUrl: string;
   address: string;
 }
 
@@ -43,7 +45,8 @@ export interface AdminTenant {
   id: string;
   displayId: string;
   name: string;
-  domain: string;
+  domain: string; // normalized hostname (derived from websiteUrl)
+  websiteUrl: string; // as entered
   address: string;
   status: TenantStatus;
   setupStatus: "in_setup" | "handed_over";
@@ -68,7 +71,11 @@ export const LIST_PAGE_SIZE = 12; // §4.2 GET list — fixed, hardcoded server-
 export const DISPLAY_ID_PATTERN = /^TEN\d{4,}$/;
 
 export const ERR_VALIDATION_FAILED = "ERR_VALIDATION_FAILED";
-export const ERR_NOT_FOUND = "ERR_NOT_FOUND";
+// The backend's error enum defines ONLY ERR_TENANT_NOT_FOUND (there is no ERR_NOT_FOUND), and
+// tenant.repository throws it for every tenant 404 (detail/company/status/owner/handover) — so
+// this is consistent, and the scaffold's original "ERR_NOT_FOUND" guess was wrong. Verified
+// against src/common/exceptions/error-code.ts + tenant.repository.ts (dev pull 2026-07).
+export const ERR_NOT_FOUND = "ERR_TENANT_NOT_FOUND";
 export const ERR_AUTH_INVALID_TOKEN = "ERR_AUTH_INVALID_TOKEN";
 export const ERR_TENANT_DOMAIN_DUPLICATE = "ERR_TENANT_DOMAIN_DUPLICATE";
 export const ERR_EMAIL_ALREADY_IN_USE = "ERR_EMAIL_ALREADY_IN_USE";
@@ -81,12 +88,12 @@ export const MSG_EMAIL_IN_USE = "This email is already in use.";
 export const MSG_CANNOT_ACTIVATE_IN_SETUP = "Cannot activate a tenant that is still in setup.";
 export const MSG_ALREADY_HANDED_OVER = "Tenant has already been handed over.";
 
-/** Exact per-field validation messages from §5. */
+/** Exact per-field validation messages (CreateTenantDto / UpdateCompanyDto). */
 export const FIELD_MESSAGES = {
   nameRequired: "Company name is required.",
   nameMax: "Company name must not exceed 255 characters.",
-  domainInvalid: "Please enter a valid website URL.",
-  domainMax: "Website URL must not exceed 255 characters.",
+  websiteUrlInvalid: "Please enter a valid website URL.",
+  websiteUrlMax: "Website URL must not exceed 500 characters.",
   addressRequired: "Company address is required.",
   addressMax: "Company address must not exceed 500 characters.",
   ownerNameRequired: "Owner name is required.",
@@ -95,10 +102,10 @@ export const FIELD_MESSAGES = {
   emailMax: "Email must not exceed 320 characters.",
 } as const;
 
-/** §5 field length limits (post-normalization for domain). */
+/** Field length limits (CreateTenantDto). websiteUrl is 500 (was domain 255). */
 export const FIELD_LIMITS = {
   name: 255,
-  domain: 255,
+  websiteUrl: 500,
   address: 500,
   ownerName: 255,
   ownerEmail: 320,
@@ -129,7 +136,7 @@ export function adminTenantCreatePayload(overrides: Partial<AdminTenantCreatePay
   const unique = uniqueSuffix();
   return {
     name: `Acme Logistics ${unique}`,
-    domain: `acme${unique}.test`,
+    websiteUrl: `acme${unique}.test`,
     address: "221B Baker Street, London, UK",
     ownerName: `Sarah Chen ${unique}`,
     ownerEmail: `sarah.chen.${unique}@example.test`,
@@ -141,7 +148,7 @@ export function companyUpdatePayload(overrides: Partial<CompanyUpdatePayload> = 
   const unique = uniqueSuffix();
   return {
     name: `Orbit Media Group ${unique}`,
-    domain: `orbit${unique}.test`,
+    websiteUrl: `orbit${unique}.test`,
     address: "9 Harbour View, Sydney, NSW, Australia",
     ...overrides,
   };
@@ -209,9 +216,20 @@ export function emailOfLength(totalLength: number): string {
   return `${local}@${domainOfLength(domainLength)}`;
 }
 
+/**
+ * Exact-length VALID URL: `https://<short-unique-host>.test/<long path>`. A 500-char bare
+ * domain fails IsUrl (host max ~253), so long values must put the length in the path, which
+ * IsUrl accepts. Host stays short + unique so at-limit creates don't collide.
+ */
+export function urlOfLength(totalLength: number): string {
+  const host = `https://u${uniqueSuffix()}.test/`;
+  if (host.length > totalLength) return host.slice(0, totalLength);
+  return host + "a".repeat(totalLength - host.length);
+}
+
 /** Field-appropriate exact-length value for the create payload boundary matrix. */
 export function boundaryValueFor(field: keyof AdminTenantCreatePayload, length: number): string {
-  if (field === "domain") return domainOfLength(length);
+  if (field === "websiteUrl") return urlOfLength(length);
   if (field === "ownerEmail") return emailOfLength(length);
   return uniqueStringOfLength(length);
 }
@@ -228,7 +246,7 @@ export interface MaxLengthBoundaryCase {
 export function maxLengthBoundaryMatrix(): MaxLengthBoundaryCase[] {
   const spec: Array<[keyof AdminTenantCreatePayload, number, string]> = [
     ["name", FIELD_LIMITS.name, FIELD_MESSAGES.nameMax],
-    ["domain", FIELD_LIMITS.domain, FIELD_MESSAGES.domainMax],
+    ["websiteUrl", FIELD_LIMITS.websiteUrl, FIELD_MESSAGES.websiteUrlMax],
     ["address", FIELD_LIMITS.address, FIELD_MESSAGES.addressMax],
     ["ownerName", FIELD_LIMITS.ownerName, FIELD_MESSAGES.ownerNameMax],
     ["ownerEmail", FIELD_LIMITS.ownerEmail, FIELD_MESSAGES.emailMax],
@@ -253,8 +271,8 @@ export interface CreateValidationCase {
 export function createValidationMatrix(): CreateValidationCase[] {
   return [
     { sub: "13a name empty", overrides: { name: "" }, invalidFields: [{ field: "name", message: FIELD_MESSAGES.nameRequired }] },
-    { sub: "13b domain empty", overrides: { domain: "" }, invalidFields: [{ field: "domain", message: FIELD_MESSAGES.domainInvalid }] },
-    { sub: "13c domain invalid format", overrides: { domain: "::::" }, invalidFields: [{ field: "domain", message: FIELD_MESSAGES.domainInvalid }] },
+    { sub: "13b domain empty", overrides: { websiteUrl: "" }, invalidFields: [{ field: "websiteUrl", message: FIELD_MESSAGES.websiteUrlInvalid }] },
+    { sub: "13c domain invalid format", overrides: { websiteUrl: "::::" }, invalidFields: [{ field: "websiteUrl", message: FIELD_MESSAGES.websiteUrlInvalid }] },
     { sub: "13d address empty", overrides: { address: "" }, invalidFields: [{ field: "address", message: FIELD_MESSAGES.addressRequired }] },
     { sub: "13e ownerName empty", overrides: { ownerName: "" }, invalidFields: [{ field: "ownerName", message: FIELD_MESSAGES.ownerNameRequired }] },
     { sub: "13f ownerEmail invalid", overrides: { ownerEmail: "not-an-email" }, invalidFields: [{ field: "ownerEmail", message: FIELD_MESSAGES.emailInvalid }] },

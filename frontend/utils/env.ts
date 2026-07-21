@@ -122,6 +122,15 @@ export function adminApiBaseUrl(): string {
   return requireVar('ADMIN_API_BASE_URL');
 }
 
+/**
+ * Main-app backend API base (APP_API_BASE_URL, e.g. https://host/api) — the app
+ * SPA calls `/v1/users/*` under here. Used by the User Management seeder
+ * (utils/appApi.ts). Fails loud when missing.
+ */
+export function appApiBaseUrl(): string {
+  return requireVar('APP_API_BASE_URL');
+}
+
 /** Platform Admin email — SECRET. Guard with hasVar('PA_EMAIL') + test.skip before calling. */
 export function paEmail(): string {
   return requireVar('PA_EMAIL');
@@ -130,6 +139,16 @@ export function paEmail(): string {
 /** Platform Admin password — SECRET. Guard with hasVar('PA_PASSWORD') + test.skip before calling. */
 export function paPassword(): string {
   return requireVar('PA_PASSWORD');
+}
+
+/** Procurement Owner email (main app / tenant Cognito pool) — SECRET. Guard with hasVar('PO_EMAIL'). */
+export function poEmail(): string {
+  return requireVar('PO_EMAIL');
+}
+
+/** Procurement Owner password — SECRET. Guard with hasVar('PO_PASSWORD') + test.skip before calling. */
+export function poPassword(): string {
+  return requireVar('PO_PASSWORD');
 }
 
 /** Non-secret CI knob. */

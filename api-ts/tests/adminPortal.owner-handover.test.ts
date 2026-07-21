@@ -18,6 +18,7 @@ import { AdminPortalClient } from "../src/clients/adminPortalClient";
 import { JwtFactory } from "../src/utils/jwtHelpers";
 import { validAdminToken } from "../src/utils/testTokens";
 import { withDbClient } from "../src/utils/dbClient";
+import { hasDbAccess } from "../src/config/env";
 import { createSetupTenant, createHandedOverTenant, teardownTenant } from "../src/utils/adminPortalFixtures";
 import {
   ownerUpdatePayload,
@@ -45,6 +46,12 @@ const SKIP_REASON =
   "route implemented; needs a live env (real Cognito for create) WITH direct DB access — no env has both yet (local=DB only, dev=Cognito only)";
 const jwtFactory = new JwtFactory();
 
+/** Runs a direct-DB assertion only when TEST_DATABASE_URL is configured; else no-op (dev). */
+async function maybeDb<T>(fn: (client: import("pg").Client) => Promise<T>): Promise<T | undefined> {
+  if (!hasDbAccess()) return undefined;
+  return withDbClient(fn);
+}
+
 /** Pulls `error.details.fields` out of a 400 ERR_VALIDATION_FAILED body. */
 function validationFields(response: AxiosResponse): Record<string, string> {
   const err = response.data as ErrorEnvelope;
@@ -52,10 +59,10 @@ function validationFields(response: AxiosResponse): Record<string, string> {
 }
 
 describe("Admin Portal — PATCH /admin/tenants/:id/owner", () => {
-  test.skip(`TC-ADMAPI-050 — name-only change: users.name + tenants.owner_name updated; no Cognito/email side effects [blocked: ${SKIP_REASON}] @smoke`, async () => {
+  test(`TC-ADMAPI-050 — name-only change: users.name + tenants.owner_name updated; no Cognito/email side effects [blocked: ${SKIP_REASON}] @smoke`, async () => {
     // Arrange
     const client = new AdminPortalClient();
-    const adminToken = await jwtFactory.adminToken();
+    const adminToken = await validAdminToken();
     const { tenant, payload } = await createSetupTenant(client, adminToken);
     const newName = `Thomas Whitfield ${Date.now().toString(36)}`;
 
@@ -70,7 +77,7 @@ describe("Admin Portal — PATCH /admin/tenants/:id/owner", () => {
       expect(body.data.ownerName).toBe(newName);
       expect(body.data.ownerEmail).toBe(payload.ownerEmail);
 
-      await withDbClient(async (db) => {
+      await maybeDb(async (db) => {
         // Same user row updated — no new user row.
         const users = await db.query("SELECT name, email, status FROM users WHERE tenant_id = $1", [tenant.id]);
         expect(users.rows).toHaveLength(1);
@@ -85,10 +92,10 @@ describe("Admin Portal — PATCH /admin/tenants/:id/owner", () => {
     }
   });
 
-  test.skip(`TC-ADMAPI-051 — email change on handed-over tenant: full reassignment chain [blocked: ${SKIP_REASON}] @smoke`, async () => {
+  test(`TC-ADMAPI-051 — email change on handed-over tenant: full reassignment chain [blocked: ${SKIP_REASON}] @smoke`, async () => {
     // Arrange — disposable handed-over tenant.
     const client = new AdminPortalClient();
-    const adminToken = await jwtFactory.adminToken();
+    const adminToken = await validAdminToken();
     const { tenant, payload } = await createHandedOverTenant(client, adminToken);
     const newEmail = uniqueEmail("new-owner");
 
@@ -103,7 +110,7 @@ describe("Admin Portal — PATCH /admin/tenants/:id/owner", () => {
       expect(body.data.ownerEmail).toBe(newEmail);
       expect(body.data.setupPassword ?? null).toBeNull();
 
-      await withDbClient(async (db) => {
+      await maybeDb(async (db) => {
         const oldPo = await db.query("SELECT status FROM users WHERE tenant_id = $1 AND email = $2", [tenant.id, payload.ownerEmail]);
         expect(oldPo.rows[0].status).toBe("inactive");
         const newPo = await db.query(
@@ -124,14 +131,14 @@ describe("Admin Portal — PATCH /admin/tenants/:id/owner", () => {
     }
   });
 
-  test.skip(`TC-ADMAPI-052 — email change during Setup: new setup password issued and re-encrypted; no email [blocked: ${SKIP_REASON}] @smoke`, async () => {
+  test(`TC-ADMAPI-052 — email change during Setup: new setup password issued and re-encrypted; no email [blocked: ${SKIP_REASON}] @smoke`, async () => {
     // Arrange — Setup tenant; original setup password known from creation.
     const client = new AdminPortalClient();
-    const adminToken = await jwtFactory.adminToken();
+    const adminToken = await validAdminToken();
     const { tenant, payload } = await createSetupTenant(client, adminToken);
     const originalPassword = tenant.setupPassword;
     expect(originalPassword).toBeTruthy();
-    const previousEnc = await withDbClient(async (db) => {
+    const previousEnc = await maybeDb(async (db) => {
       const { rows } = await db.query("SELECT setup_password_enc FROM tenants WHERE id = $1", [tenant.id]);
       return rows[0].setup_password_enc as string;
     });
@@ -150,7 +157,7 @@ describe("Admin Portal — PATCH /admin/tenants/:id/owner", () => {
       expect(body.data.ownerEmail).toBe(newEmail);
 
       // Column re-encrypted: new ciphertext, never the plaintext.
-      await withDbClient(async (db) => {
+      await maybeDb(async (db) => {
         const { rows } = await db.query("SELECT setup_password_enc FROM tenants WHERE id = $1", [tenant.id]);
         const enc = rows[0].setup_password_enc as string;
         expect(enc).not.toBeNull();
@@ -167,11 +174,11 @@ describe("Admin Portal — PATCH /admin/tenants/:id/owner", () => {
     }
   });
 
-  test.skip(`TC-ADMAPI-053 — nothing changed: no-op returns current state, no side effects [blocked: ${SKIP_REASON}]`, async () => {
+  test(`TC-ADMAPI-053 — nothing changed: no-op returns current state, no side effects [blocked: ${SKIP_REASON}]`, async () => {
     const client = new AdminPortalClient();
-    const adminToken = await jwtFactory.adminToken();
+    const adminToken = await validAdminToken();
     const { tenant, payload } = await createSetupTenant(client, adminToken);
-    const usersBefore = await withDbClient(async (db) => {
+    const usersBefore = await maybeDb(async (db) => {
       const { rows } = await db.query("SELECT id, name, email, status FROM users WHERE tenant_id = $1 ORDER BY id", [tenant.id]);
       return rows;
     });
@@ -187,7 +194,7 @@ describe("Admin Portal — PATCH /admin/tenants/:id/owner", () => {
       expect(body.data.ownerName).toBe(payload.ownerName);
       expect(body.data.ownerEmail).toBe(payload.ownerEmail);
 
-      await withDbClient(async (db) => {
+      await maybeDb(async (db) => {
         const { rows } = await db.query("SELECT id, name, email, status FROM users WHERE tenant_id = $1 ORDER BY id", [tenant.id]);
         expect(rows).toEqual(usersBefore); // no new rows, no status changes
       });
@@ -197,9 +204,9 @@ describe("Admin Portal — PATCH /admin/tenants/:id/owner", () => {
     }
   });
 
-  test.skip(`TC-ADMAPI-054 — owner update negatives: duplicate email (no partial side effects), validation 400, 404 [blocked: ${SKIP_REASON}]`, async () => {
+  test(`TC-ADMAPI-054 — owner update negatives: duplicate email (no partial side effects), validation 400, 404 [blocked: ${SKIP_REASON}]`, async () => {
     const client = new AdminPortalClient();
-    const adminToken = await jwtFactory.adminToken();
+    const adminToken = await validAdminToken();
     const a = await createSetupTenant(client, adminToken);
     const b = await createSetupTenant(client, adminToken);
 
@@ -215,7 +222,7 @@ describe("Admin Portal — PATCH /admin/tenants/:id/owner", () => {
       ErrorEnvelopeSchema.parse(conflict.data);
       assertErrorEnvelope(conflict, ERR_EMAIL_ALREADY_IN_USE);
       expect((conflict.data as ErrorEnvelope).error.message).toBe(MSG_EMAIL_IN_USE);
-      await withDbClient(async (db) => {
+      await maybeDb(async (db) => {
         const users = await db.query("SELECT email, status FROM users WHERE tenant_id = $1", [b.tenant.id]);
         expect(users.rows).toHaveLength(1); // no new user row
         expect(users.rows[0]).toMatchObject({ email: b.payload.ownerEmail, status: "active" }); // no deactivation
@@ -250,11 +257,11 @@ describe("Admin Portal — PATCH /admin/tenants/:id/owner", () => {
   test.skip(`TC-ADMAPI-055 — missing active PO → 500 generic error, no partial writes (data-integrity precondition) [blocked: ${SKIP_REASON} — isolated/local env only, never shared QA data]`, async () => {
     // Arrange — corrupt-state fixture: deactivate the PO row directly in the DB.
     const client = new AdminPortalClient();
-    const adminToken = await jwtFactory.adminToken();
+    const adminToken = await validAdminToken();
     const { tenant } = await createSetupTenant(client, adminToken);
 
     try {
-      await withDbClient((db) => db.query("UPDATE users SET status = 'inactive' WHERE tenant_id = $1", [tenant.id]));
+      await maybeDb((db) => db.query("UPDATE users SET status = 'inactive' WHERE tenant_id = $1", [tenant.id]));
 
       // Act
       const response = await client.updateOwner(tenant.id, ownerUpdatePayload(), adminToken);
@@ -264,7 +271,7 @@ describe("Admin Portal — PATCH /admin/tenants/:id/owner", () => {
       expect(response.status).toBe(500);
       const rawBody = JSON.stringify(response.data ?? {});
       expect(rawBody).not.toMatch(/stack|trace|at\s+\w+\.\w+/i);
-      await withDbClient(async (db) => {
+      await maybeDb(async (db) => {
         const users = await db.query("SELECT count(*)::int AS n FROM users WHERE tenant_id = $1", [tenant.id]);
         expect(users.rows[0].n).toBe(1); // no new PO row was mirrored
         const tenants = await db.query("SELECT owner_email FROM tenants WHERE id = $1", [tenant.id]);
@@ -277,10 +284,10 @@ describe("Admin Portal — PATCH /admin/tenants/:id/owner", () => {
 });
 
 describe("Admin Portal — POST /admin/tenants/:id/handover", () => {
-  test.skip(`TC-ADMAPI-060 — handover: 200 + all DB effects in one transaction [blocked: ${SKIP_REASON}] @smoke`, async () => {
+  test(`TC-ADMAPI-060 — handover: 200 + all DB effects in one transaction [blocked: ${SKIP_REASON}] @smoke`, async () => {
     // Arrange — disposable Setup tenant (as produced by TC-ADMAPI-010).
     const client = new AdminPortalClient();
-    const adminToken = await jwtFactory.adminToken();
+    const adminToken = await validAdminToken();
     const { tenant } = await createSetupTenant(client, adminToken);
 
     try {
@@ -297,7 +304,7 @@ describe("Admin Portal — POST /admin/tenants/:id/handover", () => {
       expect(body.data.setupCompletedAt).not.toBeNull();
 
       // DB: password wiped, status flipped, completion stamped within the last 60 s — one transaction.
-      await withDbClient(async (db) => {
+      await maybeDb(async (db) => {
         const { rows } = await db.query(
           "SELECT setup_password_enc, status, setup_status, setup_completed_at FROM tenants WHERE id = $1",
           [tenant.id],
@@ -315,9 +322,9 @@ describe("Admin Portal — POST /admin/tenants/:id/handover", () => {
     }
   });
 
-  test.skip(`TC-ADMAPI-061 — handover on an already-handed-over tenant → 409 (terminal state), no state change [blocked: ${SKIP_REASON}] @smoke`, async () => {
+  test(`TC-ADMAPI-061 — handover on an already-handed-over tenant → 409 (terminal state), no state change [blocked: ${SKIP_REASON}] @smoke`, async () => {
     const client = new AdminPortalClient();
-    const adminToken = await jwtFactory.adminToken();
+    const adminToken = await validAdminToken();
     const { tenant } = await createHandedOverTenant(client, adminToken);
 
     try {
@@ -331,7 +338,7 @@ describe("Admin Portal — POST /admin/tenants/:id/handover", () => {
       expect(err.error.message).toBe(MSG_ALREADY_HANDED_OVER);
       expect(err.error.details).toMatchObject({ currentSetupStatus: "handed_over" });
 
-      await withDbClient(async (db) => {
+      await maybeDb(async (db) => {
         const { rows } = await db.query("SELECT status, setup_status FROM tenants WHERE id = $1", [tenant.id]);
         expect(rows[0]).toMatchObject({ status: "active", setup_status: "handed_over" });
       });
@@ -364,13 +371,13 @@ describe("Admin Portal — POST /admin/tenants/:id/handover", () => {
   test.skip(`TC-ADMAPI-063 — old setup password no longer authenticates after handover [blocked: ${SKIP_REASON}] @smoke`, async () => {
     // Arrange — capture the plaintext setup password before handover, then hand over.
     const client = new AdminPortalClient();
-    const adminToken = await jwtFactory.adminToken();
+    const adminToken = await validAdminToken();
     const fixture = await createHandedOverTenant(client, adminToken);
     expect(fixture.setupPasswordBeforeHandover).toBeTruthy();
 
     try {
       // API-observable half: the encrypted password is gone, so it can never be re-served.
-      await withDbClient(async (db) => {
+      await maybeDb(async (db) => {
         const { rows } = await db.query("SELECT setup_password_enc FROM tenants WHERE id = $1", [fixture.tenant.id]);
         expect(rows[0].setup_password_enc).toBeNull();
       });
@@ -389,7 +396,7 @@ describe("Admin Portal — POST /admin/tenants/:id/handover", () => {
     // before handover; assert on REFRESH-token rejection afterwards, not raw JWT expiry
     // (Cognito access tokens stay valid until natural expiry even after AdminUserGlobalSignOut).
     const client = new AdminPortalClient();
-    const adminToken = await jwtFactory.adminToken();
+    const adminToken = await validAdminToken();
     const { tenant } = await createSetupTenant(client, adminToken);
 
     try {

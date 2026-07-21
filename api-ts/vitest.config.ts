@@ -9,6 +9,11 @@ export default defineConfig({
     // so test files must not run in parallel or their tenant-table reads/writes race
     // (e.g. a list totalCount assertion vs another file inserting fixture tenants).
     fileParallelism: false,
+    // Live (dev) tests hit real Cognito + CloudFront: an admin create is a real AdminCreateUser
+    // and teardown is a real AdminDeleteUser, so a single case can take several seconds. The 5s
+    // default flakes on these; 30s gives comfortable headroom (local tests finish well under it).
+    testTimeout: 30000,
+    hookTimeout: 30000,
     setupFiles: ["./vitest.setup.ts"],
     reporters: [
       "default",

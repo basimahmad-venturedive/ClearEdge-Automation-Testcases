@@ -13,7 +13,8 @@ const adminTenantBaseShape = {
   id: z.string().uuid(),
   displayId: z.string().regex(DISPLAY_ID_PATTERN),
   name: z.string().min(1),
-  domain: z.string().min(1),
+  domain: z.string().min(1), // normalized hostname derived from websiteUrl
+  websiteUrl: z.string().min(1), // as entered
   address: z.string().min(1),
   status: z.enum(["active", "inactive"]),
   setupStatus: z.enum(["in_setup", "handed_over"]),

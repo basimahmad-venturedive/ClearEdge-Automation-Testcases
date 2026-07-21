@@ -25,6 +25,8 @@ import {
 } from "../src/utils/dbFixtures";
 import { isLiveEnv } from "../src/config/env";
 import { liveOwnerContext } from "../src/utils/poContext";
+import { validAdminToken } from "../src/utils/testTokens";
+import { AdminPortalClient } from "../src/clients/adminPortalClient";
 import {
   newCreateUser,
   newEditUser,
@@ -41,7 +43,7 @@ import {
   editUserResponseSchema,
   statusResponseSchema,
 } from "../src/schemas/userManagement.schema";
-import { assertResponseTime, assertRequestEchoedInResponse, assertErrorEnvelope } from "../src/utils/assertions";
+import { assertResponseTime, assertErrorEnvelope } from "../src/utils/assertions";
 
 const COGNITO_REASON =
   "POST/PATCH call the real Cognito Admin API — no local mock and dev is admin-only (needs a Cognito tenant-pool test sandbox)";
@@ -54,11 +56,38 @@ const UUID_SAMPLE = "a1b2c3d4-0000-4000-8000-000000000001";
 // On a live target, pre-mint (and cache) the tenant token so the first test doesn't eat the
 // cold Cognito-login latency and time out.
 beforeAll(async () => {
-  if (isLiveEnv()) await liveOwnerContext();
+  // Best-effort warm-up only. If the DEV_TENANT_* credential is bad/rotated, don't crash the
+  // whole file in the hook — let the individual live tests surface the login error.
+  if (isLiveEnv()) {
+    try {
+      await liveOwnerContext();
+    } catch {
+      /* tests will report the tenant-login failure individually */
+    }
+  }
 }, 30000);
 
 const createdTenants: string[] = [];
+// Managed users created through POST /users during a test — torn down via the admin
+// DELETE /admin/tenants/:id/users/:userId endpoint (which also removes the Cognito user),
+// so create/edit/status tests leave no residue on the shared dev tenant.
+const createdUsers: Array<{ tenantId: string; userId: string }> = [];
+const adminClient = new AdminPortalClient();
+
+async function adminDeleteUser(tenantId: string, userId: string): Promise<void> {
+  try {
+    const token = await validAdminToken();
+    await adminClient.deleteTenantUser(tenantId, userId, token);
+  } catch {
+    /* best-effort teardown */
+  }
+}
+
 afterEach(async () => {
+  while (createdUsers.length > 0) {
+    const u = createdUsers.pop();
+    if (u) await adminDeleteUser(u.tenantId, u.userId);
+  }
   while (createdTenants.length > 0) {
     const id = createdTenants.pop();
     if (id) {
@@ -70,6 +99,22 @@ afterEach(async () => {
     }
   }
 });
+
+// Write tests exercise the real Cognito Admin API (create/disable/enable, email change), so
+// they run on a live target (dev) only — the local Docker backend can't reach Cognito.
+const liveOnly = isLiveEnv() ? test : test.skip;
+
+/** Creates a managed user via POST /users (PO), tracks it for admin teardown, returns the created user. */
+async function createManagedUser(
+  ctx: PoCtx,
+  overrides: Partial<{ role: "procurement_manager" | "procurement_analyst"; name: string; email: string }> = {},
+): Promise<{ body: ReturnType<typeof newCreateUser>; user: { id: string; email: string; name: string }; res: Awaited<ReturnType<typeof client.createUser>> }> {
+  const body = newCreateUser(overrides);
+  const res = await client.createUser(body, ctx.poToken);
+  const parsed = createUserResponseSchema.parse(res.data);
+  createdUsers.push({ tenantId: ctx.tenantId, userId: parsed.data.user.id });
+  return { body, user: { id: parsed.data.user.id, email: parsed.data.user.email, name: parsed.data.user.name }, res };
+}
 
 interface PoCtx {
   poToken: string;
@@ -226,61 +271,72 @@ d("GET /users", () => {
   });
 });
 
-// ── POST /users (create) — Cognito-backed, skipped ───────────────────────────
+// ── POST /users (create) — real Cognito, dev-only (liveOnly), admin teardown ──────────
 describe("POST /users", () => {
-  test.skip(`TC-UMAPI-030 — create 201 contract, permission label derived, message field [blocked: ${COGNITO_REASON}] @smoke`, async () => {
-    const body = newCreateUser({ role: "procurement_manager" });
-    const res = await client.createUser(body, await skipToken());
+  liveOnly(`TC-UMAPI-030 — create 201 contract, permission label derived, message field @smoke`, async () => {
+    const ctx = await seedTenant();
+    const { body, res } = await createManagedUser(ctx, { role: "procurement_manager" });
     assertResponseTime(res);
     expect(res.status).toBe(201);
     const parsed = createUserResponseSchema.parse(res.data);
     expect(parsed.data.user.permissionLabel).toBe("Read/Write");
-    assertRequestEchoedInResponse({ name: body.name, email: body.email }, res);
+    // Echoed under data.user (not top-level data) — assert directly.
+    expect(parsed.data.user.name).toBe(body.name);
+    expect(parsed.data.user.email).toBe(body.email.toLowerCase());
   });
 
-  test.skip(`TC-UMAPI-031 — validation → 400 ERR_VALIDATION_FAILED with exact message [blocked: ${COGNITO_REASON}]`, async () => {
-    const res = await client.createUser(CREATE_INVALID_EMAIL, await skipToken());
+  liveOnly(`TC-UMAPI-031 — validation → 400 ERR_VALIDATION_FAILED with exact message`, async () => {
+    const ctx = await seedTenant();
+    const res = await client.createUser(CREATE_INVALID_EMAIL, ctx.poToken);
     expect(res.status).toBe(400);
     assertErrorEnvelope(res, "ERR_VALIDATION_FAILED");
-    expect((res.data as { error: { message: string } }).error.message).toBe(
-      "Please fill in all fields with a valid email.",
-    );
+    // CONTRACT: error.message is the generic envelope text; per-field specifics live in details.
+    // (The scaffold's "Please fill in all fields with a valid email." was a wrong guess.)
+    expect((res.data as { error: { message: string } }).error.message).toBe("One or more fields are invalid.");
   });
 
-  test.skip(`TC-UMAPI-032 — same-tenant email clash → 409 ERR_EMAIL_ALREADY_IN_TENANT [blocked: ${COGNITO_REASON}]`, async () => {
-    const res = await client.createUser(newCreateUser({ email: "existing.same@clearedge.com" }), await skipToken());
+  liveOnly(`TC-UMAPI-032 — same-tenant email clash → 409 ERR_EMAIL_ALREADY_IN_TENANT`, async () => {
+    const ctx = await seedTenant();
+    const { body } = await createManagedUser(ctx); // first user owns the email
+    const res = await client.createUser(body, ctx.poToken); // same email again, same tenant
     expect(res.status).toBe(409);
     assertErrorEnvelope(res, "ERR_EMAIL_ALREADY_IN_TENANT");
   });
 
-  test.skip(`TC-UMAPI-033 — cross-tenant email clash → 409 ERR_EMAIL_ALREADY_IN_USE [blocked: ${COGNITO_REASON}]`, async () => {
+  // TC-UMAPI-033 (cross-tenant email clash → ERR_EMAIL_ALREADY_IN_USE) needs an email already
+  // provisioned in a DIFFERENT dev tenant — no stable fixture for that exists, so it stays skipped.
+  test.skip(`TC-UMAPI-033 — cross-tenant email clash → 409 ERR_EMAIL_ALREADY_IN_USE [blocked: needs a known email provisioned in another dev tenant]`, async () => {
     const res = await client.createUser(newCreateUser({ email: "existing.other@othertenant.com" }), await skipToken());
     expect(res.status).toBe(409);
     assertErrorEnvelope(res, "ERR_EMAIL_ALREADY_IN_USE");
   });
 
-  test.skip(`TC-UMAPI-034 — temporary password never present in the create response (SR-008) [blocked: ${COGNITO_REASON}]`, async () => {
-    const res = await client.createUser(newCreateUser(), await skipToken());
+  liveOnly(`TC-UMAPI-034 — temporary password never present in the create response (SR-008)`, async () => {
+    const ctx = await seedTenant();
+    const { res } = await createManagedUser(ctx);
     const raw = JSON.stringify(res.data).toLowerCase();
     expect(raw).not.toContain("temporarypassword");
+    expect(raw).not.toContain("\"password\"");
   });
 
-  test.skip(`TC-UMAPI-035 — display_id atomic per-tenant alloc; USR-0001 first [blocked: ${COGNITO_REASON}]`, async () => {
-    const res = await client.createUser(newCreateUser(), await skipToken());
+  liveOnly(`TC-UMAPI-035 — display_id USR-#### format on the created user`, async () => {
+    const ctx = await seedTenant();
+    const { res } = await createManagedUser(ctx);
     const parsed = createUserResponseSchema.parse(res.data);
     expect(parsed.data.user.displayId).toMatch(/^USR-\d{4}$/);
   });
 
-  test.skip(`TC-UMAPI-036 — double-submit idempotency: repeat POST → no duplicate Cognito user [blocked: ${COGNITO_REASON}]`, async () => {
-    const body = newCreateUser();
-    const first = await client.createUser(body, await skipToken());
-    const second = await client.createUser(body, await skipToken());
+  liveOnly(`TC-UMAPI-036 — double-submit: repeat POST same email → 409 (no duplicate)`, async () => {
+    const ctx = await seedTenant();
+    const { body, res: first } = await createManagedUser(ctx);
+    const second = await client.createUser(body, ctx.poToken);
     expect(first.status).toBe(201);
     expect(second.status).toBe(409);
   });
 
-  test.skip(`TC-UMAPI-037 — name max-length boundary (255) accepted [blocked: ${COGNITO_REASON}]`, async () => {
-    const res = await client.createUser({ ...CREATE_NAME_MAX_255, email: newCreateUser().email }, await skipToken());
+  liveOnly(`TC-UMAPI-037 — name max-length boundary (255) accepted`, async () => {
+    const ctx = await seedTenant();
+    const { res } = await createManagedUser(ctx, { name: CREATE_NAME_MAX_255.name });
     expect(res.status).toBe(201);
     createUserResponseSchema.parse(res.data);
   });
@@ -325,116 +381,151 @@ d("GET /users/:id", () => {
   });
 });
 
-// ── PATCH /users/:id (edit — Cognito-backed, skipped) ───────────────────────
+// ── PATCH /users/:id (edit) — real Cognito, dev-only, admin teardown ──────────
 describe("PATCH /users/:id", () => {
-  test.skip(`TC-UMAPI-060 — Branch A: name-only change → DB update, emailChanged omitted [blocked: ${COGNITO_REASON}]`, async () => {
-    const res = await client.editUser(UUID_SAMPLE, newEditUser({ name: "Renamed User" }), await skipToken());
+  liveOnly(`TC-UMAPI-060 — Branch A: name-only change → 200, emailChanged omitted/false`, async () => {
+    const ctx = await seedTenant();
+    const { body, user } = await createManagedUser(ctx);
+    const res = await client.editUser(user.id, { name: "Renamed User", role: body.role, email: body.email }, ctx.poToken);
     expect(res.status).toBe(200);
     const parsed = editUserResponseSchema.parse(res.data);
     expect(parsed.data.emailChanged ?? false).toBe(false);
+    expect(parsed.data.user.name).toBe("Renamed User");
   });
 
-  test.skip(`TC-UMAPI-061 — Branch B: role change → Cognito attr + AdminUserGlobalSignOut (SR-006) [blocked: ${COGNITO_REASON}]`, async () => {
-    const res = await client.editUser(UUID_SAMPLE, newEditUser({ role: "procurement_analyst" }), await skipToken());
+  liveOnly(`TC-UMAPI-061 — Branch B: role change → permissionLabel reflects new role (SR-006)`, async () => {
+    const ctx = await seedTenant();
+    const { body, user } = await createManagedUser(ctx, { role: "procurement_manager" });
+    const res = await client.editUser(user.id, { name: body.name, role: "procurement_analyst", email: body.email }, ctx.poToken);
     expect(res.status).toBe(200);
     const parsed = editUserResponseSchema.parse(res.data);
     expect(parsed.data.user.permissionLabel).toBe("Read Only");
   });
 
-  test.skip(`TC-UMAPI-062 — Branch C: email change → Cognito update + sign-out + new temp pw (SR-007) [blocked: ${COGNITO_REASON}] @smoke`, async () => {
-    const res = await client.editUser(UUID_SAMPLE, newEditUser({ email: "new.address@clearedge.com" }), await skipToken());
+  liveOnly(`TC-UMAPI-062 — Branch C: email change → emailChanged true + temp-password message (SR-007) @smoke`, async () => {
+    const ctx = await seedTenant();
+    const { body, user } = await createManagedUser(ctx);
+    const newEmail = `changed.${Date.now().toString(36)}@yopmail.com`;
+    const res = await client.editUser(user.id, { name: body.name, role: body.role, email: newEmail }, ctx.poToken);
     expect(res.status).toBe(200);
     const parsed = editUserResponseSchema.parse(res.data);
     expect(parsed.data.emailChanged).toBe(true);
-    expect(parsed.data.message).toContain("temporary password");
+    expect((parsed.data.message ?? "").toLowerCase()).toContain("temporary password");
   });
 
-  test.skip(`TC-UMAPI-063 — no-op: nothing changed → success, no DB/Cognito write [blocked: ${COGNITO_REASON}]`, async () => {
-    const res = await client.editUser(UUID_SAMPLE, newEditUser(), await skipToken());
+  liveOnly(`TC-UMAPI-063 — no-op: nothing changed → success`, async () => {
+    const ctx = await seedTenant();
+    const { body, user } = await createManagedUser(ctx);
+    const res = await client.editUser(user.id, { name: body.name, role: body.role, email: body.email }, ctx.poToken);
     expect(res.status).toBe(200);
   });
 
-  test.skip(`TC-UMAPI-064 — case-only email is not a real change (Branch A / no-op) [blocked: ${COGNITO_REASON}]`, async () => {
-    const res = await client.editUser(UUID_SAMPLE, newEditUser({ email: "KYLE@clearedge.com" }), await skipToken());
+  liveOnly(`TC-UMAPI-064 — case-only email is not a real change (Branch A / no-op)`, async () => {
+    const ctx = await seedTenant();
+    const { body, user } = await createManagedUser(ctx);
+    const res = await client.editUser(user.id, { name: body.name, role: body.role, email: body.email.toUpperCase() }, ctx.poToken);
     expect(res.status).toBe(200);
     const parsed = editUserResponseSchema.parse(res.data);
     expect(parsed.data.emailChanged ?? false).toBe(false);
   });
 
-  test.skip(`TC-UMAPI-065 — self-modification → 403 ERR_SELF_MODIFICATION_FORBIDDEN (SR-003) [blocked: ${COGNITO_REASON}]`, async () => {
+  // TC-UMAPI-065 (self-modification 403) needs the caller PO's OWN users.id, which no API
+  // exposes on dev (the list excludes self, management-home has no id) — stays skipped.
+  test.skip(`TC-UMAPI-065 — self-modification → 403 ERR_SELF_MODIFICATION_FORBIDDEN (SR-003) [blocked: PO's own user id not exposed via any dev API]`, async () => {
     const res = await client.editUser(UUID_SAMPLE, newEditUser(), await skipToken());
     expect(res.status).toBe(403);
     assertErrorEnvelope(res, "ERR_SELF_MODIFICATION_FORBIDDEN");
   });
 
-  test.skip(`TC-UMAPI-066 — edit same-tenant email clash → 409 ERR_EMAIL_ALREADY_IN_TENANT [blocked: ${COGNITO_REASON}]`, async () => {
-    const res = await client.editUser(UUID_SAMPLE, newEditUser({ email: "peer.same@clearedge.com" }), await skipToken());
+  liveOnly(`TC-UMAPI-066 — edit same-tenant email clash → 409 ERR_EMAIL_ALREADY_IN_TENANT`, async () => {
+    const ctx = await seedTenant();
+    const a = await createManagedUser(ctx);
+    const b = await createManagedUser(ctx);
+    const res = await client.editUser(a.user.id, { name: a.body.name, role: a.body.role, email: b.body.email }, ctx.poToken);
     expect(res.status).toBe(409);
     assertErrorEnvelope(res, "ERR_EMAIL_ALREADY_IN_TENANT");
   });
 
-  test.skip(`TC-UMAPI-067 — edit cross-tenant email clash → 409 ERR_EMAIL_ALREADY_IN_USE [blocked: ${COGNITO_REASON}]`, async () => {
+  // TC-UMAPI-067/070 (cross-tenant email clash) need an email provisioned in another dev tenant.
+  test.skip(`TC-UMAPI-067 — edit cross-tenant email clash → 409 ERR_EMAIL_ALREADY_IN_USE [blocked: needs an email in another dev tenant]`, async () => {
     const res = await client.editUser(UUID_SAMPLE, newEditUser({ email: "peer.other@othertenant.com" }), await skipToken());
     expect(res.status).toBe(409);
     assertErrorEnvelope(res, "ERR_EMAIL_ALREADY_IN_USE");
   });
 
-  test.skip(`TC-UMAPI-068 — edit validation → 400; unknown id → 404 [blocked: ${COGNITO_REASON}]`, async () => {
-    const invalid = await client.editUser(UUID_SAMPLE, { ...newEditUser(), name: "   " }, await skipToken());
+  liveOnly(`TC-UMAPI-068 — edit validation → 400; unknown id → 404`, async () => {
+    const ctx = await seedTenant();
+    const { body, user } = await createManagedUser(ctx);
+    const invalid = await client.editUser(user.id, { name: "   ", role: body.role, email: body.email }, ctx.poToken);
     expect(invalid.status).toBe(400);
     assertErrorEnvelope(invalid, "ERR_VALIDATION_FAILED");
-    const missing = await client.editUser("00000000-0000-4000-8000-000000000000", newEditUser(), await skipToken());
+    const missing = await client.editUser("00000000-0000-4000-8000-000000000000", newEditUser(), ctx.poToken);
     expect(missing.status).toBe(404);
   });
 
-  test.skip(`TC-UMAPI-069 — temp password never present in the edit (email-change) response (SR-008) [blocked: ${COGNITO_REASON}]`, async () => {
-    const res = await client.editUser(UUID_SAMPLE, newEditUser({ email: "brand.new@clearedge.com" }), await skipToken());
+  liveOnly(`TC-UMAPI-069 — temp password never present in the edit (email-change) response (SR-008)`, async () => {
+    const ctx = await seedTenant();
+    const { body, user } = await createManagedUser(ctx);
+    const res = await client.editUser(user.id, { name: body.name, role: body.role, email: `brand.${Date.now().toString(36)}@yopmail.com` }, ctx.poToken);
     expect(JSON.stringify(res.data).toLowerCase()).not.toContain("temporarypassword");
   });
 
-  test.skip(`TC-UMAPI-070 — Cognito-first ordering: Cognito failure aborts before any DB write [blocked: ${COGNITO_REASON}]`, async () => {
+  test.skip(`TC-UMAPI-070 — Cognito-first ordering: Cognito failure aborts before any DB write [blocked: needs an email in another dev tenant]`, async () => {
     const res = await client.editUser(UUID_SAMPLE, newEditUser({ email: "peer.other@othertenant.com" }), await skipToken());
     expect(res.status).toBeGreaterThanOrEqual(400);
   });
 });
 
-// ── PATCH /users/:id/status (Cognito-backed, skipped) ───────────────────────
+// ── PATCH /users/:id/status — real Cognito, dev-only, admin teardown ──────────
 describe("PATCH /users/:id/status", () => {
-  test.skip(`TC-UMAPI-080 — deactivate: AdminUserGlobalSignOut + AdminDisableUser + status=inactive (SR-005) [blocked: ${COGNITO_REASON}] @smoke`, async () => {
-    const res = await client.setStatus(UUID_SAMPLE, STATUS_DEACTIVATE, await skipToken());
+  liveOnly(`TC-UMAPI-080 — deactivate → status=inactive (SR-005) @smoke`, async () => {
+    const ctx = await seedTenant();
+    const { user } = await createManagedUser(ctx);
+    const res = await client.setStatus(user.id, STATUS_DEACTIVATE, ctx.poToken);
     assertResponseTime(res);
     expect(res.status).toBe(200);
     const parsed = statusResponseSchema.parse(res.data);
     expect(parsed.data.user.status).toBe("inactive");
   });
 
-  test.skip(`TC-UMAPI-081 — reactivate: AdminEnableUser + status=active; no email [blocked: ${COGNITO_REASON}]`, async () => {
-    const res = await client.setStatus(UUID_SAMPLE, STATUS_ACTIVATE, await skipToken());
+  liveOnly(`TC-UMAPI-081 — reactivate → status=active`, async () => {
+    const ctx = await seedTenant();
+    const { user } = await createManagedUser(ctx);
+    await client.setStatus(user.id, STATUS_DEACTIVATE, ctx.poToken);
+    const res = await client.setStatus(user.id, STATUS_ACTIVATE, ctx.poToken);
     expect(res.status).toBe(200);
     const parsed = statusResponseSchema.parse(res.data);
     expect(parsed.data.user.status).toBe("active");
   });
 
-  test.skip(`TC-UMAPI-082 — same-status submission → success no-op [blocked: ${COGNITO_REASON}]`, async () => {
-    const res = await client.setStatus(UUID_SAMPLE, STATUS_DEACTIVATE, await skipToken());
+  liveOnly(`TC-UMAPI-082 — same-status submission → success no-op`, async () => {
+    const ctx = await seedTenant();
+    const { user } = await createManagedUser(ctx);
+    await client.setStatus(user.id, STATUS_DEACTIVATE, ctx.poToken);
+    const res = await client.setStatus(user.id, STATUS_DEACTIVATE, ctx.poToken);
     expect(res.status).toBe(200);
   });
 
-  test.skip(`TC-UMAPI-083 — status self-modification → 403 ERR_SELF_MODIFICATION_FORBIDDEN (SR-003) [blocked: ${COGNITO_REASON}]`, async () => {
+  // TC-UMAPI-083 (status self-modification 403) needs the PO's own user id — not exposed via API.
+  test.skip(`TC-UMAPI-083 — status self-modification → 403 ERR_SELF_MODIFICATION_FORBIDDEN (SR-003) [blocked: PO's own user id not exposed via any dev API]`, async () => {
     const res = await client.setStatus(UUID_SAMPLE, STATUS_DEACTIVATE, await skipToken());
     expect(res.status).toBe(403);
     assertErrorEnvelope(res, "ERR_SELF_MODIFICATION_FORBIDDEN");
   });
 
-  test.skip(`TC-UMAPI-084 — status validation → 400; unknown id → 404 [blocked: ${COGNITO_REASON}]`, async () => {
-    const invalid = await client.setStatus(UUID_SAMPLE, { status: "banana" }, await skipToken());
+  liveOnly(`TC-UMAPI-084 — status validation → 400; unknown id → 404`, async () => {
+    const ctx = await seedTenant();
+    const { user } = await createManagedUser(ctx);
+    const invalid = await client.setStatus(user.id, { status: "banana" }, ctx.poToken);
     expect(invalid.status).toBe(400);
-    const missing = await client.setStatus("00000000-0000-4000-8000-000000000000", STATUS_DEACTIVATE, await skipToken());
+    const missing = await client.setStatus("00000000-0000-4000-8000-000000000000", STATUS_DEACTIVATE, ctx.poToken);
     expect(missing.status).toBe(404);
   });
 
-  test.skip(`TC-UMAPI-085 — ERR_INVALID_STATE_TRANSITION reachability (contract-TBD) [blocked: ${COGNITO_REASON}]`, async () => {
-    const res = await client.setStatus(UUID_SAMPLE, STATUS_ACTIVATE, await skipToken());
+  liveOnly(`TC-UMAPI-085 — activate an already-active user → no server error`, async () => {
+    const ctx = await seedTenant();
+    const { user } = await createManagedUser(ctx);
+    const res = await client.setStatus(user.id, STATUS_ACTIVATE, ctx.poToken);
     expect(res.status).toBeLessThan(500);
   });
 });

@@ -9,7 +9,6 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 import { UserManagementLocators as L } from '../locators/userManagement';
 import { UmCopy } from '../tests/fixtures/expectedCopyUserMgmt';
-import { AppRoutes } from '../utils/routes';
 
 export interface UserFormValues {
   role: 'Procurement Manager' | 'Procurement Analyst';
@@ -21,9 +20,17 @@ export class UserManagementPage {
   constructor(readonly page: Page) {}
 
   // ---------------------------------------------------------------- navigation
+  // The app guards /user-management CLIENT-SIDE with an in-memory session — a
+  // hard page.goto reloads and loses it (bounces to /dashboard). So navigate via
+  // the app nav menu item instead, preserving the PO session. Assumes login
+  // already happened (AppLoginPage.loginAsPO in a beforeEach) and we're in the app.
   async goto(): Promise<void> {
-    await this.page.goto(AppRoutes.userManagement);
-    await expect(this.page.getByText(UmCopy.pageTitle)).toBeVisible();
+    if (!this.page.url().includes('/user-management')) {
+      await this.page.getByRole('menuitem', { name: 'User Management' }).click();
+    }
+    await this.page.waitForURL(/\/user-management/, { timeout: 30000 });
+    // Heading specifically — "User Management" also appears as a nav menu item.
+    await expect(this.page.getByRole('heading', { name: UmCopy.pageTitle })).toBeVisible();
   }
 
   // ------------------------------------------------------------------ locators
@@ -34,16 +41,25 @@ export class UserManagementPage {
     return this.page.getByTestId(L.searchBar);
   }
   get toast(): Locator {
-    return this.page.getByTestId(L.toast);
+    // antd App.message renders in a portal as `.ant-message-notice` (no testid).
+    return this.page.locator('.ant-message-notice').last();
   }
   get banner(): Locator {
     return this.page.getByTestId(L.banner);
   }
   get emailFieldError(): Locator {
-    return this.page.getByTestId(L.emailFieldError);
+    // antd renders the field error in `.ant-form-item-explain-error`; scope it to
+    // the email input's Form.Item (the input carries um-user-email-input).
+    return this.page
+      .locator('.ant-form-item', { has: this.page.getByTestId(L.emailInput) })
+      .locator('.ant-form-item-explain-error');
   }
   cardByName(name: string): Locator {
     return this.cards.filter({ hasText: name });
+  }
+  /** The Create/Edit user modal (same testid; only one open at a time). */
+  get modal(): Locator {
+    return this.page.getByTestId(L.modal);
   }
 
   // ------------------------------------------------------------- summary cards
@@ -69,7 +85,12 @@ export class UserManagementPage {
   }
 
   async selectRoleFilter(role: 'All' | 'Procurement Manager' | 'Procurement Analyst'): Promise<void> {
-    await this.page.getByRole('radio', { name: role }).check();
+    // antd optionType="button" radios hide the <input role=radio> (opacity:0), so
+    // .check() times out on visibility — click the visible button label instead.
+    await this.page
+      .locator('label.ant-radio-button-wrapper')
+      .filter({ hasText: new RegExp(`^${role}$`) })
+      .click();
   }
 
   async expectNoMatchEmptyState(): Promise<void> {
@@ -89,7 +110,8 @@ export class UserManagementPage {
   // -------------------------------------------------------------- create modal
   async openCreate(): Promise<void> {
     await this.page.getByRole('button', { name: L.createUserButtonName }).click();
-    await expect(this.page.getByTestId(L.modalTitle)).toHaveText(UmCopy.createModalTitle);
+    await expect(this.modal, 'create modal open').toBeVisible();
+    await expect(this.modal).toContainText(UmCopy.createModalTitle);
   }
 
   async fillUserForm(values: Partial<UserFormValues>): Promise<void> {
@@ -105,21 +127,22 @@ export class UserManagementPage {
   }
 
   async submitCreate(): Promise<void> {
-    await this.page.getByRole('button', { name: L.submitCreateName }).click();
+    await this.modal.getByRole('button', { name: L.submitCreateName }).click();
   }
 
   async cancelModal(): Promise<void> {
-    await this.page.getByRole('button', { name: L.cancelName }).click();
+    await this.modal.getByRole('button', { name: L.cancelName }).click();
   }
 
   // ---------------------------------------------------------------- edit modal
   async openEdit(userName: string): Promise<void> {
     await this.cardByName(userName).getByRole('button', { name: L.cardEditButtonName }).click();
-    await expect(this.page.getByTestId(L.modalTitle)).toHaveText(UmCopy.editModalTitle);
+    await expect(this.modal, 'edit modal open').toBeVisible();
+    await expect(this.modal).toContainText(UmCopy.editModalTitle);
   }
 
   async submitSave(): Promise<void> {
-    await this.page.getByRole('button', { name: L.submitSaveName }).click();
+    await this.modal.getByRole('button', { name: L.submitSaveName }).click();
   }
 
   // ----------------------------------------------- email-change confirm dialog

@@ -13,7 +13,7 @@ import {
   type AdminTenantCreatePayload,
 } from "../payloads/adminPortalPayloads";
 import { TenantDetailEnvelopeSchema, type AdminTenantDetail } from "../schemas/adminPortalSchemas";
-import { withDbClient } from "./dbClient";
+import { validAdminToken } from "./testTokens";
 
 export interface CreatedTenantFixture {
   payload: AdminTenantCreatePayload;
@@ -57,19 +57,17 @@ export async function createHandedOverTenant(
 }
 
 /**
- * Removes a fixture tenant and its child rows directly in the DB (test-namespace teardown).
- * Runs as the privileged TEST_DATABASE_URL role — RLS tenant context is not required for
- * control-plane tables; if the local schema adds it, wrap in SET LOCAL app.current_tenant.
- * Cognito user cleanup is a TODO until a Cognito admin helper exists in this kit.
+ * Removes a fixture tenant via the real API — `DELETE /admin/tenants/:id` — which also
+ * deletes the tenant's Cognito owner (tenant.service.deleteTenant → cognitoAdminService.deleteUser),
+ * so no Cognito users leak. Works on any environment (no DB access required). Mints its own
+ * admin token so existing `teardownTenant(id)` call sites need no change. Best-effort: a failed
+ * delete must not mask the test result.
  */
 export async function teardownTenant(tenantId: string): Promise<void> {
-  await withDbClient(async (db) => {
-    await db.query("DELETE FROM role_rights WHERE role_id IN (SELECT id FROM roles WHERE tenant_id = $1)", [tenantId]);
-    await db.query("DELETE FROM users WHERE tenant_id = $1", [tenantId]);
-    await db.query("DELETE FROM roles WHERE tenant_id = $1", [tenantId]);
-    // Actual schema (migration 20260706000001) is table_name/record_id — NOT entity/entity_id.
-    // Using the wrong column names here threw "column does not exist" and broke teardown.
-    await db.query("DELETE FROM platform_audit_logs WHERE table_name = 'tenants' AND record_id = $1", [tenantId]);
-    await db.query("DELETE FROM tenants WHERE id = $1", [tenantId]);
-  });
+  try {
+    const token = await validAdminToken();
+    await new AdminPortalClient().deleteTenant(tenantId, token);
+  } catch {
+    /* best-effort teardown */
+  }
 }

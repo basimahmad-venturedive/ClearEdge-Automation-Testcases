@@ -57,6 +57,10 @@ export class AdminPortalClient {
     return axios.patch<T>(`${this.base}${path}`, body, { headers: this.headers(token), validateStatus: () => true });
   }
 
+  async delete<T = unknown>(path: string, token?: string): Promise<AxiosResponse<T>> {
+    return axios.delete<T>(`${this.base}${path}`, { headers: this.headers(token), validateStatus: () => true });
+  }
+
   // --- Typed wrappers for the 7 spec endpoints ---
 
   /** GET /admin/tenants — list tenants (paginated, searchable). */
@@ -92,5 +96,15 @@ export class AdminPortalClient {
   /** POST /admin/tenants/:id/handover — trigger invite & complete handover (no body). */
   async triggerHandover<T = unknown>(tenantId: string, token?: string): Promise<AxiosResponse<T>> {
     return this.post<T>(endpointAdminTenantHandover(tenantId), {}, token);
+  }
+
+  /** DELETE /admin/tenants/:id — permanently delete a tenant (also deletes the Cognito owner). */
+  async deleteTenant<T = unknown>(tenantId: string, token?: string): Promise<AxiosResponse<T>> {
+    return this.delete<T>(endpointAdminTenantDetail(tenantId), token);
+  }
+
+  /** DELETE /admin/tenants/:id/users/:userId — delete a single tenant user (also deletes Cognito). */
+  async deleteTenantUser<T = unknown>(tenantId: string, userId: string, token?: string): Promise<AxiosResponse<T>> {
+    return this.delete<T>(`${endpointAdminTenantDetail(tenantId)}/users/${userId}`, token);
   }
 }

@@ -51,14 +51,25 @@ import { assertResponseTime, assertErrorEnvelope } from "../src/utils/assertions
 // - `dbOnly`    → direct company_settings row/RLS/audit assertions (needs TEST_DATABASE_URL).
 const d = describe;
 const localOnly = isLiveEnv() ? test.skip : test;
-const dbOnly = hasDbAccess() ? test : test.skip;
+// DB-assertion cases need direct rows AND isolated per-test fixtures — both only exist
+// locally. Even if a dev run has a DB tunnel, these must not run there (they'd collide on
+// the single shared tenant), so gate on hasDbAccess() AND not-live.
+const dbOnly = hasDbAccess() && !isLiveEnv() ? test : test.skip;
 
 const client = new CompanySettingsClient();
 
 // On a live target, pre-mint (and cache) the tenant token so the first test doesn't eat the
 // cold Cognito-login latency and time out.
 beforeAll(async () => {
-  if (isLiveEnv()) await liveOwnerContext();
+  // Best-effort warm-up only. If the DEV_TENANT_* credential is bad/rotated, don't crash the
+  // whole file in the hook — let the individual live tests surface the login error.
+  if (isLiveEnv()) {
+    try {
+      await liveOwnerContext();
+    } catch {
+      /* tests will report the tenant-login failure individually */
+    }
+  }
 }, 30000);
 
 // Every fixture tenant created in a test is torn down afterEach (best-effort).
