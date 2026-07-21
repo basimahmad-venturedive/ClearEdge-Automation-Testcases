@@ -9,7 +9,10 @@ const { RunCreator } = require('../testrail/runCreator/runCreator.cjs');
 const TC_ID_PATTERN = /TC-[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*-\d+(?:-\d+)?/g;
 // Only lines that declare a test carry real case ids — file headers / TODO comments
 // reference related-but-not-automated ids and must not be collected.
-const TEST_DECLARATION_PATTERN = /\b(?:test|liveTest|it)(?:\.\w+)*\s*(?:\([^)]*\))?\s*\(/;
+// Must list EVERY test-declaring wrapper used in tests/ — else create-run under-collects
+// while publish (which reads JUnit titles) over-collects, and TestRail 400s with
+// "case … not part of the test run". liveOnly/dbOnly/localOnly are our env-gating wrappers.
+const TEST_DECLARATION_PATTERN = /\b(?:test|liveTest|liveOnly|dbOnly|localOnly|it)(?:\.\w+)*\s*(?:\([^)]*\))?\s*\(/;
 const TESTS_DIR = path.resolve(__dirname, '..', 'tests');
 
 async function main() {
