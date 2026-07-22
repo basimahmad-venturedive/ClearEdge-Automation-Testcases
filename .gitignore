@@ -43,3 +43,35 @@ logs/
 # ── OS / editor ──
 .DS_Store
 Thumbs.db
+
+# ── Under-development test files — NOT pushed to GitHub ──
+# These spec files contain ONLY skipped test cases: their feature/screen or
+# endpoint is not built yet, so every case is test.skip. Keeping them off
+# GitHub stops the CI run from publishing a wall of "skipped/blocked" results
+# to TestRail/CQM. They still live on disk (untracked) and are excluded from
+# the local runner too (vitest `exclude` / playwright `testIgnore`).
+#
+# TO RE-ENABLE when a feature ships and its cases are un-skipped:
+#   1. delete its line below
+#   2. delete its line from the runner exclude list
+#      (api-ts/vitest.config.ts `exclude` or frontend/playwright.config.ts `testIgnore`)
+#   3. `git add` the file
+#
+# api-ts (no runnable cases — feature/endpoint/live-env not built):
+api-ts/tests/admin.test.ts
+api-ts/tests/audit.test.ts
+api-ts/tests/auth.forgot-refresh-logout.test.ts
+api-ts/tests/auth.login-setpw.test.ts
+api-ts/tests/cache.test.ts
+api-ts/tests/rbac.test.ts
+api-ts/tests/tenant.test.ts
+api-ts/tests/user.test.ts
+api-ts/tests/vendor.test.ts
+# frontend (screen not built):
+frontend/tests/company-settings-access.spec.ts
+frontend/tests/company-settings-edit.spec.ts
+frontend/tests/company-settings-view.spec.ts
+frontend/tests/user-management-create.spec.ts
+frontend/tests/user-management-edit.spec.ts
+frontend/tests/user-management-email.spec.ts
+frontend/tests/user-management-status.spec.ts

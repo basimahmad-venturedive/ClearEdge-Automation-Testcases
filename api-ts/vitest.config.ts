@@ -1,10 +1,26 @@
-import { defineConfig } from "vitest/config";
+import { defineConfig, configDefaults } from "vitest/config";
 import path from "path";
+
+// Under-development specs — only skipped cases (feature/endpoint/live-env not built).
+// Kept off GitHub (see automation/.gitignore) AND out of the local run so CI and
+// local publish the same set. Delete a line here + in .gitignore when a feature ships.
+const UNDER_DEVELOPMENT = [
+  "tests/admin.test.ts",
+  "tests/audit.test.ts",
+  "tests/auth.forgot-refresh-logout.test.ts",
+  "tests/auth.login-setpw.test.ts",
+  "tests/cache.test.ts",
+  "tests/rbac.test.ts",
+  "tests/tenant.test.ts",
+  "tests/user.test.ts",
+  "tests/vendor.test.ts",
+];
 
 export default defineConfig({
   test: {
     globals: true,
     environment: "node",
+    exclude: [...configDefaults.exclude, ...UNDER_DEVELOPMENT],
     // All specs share ONE Postgres (see envs/.env.local — the Dockerized app's DB on :5433),
     // so test files must not run in parallel or their tenant-table reads/writes race
     // (e.g. a list totalCount assertion vs another file inserting fixture tenants).
