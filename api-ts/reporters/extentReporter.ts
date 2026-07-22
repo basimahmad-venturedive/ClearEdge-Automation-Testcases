@@ -8,9 +8,48 @@
  * handed over on `task.meta.apiCalls`. A status filter (All / Passed / Failed / Skipped)
  * sits at the top of the report.
  */
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { Reporter, TestModule } from "vitest/node";
+
+/**
+ * Feature specs live in documents/input/SPEC_CEIQ-*.md. Every test file names its
+ * owning spec in its header comment (e.g. "CEIQ-FEAT-004 Company Settings ..."), so
+ * we read that code straight from the source. This label map turns the raw code into
+ * the human title used in the report's Spec filter; unknown codes fall back to the code.
+ */
+const FEATURE_LABELS: Record<string, string> = {
+  "CEIQ-FEAT-001": "Admin Portal",
+  "CEIQ-FEAT-002": "User Authentication",
+  "CEIQ-FEAT-003": "User Management",
+  "CEIQ-FEAT-004": "Company Settings",
+  "CEIQ-FEAT-005": "Vendor Directory",
+  "CEIQ-FOUND-001": "Identity, RBAC & Audit",
+};
+
+const UNMAPPED = "Unmapped";
+const featureCache = new Map<string, string>();
+
+/** First CEIQ-FEAT-/CEIQ-FOUND- code in a test file's source, cached per file. */
+function featureForModule(absPath: string): string {
+  const cached = featureCache.get(absPath);
+  if (cached) return cached;
+  let code = UNMAPPED;
+  try {
+    const match = readFileSync(absPath, "utf-8").match(/CEIQ-(?:FEAT|FOUND)-\d+/);
+    if (match) code = match[0];
+  } catch {
+    /* unreadable source — leave Unmapped */
+  }
+  featureCache.set(absPath, code);
+  return code;
+}
+
+/** "CEIQ-FEAT-004 — Company Settings" (or just the code when unmapped/unknown). */
+function featureLabel(code: string): string {
+  const name = FEATURE_LABELS[code];
+  return name ? `${code} — ${name}` : code;
+}
 
 interface ApiCall {
   method: string;
@@ -29,6 +68,7 @@ interface FlatResult {
   suite: string;
   name: string;
   file: string;
+  feature: string;
   status: "passed" | "failed" | "skipped";
   durationMs: number;
   message?: string;
@@ -93,6 +133,7 @@ export default class ExtentReporter implements Reporter {
     const results: FlatResult[] = [];
     for (const mod of testModules) {
       const relFile = path.relative(path.resolve(__dirname, ".."), mod.moduleId);
+      const feature = featureForModule(mod.moduleId);
       for (const test of mod.children.allTests()) {
         const res = test.result();
         const status: FlatResult["status"] =
@@ -105,6 +146,7 @@ export default class ExtentReporter implements Reporter {
           suite,
           name: test.name,
           file: relFile,
+          feature,
           status,
           durationMs: Math.round(test.diagnostic()?.duration ?? 0),
           message: redact(firstError?.message),
@@ -182,6 +224,16 @@ function renderHtml(data: {
     bySuite.get(r.suite)!.push(r);
   }
 
+  // Per-feature counts drive the "Spec" filter dropdown so results can be viewed one
+  // feature spec (CEIQ-FEAT-xxx / CEIQ-FOUND-xxx) at a time — the code is read from each
+  // test file's header (see featureForModule). Unmapped files sort last.
+  const byFeature = new Map<string, number>();
+  for (const r of results) byFeature.set(r.feature, (byFeature.get(r.feature) ?? 0) + 1);
+  const specOptions = [...byFeature.entries()]
+    .sort(([a], [b]) => (a === UNMAPPED ? 1 : b === UNMAPPED ? -1 : a.localeCompare(b)))
+    .map(([code, count]) => `<option value="${escapeHtml(code)}">${escapeHtml(featureLabel(code))} (${count})</option>`)
+    .join("");
+
   const rows = [...bySuite.entries()]
     .map(([suite, tests], suiteIdx) => {
       const testRows = tests
@@ -193,7 +245,7 @@ function renderHtml(data: {
           const hasDetail = hasError || hasApi;
           const apiSummary = hasApi ? `<span class="api-count">${t.apiCalls.length} call${t.apiCalls.length === 1 ? "" : "s"}</span>` : "";
           return `
-        <tr class="test-row ${badgeClass}" data-status="${t.status}" data-row="${rowId}" ${hasDetail ? `onclick="toggleDetail('${rowId}')" style="cursor:pointer"` : ""}>
+        <tr class="test-row ${badgeClass}" data-status="${t.status}" data-feature="${escapeHtml(t.feature)}" data-row="${rowId}" ${hasDetail ? `onclick="toggleDetail('${rowId}')" style="cursor:pointer"` : ""}>
           <td><span class="badge ${badgeClass}">${t.status.toUpperCase()}</span></td>
           <td>${escapeHtml(t.name)} ${apiSummary}</td>
           <td class="muted">${escapeHtml(t.file)}</td>
@@ -272,6 +324,8 @@ function renderHtml(data: {
   .filter-btn.passed.active { background: var(--pass); border-color: var(--pass); }
   .filter-btn.failed.active { background: var(--fail); border-color: var(--fail); }
   .filter-btn.skipped.active { background: var(--skip); border-color: var(--skip); color: #1e293b; }
+  .spec-filter { display: flex; align-items: center; gap: 8px; margin-left: auto; font-size: 13px; color: #334155; font-weight: 600; }
+  .spec-filter select { border: 1px solid #cbd5e1; background: #fff; color: #334155; padding: 7px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer; max-width: 340px; }
   main { padding: 0 32px 40px; }
   .suite-title { margin: 28px 0 8px; font-size: 15px; color: #334155; }
   .test-table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
@@ -324,6 +378,13 @@ function renderHtml(data: {
   <button class="filter-btn passed" data-filter="passed" onclick="applyFilter('passed')">Passed (${passed})</button>
   <button class="filter-btn failed" data-filter="failed" onclick="applyFilter('failed')">Failed (${failed})</button>
   <button class="filter-btn skipped" data-filter="skipped" onclick="applyFilter('skipped')">Skipped (${skipped})</button>
+  <label class="spec-filter">
+    <span>Spec:</span>
+    <select id="spec-select" onchange="applyFilter()">
+      <option value="all">All specs (${total})</option>
+      ${specOptions}
+    </select>
+  </label>
 </div>
 <main>
 ${rows || "<p>No tests executed.</p>"}
@@ -334,12 +395,21 @@ ${rows || "<p>No tests executed.</p>"}
     var el = document.getElementById('detail-' + id);
     if (el) el.style.display = el.style.display === 'none' ? 'table-row' : 'none';
   }
+  var currentStatus = 'all';
+  // applyFilter() re-applies both the status filter (buttons) and the spec filter (dropdown).
+  // Called with a status to change the status; called with no argument (from the dropdown)
+  // to keep the current status and just re-evaluate the selected spec.
   function applyFilter(status) {
+    if (status) currentStatus = status;
     document.querySelectorAll('.filter-btn').forEach(function (b) {
-      b.classList.toggle('active', b.dataset.filter === status);
+      b.classList.toggle('active', b.dataset.filter === currentStatus);
     });
+    var specSelect = document.getElementById('spec-select');
+    var spec = specSelect ? specSelect.value : 'all';
     document.querySelectorAll('tr.test-row').forEach(function (row) {
-      var show = status === 'all' || row.dataset.status === status;
+      var statusOk = currentStatus === 'all' || row.dataset.status === currentStatus;
+      var specOk = spec === 'all' || row.dataset.feature === spec;
+      var show = statusOk && specOk;
       row.style.display = show ? '' : 'none';
       var detail = document.getElementById('detail-' + row.dataset.row);
       if (detail && !show) detail.style.display = 'none';

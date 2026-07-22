@@ -31,4 +31,17 @@ export class AppLoginPage {
     await this.goto();
     await this.login(poEmail(), poPassword());
   }
+
+  /**
+   * Session-reuse aware: the `po` project loads a saved storageState, so hitting
+   * the app stays authenticated and we skip login. Only log in when the app
+   * bounces us to /login (unauthenticated). Lands on an in-app page (dashboard)
+   * with the nav present, ready for UserManagementPage.goto().
+   */
+  async ensureLoggedIn(): Promise<void> {
+    await this.page.goto(this.appUrl('/dashboard'));
+    if (this.page.url().includes('/login')) {
+      await this.login(poEmail(), poPassword());
+    }
+  }
 }

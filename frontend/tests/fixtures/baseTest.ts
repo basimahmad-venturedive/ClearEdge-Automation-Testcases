@@ -56,15 +56,21 @@ export const test = base.extend<PageFixtures>({
   tenantProfilePage: async ({ page }, use) => {
     await use(new TenantProfilePage(page));
   },
-  authenticatedTenantList: async ({ loginPage, tenantListPage }, use) => {
+  authenticatedTenantList: async ({ page, loginPage, tenantListPage }, use) => {
     // Missing SECRETS skip cleanly with the variable + file named — never a
     // hardcoded fallback (secrets-and-env.rules §3).
     test.skip(
       !hasVar('PA_EMAIL') || !hasVar('PA_PASSWORD'),
       'Set PA_EMAIL and PA_PASSWORD in automation/frontend/.env (see .env.example)',
     );
-    await loginPage.goto();
-    await loginPage.login(paEmail(), paPassword());
+    // Session-reuse aware: the `admin` project loads a saved storageState, so
+    // navigating straight to the list stays authenticated. Only fall back to a
+    // UI login when unauthenticated (the `login` project runs with no
+    // storageState). This is what removes the per-test login burst.
+    await tenantListPage.goto();
+    if (/\/login(\b|$|\/)/.test(page.url())) {
+      await loginPage.login(paEmail(), paPassword());
+    }
     await tenantListPage.expectLanded();
     await use(tenantListPage);
   },

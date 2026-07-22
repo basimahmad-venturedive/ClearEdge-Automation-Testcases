@@ -9,6 +9,7 @@
     "test:headed": "npm run clean:reports && playwright test --headed",
     "test:local": "node scripts/run-env.mjs local",
     "test:dev": "node scripts/run-env.mjs dev",
+    "test:spec": "node scripts/run-by-spec.mjs",
     "test:dev:usermgmt": "node scripts/run-env.mjs dev tests/user-management-home.spec.ts",
     "test:dev:auth": "node scripts/run-env.mjs dev tests/login.spec.ts",
     "test:qa": "node scripts/run-env.mjs qa",

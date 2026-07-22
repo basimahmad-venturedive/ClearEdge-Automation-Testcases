@@ -5,6 +5,7 @@
 .env.*
 !.env.example
 storageState.json
+playwright/.auth/
 
 # Dependencies
 node_modules/

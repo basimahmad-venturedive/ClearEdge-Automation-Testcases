@@ -9,6 +9,7 @@
     "test:live": "USE_MOCK=0 vitest run",
     "test:local": "cross-env TEST_ENV=local vitest run",
     "test:dev": "cross-env TEST_ENV=dev vitest run",
+    "test:spec": "node scripts/run-by-spec.mjs",
     "test:dev:usermgmt": "cross-env TEST_ENV=dev vitest run tests/userManagement.test.ts",
     "test:dev:auth": "cross-env TEST_ENV=dev vitest run tests/auth.test.ts",
     "test:qa": "cross-env TEST_ENV=qa vitest run",

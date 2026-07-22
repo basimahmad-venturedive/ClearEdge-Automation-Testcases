@@ -27,7 +27,7 @@ test.describe('US-UM-003 User Management home', () => {
       !hasVar('PO_EMAIL') || !hasVar('PO_PASSWORD'),
       'Set PO_EMAIL and PO_PASSWORD in automation/frontend/.env.dev',
     );
-    await new AppLoginPage(page).loginAsPO();
+    await new AppLoginPage(page).ensureLoggedIn();
   });
 
   test('TC-UMHOME-001 "Your Organization" card renders company/website/address; null → "—"; no edit controls', async ({ page }) => {

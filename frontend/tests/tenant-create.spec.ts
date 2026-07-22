@@ -66,12 +66,15 @@ test.describe('US-3.1 Create Tenant', () => {
         await createTenantPage.blurField(subCase.field);
         await createTenantPage.expectFieldError(subCase.field, subCase.error);
       }
-      // Full submit with ALL fields invalid: submission blocked; the FIRST
-      // invalid field (Company Name) is scrolled into view.
-      await createTenantPage.submit();
+      // With all fields invalid the Create Tenant submit is DISABLED (the app now
+      // guards submission until the form is valid — fix/clre-53-54), so submission
+      // is blocked and no POST fires. (The first-invalid-field scroll only applies
+      // to an enabled submit, which isn't reachable while the button is disabled.)
+      await expect(
+        createTenantPage.submitButton,
+        'submit disabled while the form is invalid',
+      ).toBeDisabled();
       await createTenantPage.expectFieldError('companyName', Copy.companyNameRequired);
-      await createTenantPage.expectFieldInViewport('companyName');
-      // No POST /admin/tenants fires while blocked.
       expect(createRequests.count(), 'no create call may fire while validation blocks submit').toBe(0);
       createRequests.stop();
     },

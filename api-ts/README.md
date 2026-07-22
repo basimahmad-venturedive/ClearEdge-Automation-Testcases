@@ -84,6 +84,39 @@ npm run test:dev -- tests/tenant.test.ts
 > `tenant` matches both `tenant.test.ts` and `adminPortal.tenants.test.ts`. Use
 > `tenant.test` (or the full path) to target the standalone tenant module only.
 
+## Run by spec (feature)
+
+Runs every test file that belongs to one **feature spec**
+(`documents/input/SPEC_CEIQ-*.md`) — regardless of filename. Each test file names
+its owning spec in its header comment; [`scripts/run-by-spec.mjs`](scripts/run-by-spec.mjs)
+reads that code and runs Vitest against exactly the matching files. This is the
+run-side twin of the **Spec** filter in the HTML report: run one spec here → the
+report shows that one spec.
+
+```bash
+# <env> then <feature>. The feature token is tolerant — all of these mean CEIQ-FEAT-004:
+npm run test:spec -- dev FEAT-004
+npm run test:spec -- dev CEIQ-FEAT-004
+npm run test:spec -- dev 004
+
+# Identity / RBAC / Audit foundation (8 files) on local:
+npm run test:spec -- local FOUND-001
+
+# List the available specs (run with no feature):
+npm run test:spec -- dev
+
+# Extra Vitest flags go after the feature:
+npm run test:spec -- dev FEAT-003 -t "TC-UMAPI-001" --reporter=verbose
+```
+
+| Feature spec        | Title                     |
+| ------------------- | ------------------------- |
+| **CEIQ-FEAT-001**   | Admin Portal              |
+| **CEIQ-FEAT-002**   | User Authentication       |
+| **CEIQ-FEAT-003**   | User Management           |
+| **CEIQ-FEAT-004**   | Company Settings          |
+| **CEIQ-FOUND-001**  | Identity, RBAC & Audit    |
+
 ## Run by test case (TC-ID / title)
 
 `-t` filters by test **name** (title contains the `TC-ID`):

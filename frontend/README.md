@@ -75,6 +75,35 @@ npm run test:dev -- tenant
 npm run test:qa -- tests/tenant-list.spec.ts
 ```
 
+## Run by spec (feature)
+
+Runs every `*.spec.ts` that belongs to one **feature spec**
+(`documents/input/SPEC_CEIQ-*.md`) — regardless of filename. Each spec file names
+its owning feature in its header comment; [`scripts/run-by-spec.mjs`](scripts/run-by-spec.mjs)
+reads that code, flushes reports, sets the env, then runs Playwright against exactly
+the matching files. Running one spec yields a report scoped to that one spec, so the
+Playwright report reads spec-wise without any extra filtering.
+
+```bash
+# <env> then <feature>. The feature token is tolerant — all of these mean CEIQ-FEAT-004:
+npm run test:spec -- dev FEAT-004
+npm run test:spec -- dev CEIQ-FEAT-004
+npm run test:spec -- dev 004
+
+# List the available specs (run with no feature):
+npm run test:spec -- dev
+
+# Extra Playwright flags go after the feature:
+npm run test:spec -- dev FEAT-003 --headed
+npm run test:spec -- qa FEAT-001 -g "TC-ADMLIST-001"
+```
+
+| Feature spec       | Title            | Spec files                          |
+| ------------------ | ---------------- | ----------------------------------- |
+| **CEIQ-FEAT-001**  | Admin Portal     | `login`, `tenant-*`, `ux-states`, `setup-handover` |
+| **CEIQ-FEAT-003**  | User Management  | `user-management-*`                 |
+| **CEIQ-FEAT-004**  | Company Settings | `company-settings-*`                |
+
 ## Run by test case (TC-ID / title)
 
 `-g` (grep) filters by test **title**, which contains the `TC-ID`:
