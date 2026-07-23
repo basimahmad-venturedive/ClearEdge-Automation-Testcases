@@ -68,9 +68,6 @@ api-ts/tests/tenant.test.ts
 api-ts/tests/user.test.ts
 api-ts/tests/vendor.test.ts
 # frontend (screen not built):
-frontend/tests/company-settings-access.spec.ts
-frontend/tests/company-settings-edit.spec.ts
-frontend/tests/company-settings-view.spec.ts
 frontend/tests/user-management-create.spec.ts
 frontend/tests/user-management-edit.spec.ts
 frontend/tests/user-management-email.spec.ts

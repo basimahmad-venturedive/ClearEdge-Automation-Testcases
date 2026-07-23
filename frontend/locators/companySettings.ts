@@ -1,43 +1,60 @@
 /**
- * Company Settings screen selectors — PROPOSED contract (CEIQ-FEAT-004).
+ * Company Settings screen selectors — VERIFIED against the built tenant app
+ * (codebase/clearedge-frontend, dev). Source of truth for the data-testids:
+ *   lib/constants/companySettingsTestIds.ts
+ *   app/(app)/company-settings/_components/*
  *
- * The tenant `/company-settings` route is not yet built and the spec defines no
- * data-testid attributes. These follow the kit placeholder policy (analogous to
- * TODO_LOCATOR): a request to the frontend team. Playwright specs must not merge
- * against these until the real attributes exist or role/name fallbacks are
- * verified on the live screen. Source: testcases/TC-CEIQ-FEAT-004.md §6.
+ * The screen shipped on dev (PR #26). These ids are the real attributes emitted
+ * by CompanySettingsView / CompanySettingsSectionCard / UnsavedChangesModal —
+ * no longer a proposed contract. Per-section ids are suffixed with the API slug
+ * ('background' | 'introduction' | 'terms_and_conditions').
  *
- * Section keys align with the API slugs: 'background' | 'introduction' |
- * 'terms_and_conditions'.
+ * Note the antd realities the POM relies on (no testids of their own):
+ *  - section heading  → antd Card title (`.ant-card-head-title`), NOT role=heading.
+ *  - save confirmation → antd notification (`.ant-notification-notice`), top-right.
+ *  - save error (5xx)  → antd message (`.ant-message-notice`).
+ *  - field validation  → antd Form.Item explain (`.ant-form-item-explain-error`).
  */
 export type SectionKey = 'background' | 'introduction' | 'terms_and_conditions';
 
 export const CompanySettingsLocators = {
-  /** Account/profile dropdown trigger in the app shell. */
-  accountMenuTrigger: 'account-menu-trigger',
-  /** "Company Settings" menu item (Owner-only). role fallback: menuitem[name="Company Settings"]. */
-  menuItem: 'menu-company-settings',
+  /** Page-shell view container. */
+  view: 'company-settings-view',
+  /** Route-guard loading spinner while the right check is in flight. */
+  loading: 'company-settings-loading',
+
+  /** "Company Settings" avatar-dropdown item (rendered only when the PO holds
+   *  `manage_company_settings`). role fallback: menuitem[name="Company Settings"]. */
   menuItemName: 'Company Settings',
-  /** Page heading — role=heading[name="Company Settings"]. */
+  /** Page heading — PageHeader renders Typography.Title level=3 → role=heading. */
   pageHeadingName: 'Company Settings',
-  /** Page subtitle. */
-  subtitle: 'company-settings-subtitle',
-  /** Per-section testids are suffixed with the section key. */
-  sectionCard: (key: SectionKey): string => `cs-section-${key}`,
-  contentReadonly: (key: SectionKey): string => `cs-content-${key}`,
-  textarea: (key: SectionKey): string => `cs-textarea-${key}`,
-  saveTooltip: (key: SectionKey): string => `cs-save-tooltip-${key}`,
-  /** Button accessible names (within a section card). */
+
+  /** Per-section testids (companySettingsSectionTestIds in the app). */
+  sectionCard: (key: SectionKey): string => `company-settings-section-${key}-card`,
+  contentReadonly: (key: SectionKey): string => `company-settings-section-${key}-content`,
+  textarea: (key: SectionKey): string => `company-settings-section-${key}-textarea`,
+  editButton: (key: SectionKey): string => `company-settings-section-${key}-edit-button`,
+  discardButton: (key: SectionKey): string => `company-settings-section-${key}-discard-button`,
+  saveButton: (key: SectionKey): string => `company-settings-section-${key}-save-button`,
+
+  /** Button accessible names (fallback within a section card). */
   editButtonName: 'Edit',
   discardButtonName: 'Discard',
   saveButtonName: 'Save',
-  /** Unsaved-changes popup. */
-  unsavedPopup: 'cs-unsaved-popup',
+
+  /** Unsaved-changes popup (antd Modal). */
+  unsavedPopup: 'company-settings-unsaved-changes-modal',
+  popupCancel: 'company-settings-unsaved-changes-modal-cancel-button',
+  popupSaveChanges: 'company-settings-unsaved-changes-modal-save-button',
   popupCancelName: 'Cancel',
   popupSaveChangesName: 'Save Changes',
-  /** Save confirmation toast (top-right). */
-  confirmation: 'cs-confirmation',
-  confirmationDismiss: 'cs-confirmation-dismiss',
-  /** Generic error message. */
-  error: 'cs-error',
+
+  /** antd portals without testids — matched by class. The save confirmation is a
+   *  SUCCESS notification; scope to it so unrelated (e.g. error) notices on the
+   *  page don't collide with `.last()`. */
+  confirmationNotice: '.ant-notification-notice-success',
+  confirmationClose: '.ant-notification-notice-close',
+  messageNotice: '.ant-message-notice',
+  fieldError: '.ant-form-item-explain-error',
+  cardTitle: '.ant-card-head-title',
 } as const;

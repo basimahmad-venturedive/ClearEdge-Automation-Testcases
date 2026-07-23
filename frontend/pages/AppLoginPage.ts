@@ -15,7 +15,9 @@ export class AppLoginPage {
 
   async goto(): Promise<void> {
     await this.page.goto(this.appUrl('/login'));
-    await expect(this.page.getByTestId('auth-login-view')).toBeVisible();
+    // Cold SPA boot on dev can take well over the 5s expect-default to paint the
+    // login view; give it the same 30s budget the rest of the app waits use.
+    await expect(this.page.getByTestId('auth-login-view')).toBeVisible({ timeout: 30000 });
   }
 
   async login(email: string, password: string): Promise<void> {

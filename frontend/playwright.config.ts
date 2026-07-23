@@ -1,5 +1,28 @@
-import { defineConfig, type ReporterDescription } from '@playwright/test';
-import { baseUrl, isCi } from './utils/env';
+import { defineConfig, type PlaywrightTestProject, type ReporterDescription } from '@playwright/test';
+import { baseUrl, hasVar, isCi } from './utils/env';
+
+/**
+ * The `po` project logs into the MAIN app and reuses playwright/.auth/po.json,
+ * which the setup project only writes when PO_EMAIL + PO_PASSWORD are present.
+ * Without those creds the PO setup skips, so including the project anyway makes
+ * every user-management spec ERROR on the missing storageState (ENOENT). Gate it
+ * on the creds so a credential-less run (e.g. CI without the tenant password)
+ * simply doesn't run those specs instead of failing them.
+ */
+const hasPoCreds = hasVar('PO_EMAIL') && hasVar('PO_PASSWORD');
+
+const poProject: PlaywrightTestProject[] = hasPoCreds
+  ? [
+      {
+        name: 'po',
+        dependencies: ['setup'],
+        use: { storageState: 'playwright/.auth/po.json' },
+        // PO-only tenant-app screens: User Management (FEAT-003) and Company
+        // Settings (FEAT-004) both live behind the Procurement-Owner session.
+        testMatch: /(user-management-.*|company-settings-.*)\.spec\.ts/,
+      },
+    ]
+  : [];
 
 /**
  * Integration reporters (TestRail + CQM) are opt-in and only appended when their
@@ -34,15 +57,23 @@ export default defineConfig({
   // (see automation/.gitignore) AND ignored here so CI and local runs match. Delete a
   // line here + in .gitignore when the screen ships and its cases are un-skipped.
   testIgnore: [
-    'company-settings-access.spec.ts',
-    'company-settings-edit.spec.ts',
-    'company-settings-view.spec.ts',
     'user-management-create.spec.ts',
     'user-management-edit.spec.ts',
     'user-management-email.spec.ts',
     'user-management-status.spec.ts',
   ],
   outputDir: 'test-results',
+  // Per-test budget. The Playwright default (30s) is tight against the dev
+  // CloudFront/SPA cold start: the first test after auth setup pays the app's
+  // boot cost inside its own timeout and can tip over 30s (e.g. TC-CSEDIT-005),
+  // then passes on retry. 60s absorbs the cold start without masking real hangs.
+  timeout: 60_000,
+  // Web-first assertion budget. The Playwright default (5s) is too tight for
+  // mid-test steps against a throttled dev (a textarea/button/toast occasionally
+  // lands >5s late and flakes, then passes on retry). 15s absorbs the lag;
+  // negative assertions (toHaveCount(0), not.toBeVisible) still return instantly
+  // on the happy path, so this doesn't slow green runs.
+  expect: { timeout: 15_000 },
   fullyParallel: false,
   // One worker by default: sequential runs map pass/fail cleanly to a single
   // TC-ID during stabilization (automation-architecture.rules §2).
@@ -84,11 +115,6 @@ export default defineConfig({
       use: { storageState: 'playwright/.auth/admin.json' },
       testMatch: /(tenant-list|tenant-create|tenant-edit|tenant-toggle|setup-handover|ux-states)\.spec\.ts/,
     },
-    {
-      name: 'po',
-      dependencies: ['setup'],
-      use: { storageState: 'playwright/.auth/po.json' },
-      testMatch: /user-management-.*\.spec\.ts/,
-    },
+    ...poProject,
   ],
 });
