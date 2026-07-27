@@ -17,9 +17,10 @@ const poProject: PlaywrightTestProject[] = hasPoCreds
         name: 'po',
         dependencies: ['setup'],
         use: { storageState: 'playwright/.auth/po.json' },
-        // PO-only tenant-app screens: User Management (FEAT-003) and Company
-        // Settings (FEAT-004) both live behind the Procurement-Owner session.
-        testMatch: /(user-management-.*|company-settings-.*)\.spec\.ts/,
+        // PO-only tenant-app screens: User Management (FEAT-003), Company
+        // Settings (FEAT-004), and Vendor Directory (FEAT-005) all live behind
+        // the Procurement-Owner session.
+        testMatch: /(user-management-.*|company-settings-.*|vendors-.*)\.spec\.ts/,
       },
     ]
   : [];

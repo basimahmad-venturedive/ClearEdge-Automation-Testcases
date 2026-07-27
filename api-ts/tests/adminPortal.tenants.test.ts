@@ -9,7 +9,8 @@
  *   - TC-ADMAPI-016 — create compensation: DB failure deletes the just-created Cognito user (§4.2 POST step 5).
  * Same constraint family: TC-ADMAPI-056/064/065 (see the owner-handover suite header).
  */
-import { describe, test, expect } from "vitest";
+import { describe, expect } from "vitest";
+import { test, deferred } from "../src/utils/suite";
 import { randomUUID } from "crypto";
 import type { AxiosResponse } from "axios";
 import { AdminPortalClient } from "../src/clients/adminPortalClient";
@@ -80,7 +81,7 @@ function validationFields(response: AxiosResponse): Record<string, string> {
 }
 
 describe("Admin Portal — GET /admin/tenants (list)", () => {
-  test(`TC-ADMAPI-001 — list envelope, fixed page size 12, createdAt DESC + displayId tie-break, setupPassword never present [blocked: ${SKIP_REASON}] @smoke`, async () => {
+  test(`TC-ADMAPI-001 — list envelope, fixed page size 12, createdAt DESC + displayId tie-break, setupPassword never present [blocked: ${SKIP_REASON}] @smoke @regression`, async () => {
     // Arrange — env fixture: ≥13 tenants incl. ≥1 in_setup and a shared created_at pair (tie-break).
     const client = new AdminPortalClient();
     const adminToken = await validAdminToken();
@@ -114,7 +115,7 @@ describe("Admin Portal — GET /admin/tenants (list)", () => {
     for (const tenant of rawTenants) expect(tenant).not.toHaveProperty("setupPassword");
   });
 
-  test(`TC-ADMAPI-002 — search is partial, case-insensitive, Company-Name-only; totalCount reflects the filter [blocked: ${SKIP_REASON}]`, async () => {
+  test(`TC-ADMAPI-002 — search is partial, case-insensitive, Company-Name-only; totalCount reflects the filter [blocked: ${SKIP_REASON}] @smoke @regression`, async () => {
     // Arrange
     const client = new AdminPortalClient();
     const adminToken = await validAdminToken();
@@ -155,7 +156,7 @@ describe("Admin Portal — GET /admin/tenants (list)", () => {
     }
   });
 
-  test(`TC-ADMAPI-003 — list boundaries: whitespace-only search, page=0, page past last, page omitted`, async () => {
+  test(`TC-ADMAPI-003 — list boundaries: whitespace-only search, page=0, page past last, page omitted @regression`, async () => {
     const client = new AdminPortalClient();
     const adminToken = await validAdminToken();
     const baseline = await client.listTenants({}, adminToken);
@@ -190,7 +191,7 @@ describe("Admin Portal — GET /admin/tenants (list)", () => {
     expect(baselineBody.data.pagination.page).toBe(1);
   });
 
-  test(`TC-ADMAPI-005 — search special characters are treated literally (no SQL-wildcard expansion, no 5xx) [blocked: ${SKIP_REASON}]`, async () => {
+  test(`TC-ADMAPI-005 — search special characters are treated literally (no SQL-wildcard expansion, no 5xx) [blocked: ${SKIP_REASON}] @regression`, async () => {
     // Arrange — a tenant whose Company Name literally contains % and _ .
     const client = new AdminPortalClient();
     const adminToken = await validAdminToken();
@@ -266,29 +267,29 @@ async function assertGuardRejects401(probeKey: keyof typeof endpointProbes, vari
 }
 
 describe("Admin Portal — auth guard contract (all 7 endpoints)", () => {
-  test(`TC-ADMAPI-004-1 — 4a GET /admin/tenants with i missing header → 401 ERR_AUTH_INVALID_TOKEN @smoke`, () => assertGuardRejects401("4a", "i missing header"));
-  test(`TC-ADMAPI-004-2 — 4a GET /admin/tenants with ii tampered JWT → 401 ERR_AUTH_INVALID_TOKEN @smoke`, () => assertGuardRejects401("4a", "ii tampered JWT"));
-  test(`TC-ADMAPI-004-3 — 4a GET /admin/tenants with iii tenant-pool JWT (wrong pool) → 401 ERR_AUTH_INVALID_TOKEN @smoke`, () => assertGuardRejects401("4a", "iii tenant-pool JWT (wrong pool)"));
-  test(`TC-ADMAPI-004-4 — 4b POST /admin/tenants with i missing header → 401 ERR_AUTH_INVALID_TOKEN @smoke`, () => assertGuardRejects401("4b", "i missing header"));
-  test(`TC-ADMAPI-004-5 — 4b POST /admin/tenants with ii tampered JWT → 401 ERR_AUTH_INVALID_TOKEN @smoke`, () => assertGuardRejects401("4b", "ii tampered JWT"));
-  test(`TC-ADMAPI-004-6 — 4b POST /admin/tenants with iii tenant-pool JWT (wrong pool) → 401 ERR_AUTH_INVALID_TOKEN @smoke`, () => assertGuardRejects401("4b", "iii tenant-pool JWT (wrong pool)"));
-  test(`TC-ADMAPI-004-7 — 4c GET /admin/tenants/:id with i missing header → 401 ERR_AUTH_INVALID_TOKEN @smoke`, () => assertGuardRejects401("4c", "i missing header"));
-  test(`TC-ADMAPI-004-8 — 4c GET /admin/tenants/:id with ii tampered JWT → 401 ERR_AUTH_INVALID_TOKEN @smoke`, () => assertGuardRejects401("4c", "ii tampered JWT"));
-  test(`TC-ADMAPI-004-9 — 4c GET /admin/tenants/:id with iii tenant-pool JWT (wrong pool) → 401 ERR_AUTH_INVALID_TOKEN @smoke`, () => assertGuardRejects401("4c", "iii tenant-pool JWT (wrong pool)"));
-  test(`TC-ADMAPI-004-10 — 4d PATCH /admin/tenants/:id/company with i missing header → 401 ERR_AUTH_INVALID_TOKEN @smoke`, () => assertGuardRejects401("4d", "i missing header"));
-  test(`TC-ADMAPI-004-11 — 4d PATCH /admin/tenants/:id/company with ii tampered JWT → 401 ERR_AUTH_INVALID_TOKEN @smoke`, () => assertGuardRejects401("4d", "ii tampered JWT"));
-  test(`TC-ADMAPI-004-12 — 4d PATCH /admin/tenants/:id/company with iii tenant-pool JWT (wrong pool) → 401 ERR_AUTH_INVALID_TOKEN @smoke`, () => assertGuardRejects401("4d", "iii tenant-pool JWT (wrong pool)"));
-  test(`TC-ADMAPI-004-13 — 4e PATCH /admin/tenants/:id/status with i missing header → 401 ERR_AUTH_INVALID_TOKEN @smoke`, () => assertGuardRejects401("4e", "i missing header"));
-  test(`TC-ADMAPI-004-14 — 4e PATCH /admin/tenants/:id/status with ii tampered JWT → 401 ERR_AUTH_INVALID_TOKEN @smoke`, () => assertGuardRejects401("4e", "ii tampered JWT"));
-  test(`TC-ADMAPI-004-15 — 4e PATCH /admin/tenants/:id/status with iii tenant-pool JWT (wrong pool) → 401 ERR_AUTH_INVALID_TOKEN @smoke`, () => assertGuardRejects401("4e", "iii tenant-pool JWT (wrong pool)"));
-  test(`TC-ADMAPI-004-16 — 4f PATCH /admin/tenants/:id/owner with i missing header → 401 ERR_AUTH_INVALID_TOKEN @smoke`, () => assertGuardRejects401("4f", "i missing header"));
-  test(`TC-ADMAPI-004-17 — 4f PATCH /admin/tenants/:id/owner with ii tampered JWT → 401 ERR_AUTH_INVALID_TOKEN @smoke`, () => assertGuardRejects401("4f", "ii tampered JWT"));
-  test(`TC-ADMAPI-004-18 — 4f PATCH /admin/tenants/:id/owner with iii tenant-pool JWT (wrong pool) → 401 ERR_AUTH_INVALID_TOKEN @smoke`, () => assertGuardRejects401("4f", "iii tenant-pool JWT (wrong pool)"));
-  test(`TC-ADMAPI-004-19 — 4g POST /admin/tenants/:id/handover with i missing header → 401 ERR_AUTH_INVALID_TOKEN @smoke`, () => assertGuardRejects401("4g", "i missing header"));
-  test(`TC-ADMAPI-004-20 — 4g POST /admin/tenants/:id/handover with ii tampered JWT → 401 ERR_AUTH_INVALID_TOKEN @smoke`, () => assertGuardRejects401("4g", "ii tampered JWT"));
-  test(`TC-ADMAPI-004-21 — 4g POST /admin/tenants/:id/handover with iii tenant-pool JWT (wrong pool) → 401 ERR_AUTH_INVALID_TOKEN @smoke`, () => assertGuardRejects401("4g", "iii tenant-pool JWT (wrong pool)"));
+  test(`TC-ADMAPI-004-1 — 4a GET /admin/tenants with i missing header → 401 ERR_AUTH_INVALID_TOKEN @smoke @regression`, () => assertGuardRejects401("4a", "i missing header"));
+  test(`TC-ADMAPI-004-2 — 4a GET /admin/tenants with ii tampered JWT → 401 ERR_AUTH_INVALID_TOKEN @regression`, () => assertGuardRejects401("4a", "ii tampered JWT"));
+  test(`TC-ADMAPI-004-3 — 4a GET /admin/tenants with iii tenant-pool JWT (wrong pool) → 401 ERR_AUTH_INVALID_TOKEN @regression`, () => assertGuardRejects401("4a", "iii tenant-pool JWT (wrong pool)"));
+  test(`TC-ADMAPI-004-4 — 4b POST /admin/tenants with i missing header → 401 ERR_AUTH_INVALID_TOKEN @regression`, () => assertGuardRejects401("4b", "i missing header"));
+  test(`TC-ADMAPI-004-5 — 4b POST /admin/tenants with ii tampered JWT → 401 ERR_AUTH_INVALID_TOKEN @regression`, () => assertGuardRejects401("4b", "ii tampered JWT"));
+  test(`TC-ADMAPI-004-6 — 4b POST /admin/tenants with iii tenant-pool JWT (wrong pool) → 401 ERR_AUTH_INVALID_TOKEN @regression`, () => assertGuardRejects401("4b", "iii tenant-pool JWT (wrong pool)"));
+  test(`TC-ADMAPI-004-7 — 4c GET /admin/tenants/:id with i missing header → 401 ERR_AUTH_INVALID_TOKEN @regression`, () => assertGuardRejects401("4c", "i missing header"));
+  test(`TC-ADMAPI-004-8 — 4c GET /admin/tenants/:id with ii tampered JWT → 401 ERR_AUTH_INVALID_TOKEN @regression`, () => assertGuardRejects401("4c", "ii tampered JWT"));
+  test(`TC-ADMAPI-004-9 — 4c GET /admin/tenants/:id with iii tenant-pool JWT (wrong pool) → 401 ERR_AUTH_INVALID_TOKEN @regression`, () => assertGuardRejects401("4c", "iii tenant-pool JWT (wrong pool)"));
+  test(`TC-ADMAPI-004-10 — 4d PATCH /admin/tenants/:id/company with i missing header → 401 ERR_AUTH_INVALID_TOKEN @regression`, () => assertGuardRejects401("4d", "i missing header"));
+  test(`TC-ADMAPI-004-11 — 4d PATCH /admin/tenants/:id/company with ii tampered JWT → 401 ERR_AUTH_INVALID_TOKEN @regression`, () => assertGuardRejects401("4d", "ii tampered JWT"));
+  test(`TC-ADMAPI-004-12 — 4d PATCH /admin/tenants/:id/company with iii tenant-pool JWT (wrong pool) → 401 ERR_AUTH_INVALID_TOKEN @regression`, () => assertGuardRejects401("4d", "iii tenant-pool JWT (wrong pool)"));
+  test(`TC-ADMAPI-004-13 — 4e PATCH /admin/tenants/:id/status with i missing header → 401 ERR_AUTH_INVALID_TOKEN @regression`, () => assertGuardRejects401("4e", "i missing header"));
+  test(`TC-ADMAPI-004-14 — 4e PATCH /admin/tenants/:id/status with ii tampered JWT → 401 ERR_AUTH_INVALID_TOKEN @regression`, () => assertGuardRejects401("4e", "ii tampered JWT"));
+  test(`TC-ADMAPI-004-15 — 4e PATCH /admin/tenants/:id/status with iii tenant-pool JWT (wrong pool) → 401 ERR_AUTH_INVALID_TOKEN @regression`, () => assertGuardRejects401("4e", "iii tenant-pool JWT (wrong pool)"));
+  test(`TC-ADMAPI-004-16 — 4f PATCH /admin/tenants/:id/owner with i missing header → 401 ERR_AUTH_INVALID_TOKEN @regression`, () => assertGuardRejects401("4f", "i missing header"));
+  test(`TC-ADMAPI-004-17 — 4f PATCH /admin/tenants/:id/owner with ii tampered JWT → 401 ERR_AUTH_INVALID_TOKEN @regression`, () => assertGuardRejects401("4f", "ii tampered JWT"));
+  test(`TC-ADMAPI-004-18 — 4f PATCH /admin/tenants/:id/owner with iii tenant-pool JWT (wrong pool) → 401 ERR_AUTH_INVALID_TOKEN @regression`, () => assertGuardRejects401("4f", "iii tenant-pool JWT (wrong pool)"));
+  test(`TC-ADMAPI-004-19 — 4g POST /admin/tenants/:id/handover with i missing header → 401 ERR_AUTH_INVALID_TOKEN @regression`, () => assertGuardRejects401("4g", "i missing header"));
+  test(`TC-ADMAPI-004-20 — 4g POST /admin/tenants/:id/handover with ii tampered JWT → 401 ERR_AUTH_INVALID_TOKEN @regression`, () => assertGuardRejects401("4g", "ii tampered JWT"));
+  test(`TC-ADMAPI-004-21 — 4g POST /admin/tenants/:id/handover with iii tenant-pool JWT (wrong pool) → 401 ERR_AUTH_INVALID_TOKEN @regression`, () => assertGuardRejects401("4g", "iii tenant-pool JWT (wrong pool)"));
 
-  test(`TC-ADMAPI-004-22 — rejected unauthenticated create has no side effects @smoke`, async () => {
+  test(`TC-ADMAPI-004-22 — rejected unauthenticated create has no side effects @regression`, async () => {
     const client = new AdminPortalClient();
     const payload = adminTenantCreatePayload();
 
@@ -306,7 +307,7 @@ describe("Admin Portal — auth guard contract (all 7 endpoints)", () => {
 });
 
 describe("Admin Portal — POST /admin/tenants (create)", () => {
-  test(`TC-ADMAPI-010 — create: 201 contract, DB row, role seeding, users mirror, permanent Cognito password [blocked: ${SKIP_REASON}] @smoke`, async () => {
+  test(`TC-ADMAPI-010 — create: 201 contract, DB row, role seeding, users mirror, permanent Cognito password [blocked: ${SKIP_REASON}] @smoke @regression`, async () => {
     // Arrange
     const client = new AdminPortalClient();
     const adminToken = await validAdminToken();
@@ -402,13 +403,13 @@ describe("Admin Portal — POST /admin/tenants (create)", () => {
     }
   }
 
-  test(`TC-ADMAPI-011-1 — duplicate domain 11a bare domain → 409 ERR_TENANT_DOMAIN_DUPLICATE, nothing created [blocked: ${SKIP_REASON}] @smoke`, () => assertDuplicateDomainRejected("11a bare domain"));
-  test(`TC-ADMAPI-011-2 — duplicate domain 11b https + www → 409 ERR_TENANT_DOMAIN_DUPLICATE, nothing created [blocked: ${SKIP_REASON}] @smoke`, () => assertDuplicateDomainRejected("11b https + www"));
-  test(`TC-ADMAPI-011-3 — duplicate domain 11c www prefix → 409 ERR_TENANT_DOMAIN_DUPLICATE, nothing created [blocked: ${SKIP_REASON}] @smoke`, () => assertDuplicateDomainRejected("11c www prefix"));
-  test(`TC-ADMAPI-011-4 — duplicate domain 11d path + query → 409 ERR_TENANT_DOMAIN_DUPLICATE, nothing created [blocked: ${SKIP_REASON}] @smoke`, () => assertDuplicateDomainRejected("11d path + query"));
-  test(`TC-ADMAPI-011-5 — duplicate domain 11e port suffix → 409 ERR_TENANT_DOMAIN_DUPLICATE, nothing created [blocked: ${SKIP_REASON}] @smoke`, () => assertDuplicateDomainRejected("11e port suffix"));
+  test(`TC-ADMAPI-011-1 — duplicate domain 11a bare domain → 409 ERR_TENANT_DOMAIN_DUPLICATE, nothing created [blocked: ${SKIP_REASON}] @smoke @regression`, () => assertDuplicateDomainRejected("11a bare domain"));
+  test(`TC-ADMAPI-011-2 — duplicate domain 11b https + www → 409 ERR_TENANT_DOMAIN_DUPLICATE, nothing created [blocked: ${SKIP_REASON}] @regression`, () => assertDuplicateDomainRejected("11b https + www"));
+  test(`TC-ADMAPI-011-3 — duplicate domain 11c www prefix → 409 ERR_TENANT_DOMAIN_DUPLICATE, nothing created [blocked: ${SKIP_REASON}] @regression`, () => assertDuplicateDomainRejected("11c www prefix"));
+  test(`TC-ADMAPI-011-4 — duplicate domain 11d path + query → 409 ERR_TENANT_DOMAIN_DUPLICATE, nothing created [blocked: ${SKIP_REASON}] @regression`, () => assertDuplicateDomainRejected("11d path + query"));
+  test(`TC-ADMAPI-011-5 — duplicate domain 11e port suffix → 409 ERR_TENANT_DOMAIN_DUPLICATE, nothing created [blocked: ${SKIP_REASON}] @regression`, () => assertDuplicateDomainRejected("11e port suffix"));
 
-  test(`TC-ADMAPI-011-6 — stored value is the bare domain (protocol/www/path/query stripped) [blocked: ${SKIP_REASON}] @smoke`, async () => {
+  test(`TC-ADMAPI-011-6 — stored value is the bare domain (protocol/www/path/query stripped) [blocked: ${SKIP_REASON}] @regression`, async () => {
     const client = new AdminPortalClient();
     const adminToken = await validAdminToken();
     const bare = uniqueDomain("zenith");
@@ -430,7 +431,7 @@ describe("Admin Portal — POST /admin/tenants (create)", () => {
     }
   });
 
-  test(`TC-ADMAPI-012 — duplicate owner email → 409 ERR_EMAIL_ALREADY_IN_USE (full-address match, not domain-level) [blocked: ${SKIP_REASON}] @smoke`, async () => {
+  test(`TC-ADMAPI-012 — duplicate owner email → 409 ERR_EMAIL_ALREADY_IN_USE (full-address match, not domain-level) [blocked: ${SKIP_REASON}] @smoke @regression`, async () => {
     // Arrange — an existing user already holds the shared email.
     const client = new AdminPortalClient();
     const adminToken = await validAdminToken();
@@ -496,13 +497,13 @@ describe("Admin Portal — POST /admin/tenants (create)", () => {
     }
   }
 
-  test(`TC-ADMAPI-013-1 — 13a name empty → 400 ERR_VALIDATION_FAILED with exact §5 per-field message`, () => assertCreateValidationRejected("13a name empty"));
-  test(`TC-ADMAPI-013-2 — 13b domain empty → 400 ERR_VALIDATION_FAILED with exact §5 per-field message`, () => assertCreateValidationRejected("13b domain empty"));
-  test(`TC-ADMAPI-013-3 — 13c domain invalid format → 400 ERR_VALIDATION_FAILED with exact §5 per-field message`, () => assertCreateValidationRejected("13c domain invalid format"));
-  test(`TC-ADMAPI-013-4 — 13d address empty → 400 ERR_VALIDATION_FAILED with exact §5 per-field message`, () => assertCreateValidationRejected("13d address empty"));
-  test(`TC-ADMAPI-013-5 — 13e ownerName empty → 400 ERR_VALIDATION_FAILED with exact §5 per-field message`, () => assertCreateValidationRejected("13e ownerName empty"));
-  test(`TC-ADMAPI-013-6 — 13f ownerEmail invalid → 400 ERR_VALIDATION_FAILED with exact §5 per-field message`, () => assertCreateValidationRejected("13f ownerEmail invalid"));
-  test(`TC-ADMAPI-013-7 — 13g multiple invalid fields → 400 ERR_VALIDATION_FAILED with exact §5 per-field message`, () => assertCreateValidationRejected("13g multiple invalid fields"));
+  test(`TC-ADMAPI-013-1 — 13a name empty → 400 ERR_VALIDATION_FAILED with exact §5 per-field message @smoke @regression`, () => assertCreateValidationRejected("13a name empty"));
+  test(`TC-ADMAPI-013-2 — 13b domain empty → 400 ERR_VALIDATION_FAILED with exact §5 per-field message @regression`, () => assertCreateValidationRejected("13b domain empty"));
+  test(`TC-ADMAPI-013-3 — 13c domain invalid format → 400 ERR_VALIDATION_FAILED with exact §5 per-field message @regression`, () => assertCreateValidationRejected("13c domain invalid format"));
+  test(`TC-ADMAPI-013-4 — 13d address empty → 400 ERR_VALIDATION_FAILED with exact §5 per-field message @regression`, () => assertCreateValidationRejected("13d address empty"));
+  test(`TC-ADMAPI-013-5 — 13e ownerName empty → 400 ERR_VALIDATION_FAILED with exact §5 per-field message @regression`, () => assertCreateValidationRejected("13e ownerName empty"));
+  test(`TC-ADMAPI-013-6 — 13f ownerEmail invalid → 400 ERR_VALIDATION_FAILED with exact §5 per-field message @regression`, () => assertCreateValidationRejected("13f ownerEmail invalid"));
+  test(`TC-ADMAPI-013-7 — 13g multiple invalid fields → 400 ERR_VALIDATION_FAILED with exact §5 per-field message @regression`, () => assertCreateValidationRejected("13g multiple invalid fields"));
 
   // TC-ADMAPI-014-1..10 — one explicit test case per §5 max-length boundary (at/over limit × 5 fields).
   async function assertMaxLengthBoundary(variantSub: string): Promise<void> {
@@ -534,21 +535,21 @@ describe("Admin Portal — POST /admin/tenants (create)", () => {
     }
   }
 
-  test(`TC-ADMAPI-014-1 — name at limit (255) [blocked: ${SKIP_REASON}]`, () => assertMaxLengthBoundary("name at limit (255)"));
-  test(`TC-ADMAPI-014-2 — name over limit (256) [blocked: ${SKIP_REASON}]`, () => assertMaxLengthBoundary("name over limit (256)"));
-  test(`TC-ADMAPI-014-3 — websiteUrl at limit (500)`, () => assertMaxLengthBoundary("websiteUrl at limit (500)"));
-  test(`TC-ADMAPI-014-4 — websiteUrl over limit (501)`, () => assertMaxLengthBoundary("websiteUrl over limit (501)"));
-  test(`TC-ADMAPI-014-5 — address at limit (500) [blocked: ${SKIP_REASON}]`, () => assertMaxLengthBoundary("address at limit (500)"));
-  test(`TC-ADMAPI-014-6 — address over limit (501) [blocked: ${SKIP_REASON}]`, () => assertMaxLengthBoundary("address over limit (501)"));
-  test(`TC-ADMAPI-014-7 — ownerName at limit (255) [blocked: ${SKIP_REASON}]`, () => assertMaxLengthBoundary("ownerName at limit (255)"));
-  test(`TC-ADMAPI-014-8 — ownerName over limit (256) [blocked: ${SKIP_REASON}]`, () => assertMaxLengthBoundary("ownerName over limit (256)"));
+  test(`TC-ADMAPI-014-1 — name at limit (255) [blocked: ${SKIP_REASON}] @regression`, () => assertMaxLengthBoundary("name at limit (255)"));
+  test(`TC-ADMAPI-014-2 — name over limit (256) [blocked: ${SKIP_REASON}] @regression`, () => assertMaxLengthBoundary("name over limit (256)"));
+  test(`TC-ADMAPI-014-3 — websiteUrl at limit (500) @regression`, () => assertMaxLengthBoundary("websiteUrl at limit (500)"));
+  test(`TC-ADMAPI-014-4 — websiteUrl over limit (501) @regression`, () => assertMaxLengthBoundary("websiteUrl over limit (501)"));
+  test(`TC-ADMAPI-014-5 — address at limit (500) [blocked: ${SKIP_REASON}] @regression`, () => assertMaxLengthBoundary("address at limit (500)"));
+  test(`TC-ADMAPI-014-6 — address over limit (501) [blocked: ${SKIP_REASON}] @regression`, () => assertMaxLengthBoundary("address over limit (501)"));
+  test(`TC-ADMAPI-014-7 — ownerName at limit (255) [blocked: ${SKIP_REASON}] @regression`, () => assertMaxLengthBoundary("ownerName at limit (255)"));
+  test(`TC-ADMAPI-014-8 — ownerName over limit (256) [blocked: ${SKIP_REASON}] @regression`, () => assertMaxLengthBoundary("ownerName over limit (256)"));
   // FINDING (flag to PM): a 320-char ownerEmail (the DTO's stated MaxLength) is rejected 400 on
   // dev — a valid RFC-max address (64 local + 255 domain) isn't accepted end-to-end (Cognito/
   // email-format). Over-limit (321→400) still passes below. Skipped until the real cap is confirmed.
-  test.skip(`TC-ADMAPI-014-9 — ownerEmail at limit (320) [blocked: 320-char email rejected on dev — confirm real cap with PM]`, () => assertMaxLengthBoundary("ownerEmail at limit (320)"));
-  test(`TC-ADMAPI-014-10 — ownerEmail over limit (321) [blocked: ${SKIP_REASON}]`, () => assertMaxLengthBoundary("ownerEmail over limit (321)"));
+  deferred(`TC-ADMAPI-014-9 — ownerEmail at limit (320) [blocked: 320-char email rejected on dev — confirm real cap with PM]`, () => assertMaxLengthBoundary("ownerEmail at limit (320)"));
+  test(`TC-ADMAPI-014-10 — ownerEmail over limit (321) [blocked: ${SKIP_REASON}] @regression`, () => assertMaxLengthBoundary("ownerEmail over limit (321)"));
 
-  test.skip(`TC-ADMAPI-015 — setup password stored encrypted; audit snapshot strips it [blocked: ${SKIP_REASON}] @smoke`, async () => {
+  deferred(`TC-ADMAPI-015 — setup password stored encrypted; audit snapshot strips it [blocked: ${SKIP_REASON}]`, async () => {
     // Arrange — chains with TC-ADMAPI-010: create a tenant and hold the plaintext setupPassword.
     const client = new AdminPortalClient();
     const adminToken = await validAdminToken();
@@ -580,7 +581,7 @@ describe("Admin Portal — POST /admin/tenants (create)", () => {
     }
   });
 
-  test(`TC-ADMCREATE-008 — unicode and special characters accepted in text fields within limits [blocked: ${SKIP_REASON}]`, async () => {
+  test(`TC-ADMCREATE-008 — unicode and special characters accepted in text fields within limits [blocked: ${SKIP_REASON}] @regression`, async () => {
     // §5 only constrains name/ownerName/address by non-empty + max length — no charset rule.
     // If the backend rejects any charset, that is an undocumented rule — file as spec gap, not a failure.
     const client = new AdminPortalClient();
@@ -623,7 +624,7 @@ describe("Admin Portal — POST /admin/tenants (create)", () => {
 });
 
 describe("Admin Portal — GET /admin/tenants/:id (detail)", () => {
-  test(`TC-ADMAPI-020 — detail returns decrypted setupPassword only while in_setup [blocked: ${SKIP_REASON}] @smoke`, async () => {
+  test(`TC-ADMAPI-020 — detail returns decrypted setupPassword only while in_setup [blocked: ${SKIP_REASON}] @smoke @regression`, async () => {
     const client = new AdminPortalClient();
     const adminToken = await validAdminToken();
     const { tenant } = await createSetupTenant(client, adminToken);
@@ -643,7 +644,7 @@ describe("Admin Portal — GET /admin/tenants/:id (detail)", () => {
     }
   });
 
-  test(`TC-ADMAPI-021 — detail after handover: setupPassword null/omitted; setupCompletedAt populated [blocked: ${SKIP_REASON}] @smoke`, async () => {
+  test(`TC-ADMAPI-021 — detail after handover: setupPassword null/omitted; setupCompletedAt populated [blocked: ${SKIP_REASON}] @smoke @regression`, async () => {
     const client = new AdminPortalClient();
     const adminToken = await validAdminToken();
     const { tenant } = await createHandedOverTenant(client, adminToken);
@@ -663,7 +664,7 @@ describe("Admin Portal — GET /admin/tenants/:id (detail)", () => {
     }
   });
 
-  test(`TC-ADMAPI-022 — detail 404 for unknown and soft-deleted tenants; malformed id is not a 5xx [blocked: ${SKIP_REASON}]`, async () => {
+  test(`TC-ADMAPI-022 — detail 404 for unknown and soft-deleted tenants; malformed id is not a 5xx [blocked: ${SKIP_REASON}] @regression`, async () => {
     const client = new AdminPortalClient();
     const adminToken = await validAdminToken();
 
@@ -698,7 +699,7 @@ describe("Admin Portal — GET /admin/tenants/:id (detail)", () => {
 });
 
 describe("Admin Portal — PATCH /admin/tenants/:id/company", () => {
-  test(`TC-ADMAPI-030 — company update: 200, row updated, no owner/status side effects, created_at stable [blocked: ${SKIP_REASON}]`, async () => {
+  test(`TC-ADMAPI-030 — company update: 200, row updated, no owner/status side effects, created_at stable [blocked: ${SKIP_REASON}] @smoke @regression`, async () => {
     // Arrange
     const client = new AdminPortalClient();
     const adminToken = await validAdminToken();
@@ -737,7 +738,7 @@ describe("Admin Portal — PATCH /admin/tenants/:id/company", () => {
     }
   });
 
-  test(`TC-ADMAPI-031 — company domain uniqueness excludes self (incl. pre-normalization self variant) [blocked: ${SKIP_REASON}]`, async () => {
+  test(`TC-ADMAPI-031 — company domain uniqueness excludes self (incl. pre-normalization self variant) [blocked: ${SKIP_REASON}] @regression`, async () => {
     const client = new AdminPortalClient();
     const adminToken = await validAdminToken();
     const a = await createSetupTenant(client, adminToken);
@@ -773,7 +774,7 @@ describe("Admin Portal — PATCH /admin/tenants/:id/company", () => {
     }
   });
 
-  test(`TC-ADMAPI-032 — company update negatives: validation 400 (exact §5 messages) and 404 [blocked: ${SKIP_REASON}]`, async () => {
+  test(`TC-ADMAPI-032 — company update negatives: validation 400 (exact §5 messages) and 404 [blocked: ${SKIP_REASON}] @regression`, async () => {
     const client = new AdminPortalClient();
     const adminToken = await validAdminToken();
     const { tenant } = await createSetupTenant(client, adminToken);
@@ -815,7 +816,7 @@ describe("Admin Portal — PATCH /admin/tenants/:id/company", () => {
 });
 
 describe("Admin Portal — PATCH /admin/tenants/:id/status", () => {
-  test(`TC-ADMAPI-040 — post-handover status toggle: active ↔ inactive both directions; setupStatus stays handed_over [blocked: ${SKIP_REASON}] @smoke`, async () => {
+  test(`TC-ADMAPI-040 — post-handover status toggle: active ↔ inactive both directions; setupStatus stays handed_over [blocked: ${SKIP_REASON}] @smoke @regression`, async () => {
     const client = new AdminPortalClient();
     const adminToken = await validAdminToken();
     const { tenant } = await createHandedOverTenant(client, adminToken); // handed over ⇒ active
@@ -849,7 +850,7 @@ describe("Admin Portal — PATCH /admin/tenants/:id/status", () => {
     }
   });
 
-  test(`TC-ADMAPI-041 — activating a Setup tenant rejected: 409 ERR_INVALID_STATE_TRANSITION (server-side lock, not UI-only) [blocked: ${SKIP_REASON}] @smoke`, async () => {
+  test(`TC-ADMAPI-041 — activating a Setup tenant rejected: 409 ERR_INVALID_STATE_TRANSITION (server-side lock, not UI-only) [blocked: ${SKIP_REASON}] @smoke @regression`, async () => {
     const client = new AdminPortalClient();
     const adminToken = await validAdminToken();
     const { tenant } = await createSetupTenant(client, adminToken); // in_setup / inactive
@@ -874,7 +875,7 @@ describe("Admin Portal — PATCH /admin/tenants/:id/status", () => {
     }
   });
 
-  test(`TC-ADMAPI-042 — status negatives: invalid value ("archived", ""), unknown tenant [blocked: ${SKIP_REASON}]`, async () => {
+  test(`TC-ADMAPI-042 — status negatives: invalid value ("archived", ""), unknown tenant [blocked: ${SKIP_REASON}] @regression`, async () => {
     const client = new AdminPortalClient();
     const adminToken = await validAdminToken();
     const { tenant } = await createHandedOverTenant(client, adminToken);
@@ -918,7 +919,7 @@ describe("Admin Portal — audit-log capture across mutating endpoints", () => {
     });
   }
 
-  test.skip(`TC-ADMAPI-006 — every mutating endpoint writes a platform_audit_logs row (no setup_password_enc in snapshots) [blocked: ${SKIP_REASON}] @smoke`, async () => {
+  deferred(`TC-ADMAPI-006 — every mutating endpoint writes a platform_audit_logs row (no setup_password_enc in snapshots) [blocked: ${SKIP_REASON}]`, async () => {
     // Global Assumptions + Tech §2: all admin DB writes are captured by the F1 interceptor into
     // platform_audit_logs (routed to platform, not tenant, because request.adminPrincipal exists).
     const client = new AdminPortalClient();

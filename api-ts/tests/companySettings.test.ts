@@ -19,7 +19,7 @@
  * (TC-CSSEC-003 — plain-text render / no-XSS — is a UI case; see the Playwright
  *  suite automation/frontend/tests/company-settings-edit.spec.ts.)
  */
-import { afterEach, beforeAll, describe, test, expect } from "vitest";
+import { afterEach, beforeAll, describe, expect } from "vitest";
 import { CompanySettingsClient, SECTION_KEYS } from "../src/clients/companySettingsClient";
 import { signTenantToken } from "../local-env/localCognitoMock";
 import {
@@ -28,7 +28,8 @@ import {
   type FixtureTenant,
 } from "../src/utils/dbFixtures";
 import { withDbClient } from "../src/utils/dbClient";
-import { isLiveEnv, hasDbAccess } from "../src/config/env";
+import { isLiveEnv } from "../src/config/env";
+import { test, localOnly, dbOnly } from "../src/utils/suite";
 import { liveOwnerContext } from "../src/utils/poContext";
 import {
   newSectionContent,
@@ -50,11 +51,9 @@ import { assertResponseTime, assertErrorEnvelope } from "../src/utils/assertions
 //                 or a write that would mutate the live tenant). Skipped on live.
 // - `dbOnly`    → direct company_settings row/RLS/audit assertions (needs TEST_DATABASE_URL).
 const d = describe;
-const localOnly = isLiveEnv() ? test.skip : test;
-// DB-assertion cases need direct rows AND isolated per-test fixtures — both only exist
-// locally. Even if a dev run has a DB tunnel, these must not run there (they'd collide on
-// the single shared tenant), so gate on hasDbAccess() AND not-live.
-const dbOnly = hasDbAccess() && !isLiveEnv() ? test : test.skip;
+// `localOnly`/`dbOnly` come from src/utils/suite (env-gated; dropped, not skipped,
+// under REGRESSION_ONLY). dbOnly needs direct rows AND isolated per-test fixtures —
+// both only exist locally — so it stays off on dev even with a DB tunnel.
 
 const client = new CompanySettingsClient();
 
@@ -139,7 +138,7 @@ async function readSettingRows(
 
 // ── GET /company-settings ───────────────────────────────────────────────────
 d("GET /company-settings", () => {
-  test("TC-CSAPI-001 — 200 envelope: 3 sections in fixed order + displayName mapping @smoke", async () => {
+  test("TC-CSAPI-001 — 200 envelope: 3 sections in fixed order + displayName mapping @smoke @regression", async () => {
     const po = await owner();
     const res = await client.getAll(po.token);
     assertResponseTime(res);
@@ -184,8 +183,8 @@ d("GET /company-settings", () => {
     assertErrorEnvelope(res, "ERR_AUTH_INVALID_TOKEN");
   }
 
-  test("TC-CSAPI-004-1 — no/invalid JWT (<none>) → 401 ERR_AUTH_INVALID_TOKEN", () => assertGetAllRejects401("<none>"));
-  test("TC-CSAPI-004-2 — no/invalid JWT (expired) → 401 ERR_AUTH_INVALID_TOKEN", () => assertGetAllRejects401("expired"));
+  test("TC-CSAPI-004-1 — no/invalid JWT (<none>) → 401 ERR_AUTH_INVALID_TOKEN @regression", () => assertGetAllRejects401("<none>"));
+  test("TC-CSAPI-004-2 — no/invalid JWT (expired) → 401 ERR_AUTH_INVALID_TOKEN @regression", () => assertGetAllRejects401("expired"));
 
   localOnly("TC-CSAPI-005 — non-Owner (no manage_company_settings) → 403 ERR_RBAC_FORBIDDEN", async () => {
     const mgr = await nonOwner();
@@ -213,7 +212,7 @@ d("GET /company-settings", () => {
 
 // ── PUT /company-settings/:sectionKey ───────────────────────────────────────
 d("PUT /company-settings/:sectionKey", () => {
-  localOnly("TC-CSAPI-010 — valid content upserts, echoes section + confirmation message @smoke", async () => {
+  localOnly("TC-CSAPI-010 — valid content upserts, echoes section + confirmation message", async () => {
     const po = await owner();
     const body = newSectionContent();
     const res = await client.putSection("background", body, po.token);
@@ -250,10 +249,10 @@ d("PUT /company-settings/:sectionKey", () => {
     expect(body.error.details?.allowed).toEqual([...SECTION_KEYS]);
   }
 
-  test("TC-CSAPI-012-1 — invalid sectionKey \"invalid_key\" → 400 ERR_INVALID_SECTION_KEY", () => assertInvalidSectionKeyRejected("invalid_key"));
-  test("TC-CSAPI-012-2 — invalid sectionKey \"Background\" (case-sensitive) → 400 ERR_INVALID_SECTION_KEY", () => assertInvalidSectionKeyRejected("Background"));
-  test("TC-CSAPI-012-3 — invalid sectionKey \"BACKGROUND\" (case-sensitive) → 400 ERR_INVALID_SECTION_KEY", () => assertInvalidSectionKeyRejected("BACKGROUND"));
-  test("TC-CSAPI-012-4 — path-shaped sectionKey \"../etc\" is rejected (HTTP path-normalizes → 404, never reaches the handler)", async () => {
+  test("TC-CSAPI-012-1 — invalid sectionKey \"invalid_key\" → 400 ERR_INVALID_SECTION_KEY @regression", () => assertInvalidSectionKeyRejected("invalid_key"));
+  test("TC-CSAPI-012-2 — invalid sectionKey \"Background\" (case-sensitive) → 400 ERR_INVALID_SECTION_KEY @regression", () => assertInvalidSectionKeyRejected("Background"));
+  test("TC-CSAPI-012-3 — invalid sectionKey \"BACKGROUND\" (case-sensitive) → 400 ERR_INVALID_SECTION_KEY @regression", () => assertInvalidSectionKeyRejected("BACKGROUND"));
+  test("TC-CSAPI-012-4 — path-shaped sectionKey \"../etc\" is rejected (HTTP path-normalizes → 404, never reaches the handler) @regression", async () => {
     // A `..`-shaped key is collapsed by URL path normalization before routing, so it never
     // reaches SectionKeyPipe (which would give 400 ERR_INVALID_SECTION_KEY). The security
     // intent (SR-004: traversal-shaped input must not be accepted or leak data) still holds —
@@ -265,14 +264,14 @@ d("PUT /company-settings/:sectionKey", () => {
     expect(serialized).not.toMatch(/company_settings|SELECT|stack/i); // no internals disclosed
   });
 
-  test("TC-CSAPI-013 — missing content field → 400 ERR_VALIDATION_FAILED", async () => {
+  test("TC-CSAPI-013 — missing content field → 400 ERR_VALIDATION_FAILED @regression", async () => {
     const po = await owner();
     const res = await client.putSection("background", PUT_MISSING_CONTENT, po.token);
     expect(res.status).toBe(400);
     assertErrorEnvelope(res, "ERR_VALIDATION_FAILED");
   });
 
-  test("TC-CSAPI-014 — content:null → 400 ERR_VALIDATION_FAILED (not null)", async () => {
+  test("TC-CSAPI-014 — content:null → 400 ERR_VALIDATION_FAILED (not null) @regression", async () => {
     const po = await owner();
     const res = await client.putSection("background", PUT_NULL_CONTENT, po.token);
     expect(res.status).toBe(400);
@@ -309,8 +308,8 @@ d("PUT /company-settings/:sectionKey", () => {
     assertErrorEnvelope(res, "ERR_AUTH_INVALID_TOKEN");
   }
 
-  test("TC-CSAPI-016-1 — no/invalid JWT (<none>) → 401", () => assertPutRejects401("<none>"));
-  test("TC-CSAPI-016-2 — no/invalid JWT (expired) → 401", () => assertPutRejects401("expired"));
+  test("TC-CSAPI-016-1 — no/invalid JWT (<none>) → 401 @smoke @regression", () => assertPutRejects401("<none>"));
+  test("TC-CSAPI-016-2 — no/invalid JWT (expired) → 401 @regression", () => assertPutRejects401("expired"));
 
   localOnly("TC-CSAPI-017 — non-Owner → 403 ERR_RBAC_FORBIDDEN, no row written", async () => {
     const mgr = await nonOwner();
@@ -457,7 +456,7 @@ d("Company Settings security (SR)", () => {
     expect(bBg?.content).toBeNull();
   });
 
-  test("TC-CSSEC-004 — SR-004: invalid key → generic 400, no data leakage", async () => {
+  test("TC-CSSEC-004 — SR-004: invalid key → generic 400, no data leakage @regression", async () => {
     const po = await owner();
     const res = await client.putSection("other_tenants_data", newSectionContent(), po.token);
     expect(res.status).toBe(400);

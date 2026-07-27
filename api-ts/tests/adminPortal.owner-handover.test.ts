@@ -11,7 +11,8 @@
  *   - TC-ADMAPI-065 — handover compensation on SendGrid failure restores the setup password.
  * Same constraint family: TC-ADMAPI-016 (see the tenants suite header).
  */
-import { describe, test, expect } from "vitest";
+import { describe, expect } from "vitest";
+import { test, deferred } from "../src/utils/suite";
 import { randomUUID } from "crypto";
 import type { AxiosResponse } from "axios";
 import { AdminPortalClient } from "../src/clients/adminPortalClient";
@@ -59,7 +60,7 @@ function validationFields(response: AxiosResponse): Record<string, string> {
 }
 
 describe("Admin Portal — PATCH /admin/tenants/:id/owner", () => {
-  test(`TC-ADMAPI-050 — name-only change: users.name + tenants.owner_name updated; no Cognito/email side effects [blocked: ${SKIP_REASON}] @smoke`, async () => {
+  test(`TC-ADMAPI-050 — name-only change: users.name + tenants.owner_name updated; no Cognito/email side effects [blocked: ${SKIP_REASON}] @smoke @regression`, async () => {
     // Arrange
     const client = new AdminPortalClient();
     const adminToken = await validAdminToken();
@@ -92,7 +93,7 @@ describe("Admin Portal — PATCH /admin/tenants/:id/owner", () => {
     }
   });
 
-  test(`TC-ADMAPI-051 — email change on handed-over tenant: full reassignment chain [blocked: ${SKIP_REASON}] @smoke`, async () => {
+  test(`TC-ADMAPI-051 — email change on handed-over tenant: full reassignment chain [blocked: ${SKIP_REASON}] @regression`, async () => {
     // Arrange — disposable handed-over tenant.
     const client = new AdminPortalClient();
     const adminToken = await validAdminToken();
@@ -131,7 +132,7 @@ describe("Admin Portal — PATCH /admin/tenants/:id/owner", () => {
     }
   });
 
-  test(`TC-ADMAPI-052 — email change during Setup: new setup password issued and re-encrypted; no email [blocked: ${SKIP_REASON}] @smoke`, async () => {
+  test(`TC-ADMAPI-052 — email change during Setup: new setup password issued and re-encrypted; no email [blocked: ${SKIP_REASON}] @regression`, async () => {
     // Arrange — Setup tenant; original setup password known from creation.
     const client = new AdminPortalClient();
     const adminToken = await validAdminToken();
@@ -174,7 +175,7 @@ describe("Admin Portal — PATCH /admin/tenants/:id/owner", () => {
     }
   });
 
-  test(`TC-ADMAPI-053 — nothing changed: no-op returns current state, no side effects [blocked: ${SKIP_REASON}]`, async () => {
+  test(`TC-ADMAPI-053 — nothing changed: no-op returns current state, no side effects [blocked: ${SKIP_REASON}] @regression`, async () => {
     const client = new AdminPortalClient();
     const adminToken = await validAdminToken();
     const { tenant, payload } = await createSetupTenant(client, adminToken);
@@ -204,7 +205,7 @@ describe("Admin Portal — PATCH /admin/tenants/:id/owner", () => {
     }
   });
 
-  test(`TC-ADMAPI-054 — owner update negatives: duplicate email (no partial side effects), validation 400, 404 [blocked: ${SKIP_REASON}]`, async () => {
+  test(`TC-ADMAPI-054 — owner update negatives: duplicate email (no partial side effects), validation 400, 404 [blocked: ${SKIP_REASON}] @regression`, async () => {
     const client = new AdminPortalClient();
     const adminToken = await validAdminToken();
     const a = await createSetupTenant(client, adminToken);
@@ -254,7 +255,7 @@ describe("Admin Portal — PATCH /admin/tenants/:id/owner", () => {
     }
   });
 
-  test.skip(`TC-ADMAPI-055 — missing active PO → 500 generic error, no partial writes (data-integrity precondition) [blocked: ${SKIP_REASON} — isolated/local env only, never shared QA data]`, async () => {
+  deferred(`TC-ADMAPI-055 — missing active PO → 500 generic error, no partial writes (data-integrity precondition) [blocked: ${SKIP_REASON} — isolated/local env only, never shared QA data]`, async () => {
     // Arrange — corrupt-state fixture: deactivate the PO row directly in the DB.
     const client = new AdminPortalClient();
     const adminToken = await validAdminToken();
@@ -284,7 +285,7 @@ describe("Admin Portal — PATCH /admin/tenants/:id/owner", () => {
 });
 
 describe("Admin Portal — POST /admin/tenants/:id/handover", () => {
-  test(`TC-ADMAPI-060 — handover: 200 + all DB effects in one transaction [blocked: ${SKIP_REASON}] @smoke`, async () => {
+  test(`TC-ADMAPI-060 — handover: 200 + all DB effects in one transaction [blocked: ${SKIP_REASON}] @smoke @regression`, async () => {
     // Arrange — disposable Setup tenant (as produced by TC-ADMAPI-010).
     const client = new AdminPortalClient();
     const adminToken = await validAdminToken();
@@ -322,7 +323,7 @@ describe("Admin Portal — POST /admin/tenants/:id/handover", () => {
     }
   });
 
-  test(`TC-ADMAPI-061 — handover on an already-handed-over tenant → 409 (terminal state), no state change [blocked: ${SKIP_REASON}] @smoke`, async () => {
+  test(`TC-ADMAPI-061 — handover on an already-handed-over tenant → 409 (terminal state), no state change [blocked: ${SKIP_REASON}] @regression`, async () => {
     const client = new AdminPortalClient();
     const adminToken = await validAdminToken();
     const { tenant } = await createHandedOverTenant(client, adminToken);
@@ -349,7 +350,7 @@ describe("Admin Portal — POST /admin/tenants/:id/handover", () => {
 
   // ENABLED 2026-07-15: pure negative — needs neither a provisioned tenant nor DB, only a
   // valid admin token (real on dev, mock-signed on local). Runs on local and any live target.
-  test(`TC-ADMAPI-062 — handover 404 for unknown/soft-deleted tenant`, async () => {
+  test(`TC-ADMAPI-062 — handover 404 for unknown/soft-deleted tenant @regression`, async () => {
     const client = new AdminPortalClient();
     const adminToken = await validAdminToken();
 
@@ -368,7 +369,7 @@ describe("Admin Portal — POST /admin/tenants/:id/handover", () => {
     expect((response.data as ErrorEnvelope).error.message).toBe(MSG_TENANT_NOT_FOUND);
   });
 
-  test.skip(`TC-ADMAPI-063 — old setup password no longer authenticates after handover [blocked: ${SKIP_REASON}] @smoke`, async () => {
+  deferred(`TC-ADMAPI-063 — old setup password no longer authenticates after handover [blocked: ${SKIP_REASON}]`, async () => {
     // Arrange — capture the plaintext setup password before handover, then hand over.
     const client = new AdminPortalClient();
     const adminToken = await validAdminToken();
@@ -384,14 +385,14 @@ describe("Admin Portal — POST /admin/tenants/:id/handover", () => {
       // Cognito half — the actual rejection of the old setup password (temporary password overwrote
       // it via AdminSetUserPassword(Permanent: false) + AdminUserGlobalSignOut). Chains with TC-ADMAPI-060.
       throw new Error(
-        "TC-ADMAPI-063 Cognito leg: tenant-pool auth attempt with the pre-handover setup password requires a Cognito auth helper (local-env/localCognitoMock or AWS SDK) — scaffolded, not yet implemented @smoke",
+        "TC-ADMAPI-063 Cognito leg: tenant-pool auth attempt with the pre-handover setup password requires a Cognito auth helper (local-env/localCognitoMock or AWS SDK) — scaffolded, not yet implemented",
       );
     } finally {
       await teardownTenant(fixture.tenant.id);
     }
   });
 
-  test.skip(`TC-ADMAPI-066 — handover invalidates any active PO session token (global sign-out) [blocked: ${SKIP_REASON}] @smoke`, async () => {
+  deferred(`TC-ADMAPI-066 — handover invalidates any active PO session token (global sign-out) [blocked: ${SKIP_REASON}]`, async () => {
     // Arrange — needs an ACTIVE Cognito session as the PO (setup password) held by the test
     // before handover; assert on REFRESH-token rejection afterwards, not raw JWT expiry
     // (Cognito access tokens stay valid until natural expiry even after AdminUserGlobalSignOut).
@@ -403,7 +404,7 @@ describe("Admin Portal — POST /admin/tenants/:id/handover", () => {
       // Step 1 (blocked): authenticate as the PO with the setup password and hold refresh/access tokens.
       // Step 2: execute handover. Step 3: refresh-token use must be REJECTED (revoked).
       throw new Error(
-        "TC-ADMAPI-066: establishing and refreshing a PO Cognito session requires a tenant-pool auth helper (local-env/localCognitoMock or AWS SDK) — scaffolded, not yet implemented @smoke",
+        "TC-ADMAPI-066: establishing and refreshing a PO Cognito session requires a tenant-pool auth helper (local-env/localCognitoMock or AWS SDK) — scaffolded, not yet implemented",
       );
     } finally {
       await teardownTenant(tenant.id);

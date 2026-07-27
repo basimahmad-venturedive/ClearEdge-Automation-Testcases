@@ -235,26 +235,52 @@ async function insertAutomationRun(conn, runData) {
   return result.insertId;
 }
 
+// The CQM schema carries a nullable "test type" column (smoke / regression) that the
+// documented column set omits. We detect its real name at runtime (installs vary:
+// `test_type` vs `test_case_type`) and only add it to the INSERT when it exists — so a
+// schema without it still inserts cleanly instead of erroring on an unknown column.
+async function detectTestTypeColumn(conn) {
+  try {
+    const [rows] = await conn.query(
+      `SHOW COLUMNS FROM test_case_execution WHERE Field IN ('test_type', 'test_case_type')`
+    );
+    if (Array.isArray(rows) && rows.length > 0) {
+      // Prefer the exact 'test_type' spelling when both somehow exist.
+      const names = rows.map((r) => r.Field);
+      return names.includes('test_type') ? 'test_type' : names[0];
+    }
+  } catch {
+    /* SHOW COLUMNS failed → treat as absent, insert without the column */
+  }
+  return null;
+}
+
 async function insertTestExecutions(conn, automationRunId, tests) {
   if (!Array.isArray(tests) || tests.length === 0) {
     return 0;
   }
-  const sql = `INSERT INTO test_case_execution (
-      automation_run_id,
-      test_case_id,
-      test_case_name,
-      test_case_status,
-      failure_reason,
-      test_start_time,
-      test_end_time,
-      recorded_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+  const typeCol = await detectTestTypeColumn(conn);
+  const cols = [
+    'automation_run_id',
+    'test_case_id',
+    'test_case_name',
+    'test_case_status',
+    'failure_reason',
+    'test_start_time',
+    'test_end_time',
+    'recorded_at',
+  ];
+  if (typeCol) {
+    cols.push(typeCol);
+  }
+  const placeholders = cols.map(() => '?').join(', ');
+  const sql = `INSERT INTO test_case_execution (${cols.join(', ')}) VALUES (${placeholders})`;
   let inserted = 0;
   for (const t of tests) {
     const status = t.test_case_status || 'unknown';
     const failureReason = status === 'Failed' ? t.failure_reason || null : null;
     const testCaseId = t.test_case_id || t.test_case_name || 'unknown';
-    await conn.execute(sql, [
+    const values = [
       automationRunId,
       testCaseId,
       t.test_case_name || '',
@@ -263,7 +289,11 @@ async function insertTestExecutions(conn, automationRunId, tests) {
       t.test_start_time || null,
       t.test_end_time || null,
       t.recorded_at || null,
-    ]);
+    ];
+    if (typeCol) {
+      values.push(t.test_type || null);
+    }
+    await conn.execute(sql, values);
     inserted += 1;
   }
   return inserted;

@@ -132,6 +132,54 @@ Combine env + module + name filter:
 npm run test:dev -- admin -t "TC-ADMAPI-010"
 ```
 
+## Run by suite (Regression / Smoke)
+
+Tests carry suite tags in their titles, selected with Vitest's `-t` name filter:
+
+- **`@regression`** — tests that **run on the dev/live target**: plain `test()`
+  (env-agnostic) and `liveOnly()` (dev/live). **Local-only** cases are *not* tagged —
+  `localOnly` / `dbOnly` (need the Docker Postgres + JWKS mock) and
+  `test.skipIf(isLiveEnv())` (locally-signed JWT) skip on dev, so they are excluded
+  from the regression suite. `test.skip` scaffolds and under-development specs are
+  never tagged either.
+- **`@smoke`** — the ~20% highest-priority regression cases **per spec** (core contract
+  + key auth/security). Every `@smoke` test is **also** `@regression` and dev-runnable.
+
+> **Zero-skip runs.** Every case is declared through a runner in
+> [`src/utils/suite.ts`](src/utils/suite.ts) (`test`, `localOnly`, `dbOnly`, `liveOnly`,
+> `deferred`) that decides at registration time whether to register, skip, or drop it:
+> - `test:regression*` sets `REGRESSION_ONLY=1` → cases that can't run on the target are
+>   **dropped** (not registered) instead of shown as `test.skip`.
+> - `test:smoke*` sets `SMOKE_ONLY=1` → additionally, any case whose title lacks `@smoke`
+>   is **dropped**, so only the smoke set is collected.
+>
+> So `npm run test:regression:dev` (119 cases) and `npm run test:smoke:dev` (24 cases)
+> both report **zero skipped**. Normal runs (`test:dev`, `test:local`, …) are unchanged —
+> env-gated cases stay visible as *skipped* for traceability. Run the local-only set with
+> `npm run test:local` (Docker backend), where `localOnly`/`dbOnly` execute.
+
+```bash
+npm run test:regression       # full regression suite (all running tests)
+npm run test:smoke            # smoke only — 20% high-priority subset
+npm run test:regression:dev   # regression on dev (cross-env TEST_ENV=dev)
+npm run test:smoke:dev        # smoke on dev
+```
+
+Because smoke titles carry **both** tags, a regression run includes the smoke set;
+a smoke run runs the subset only. Combine with any env or filter (flags after `--`):
+
+```bash
+npm run test:qa -- -t @regression         # regression on qa
+npm run test:dev -- admin -t @smoke        # smoke, admin specs only, on dev
+```
+
+> **Tagging a new test:** append ` @regression` only to a **dev-runnable** test —
+> plain `test()` or `liveOnly()` (and ` @smoke` if it's a per-spec priority case,
+> keeping ~20%). Do **not** tag local-only (`localOnly`/`dbOnly`/`test.skipIf`) or
+> `test.skip` cases. Easiest: edit the allowlist in
+> [`scripts/tag-suites.mjs`](scripts/tag-suites.mjs) and run `node scripts/tag-suites.mjs`
+> to re-apply/audit every tag in bulk (idempotent).
+
 ## Reports
 
 - HTML dashboard (ExtentReports-style): `automation/reports/html/api/latest.html` —
