@@ -22,10 +22,13 @@ import {
   cognitoTenantAppClientIdLive,
   devTenantUsername,
   devTenantPassword,
+  devPmUsername,
+  devPmPassword,
 } from "../config/env";
 
 let cachedAdminIdToken: string | null = null;
 let cachedTenantIdToken: string | null = null;
+let cachedManagerIdToken: string | null = null;
 
 interface InitiateAuthResult {
   AuthenticationResult?: { IdToken?: string; AccessToken?: string; RefreshToken?: string };
@@ -113,6 +116,45 @@ export async function getTenantIdToken(): Promise<string> {
   return idToken;
 }
 
+/**
+ * Returns a real tenant-pool ID token for the configured DEV_PM_* user (a Procurement
+ * Manager in the same tenant + app client as the PO). Used by the manager write-parity
+ * case (TC-VDACCESS-012). Same USER_PASSWORD_AUTH flow as getTenantIdToken.
+ */
+export async function getManagerIdToken(): Promise<string> {
+  if (cachedManagerIdToken) return cachedManagerIdToken;
+
+  const endpoint = `https://cognito-idp.${cognitoRegion()}.amazonaws.com/`;
+  const response = await axios.post<InitiateAuthResult>(
+    endpoint,
+    {
+      AuthFlow: "USER_PASSWORD_AUTH",
+      ClientId: cognitoTenantAppClientIdLive(),
+      AuthParameters: { USERNAME: devPmUsername(), PASSWORD: devPmPassword() },
+    },
+    {
+      headers: {
+        "Content-Type": "application/x-amz-json-1.1",
+        "X-Amz-Target": "AWSCognitoIdentityProviderService.InitiateAuth",
+      },
+      validateStatus: () => true,
+    },
+  );
+
+  const idToken = response.data?.AuthenticationResult?.IdToken;
+  if (response.status !== 200 || !idToken) {
+    const challenge = response.data?.ChallengeName ? ` (challenge: ${response.data.ChallengeName})` : "";
+    throw new Error(
+      `Cognito InitiateAuth for the manager user failed: HTTP ${response.status}${challenge} — ` +
+        `${JSON.stringify(response.data)}. Check DEV_PM_USERNAME/DEV_PM_PASSWORD and ` +
+        "COGNITO_TENANT_APP_CLIENT_ID in envs/.env.<env>.",
+    );
+  }
+
+  cachedManagerIdToken = idToken;
+  return idToken;
+}
+
 /** Decodes the (unverified) claims of a JWT — used to read tenant_id/sub off a live token. */
 export function decodeJwtClaims(token: string): Record<string, unknown> {
   const payload = token.split(".")[1];
@@ -124,4 +166,5 @@ export function decodeJwtClaims(token: string): Record<string, unknown> {
 export function resetTokenCache(): void {
   cachedAdminIdToken = null;
   cachedTenantIdToken = null;
+  cachedManagerIdToken = null;
 }

@@ -23,7 +23,8 @@
     "testrail:import": "node scripts/testrail-import.cjs",
     "testrail:prune": "node scripts/testrail-prune.cjs",
     "testrail:create-run": "node scripts/testrail-create-run.cjs",
-    "testrail:execute": "node scripts/testrail-execute.cjs"
+    "testrail:execute": "node scripts/testrail-execute.cjs",
+    "test:dev:vendor": "cross-env TEST_ENV=dev VENDOR_REQUEST_TIMEOUT_MS=25000 vitest run tests/vendorDirectory.test.ts"
   },
   "devDependencies": {
     "@faker-js/faker": "^9.0.0",

@@ -7,7 +7,7 @@
  * Procurement Owner. This helper returns that live context so the env-agnostic read/validation
  * cases can run unchanged on a live target.
  */
-import { getTenantIdToken, decodeJwtClaims } from "./tokenProvider";
+import { getTenantIdToken, getManagerIdToken, decodeJwtClaims } from "./tokenProvider";
 
 export interface OwnerContext {
   token: string;
@@ -19,6 +19,18 @@ export interface OwnerContext {
 /** Real PO context on a live target: log in as DEV_TENANT_* and read the claims off the token. */
 export async function liveOwnerContext(): Promise<OwnerContext> {
   const token = await getTenantIdToken();
+  const c = decodeJwtClaims(token);
+  return {
+    token,
+    tenantId: String(c["custom:tenant_id"] ?? ""),
+    cognitoSub: String(c.sub ?? ""),
+    email: String(c.email ?? ""),
+  };
+}
+
+/** Real Procurement-Manager context on a live target: log in as DEV_PM_* (same tenant as the PO). */
+export async function liveManagerContext(): Promise<OwnerContext> {
+  const token = await getManagerIdToken();
   const c = decodeJwtClaims(token);
   return {
     token,

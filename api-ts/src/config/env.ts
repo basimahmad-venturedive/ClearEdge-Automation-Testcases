@@ -72,6 +72,12 @@ export const devAdminPassword = (): string => getRequired("DEV_ADMIN_PASSWORD");
 export const cognitoTenantAppClientIdLive = (): string => getRequired("COGNITO_TENANT_APP_CLIENT_ID");
 export const devTenantUsername = (): string => getRequired("DEV_TENANT_USERNAME");
 export const devTenantPassword = (): string => getRequired("DEV_TENANT_PASSWORD");
+// Procurement Manager (same tenant pool + app client as the PO) — for role-parity cases.
+export const devPmUsername = (): string => getRequired("DEV_PM_USERNAME");
+export const devPmPassword = (): string => getRequired("DEV_PM_PASSWORD");
 // True when a real dev tenant-pool user is configured (enables live tenant-scoped runs).
 export const hasLiveTenantUser = (): boolean =>
   isEnvVarSet("DEV_TENANT_USERNAME") && isEnvVarSet("DEV_TENANT_PASSWORD");
+// True when a real dev Procurement-Manager user is configured (enables manager-parity cases).
+export const hasLiveManagerUser = (): boolean =>
+  isEnvVarSet("DEV_PM_USERNAME") && isEnvVarSet("DEV_PM_PASSWORD");

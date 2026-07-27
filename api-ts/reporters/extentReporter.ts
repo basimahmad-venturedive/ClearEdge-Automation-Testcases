@@ -179,6 +179,23 @@ export default class ExtentReporter implements Reporter {
     writeFileSync(REPORT_FILE, html, "utf-8");
     // eslint-disable-next-line no-console
     console.log(`\nExtent-style HTML report written: ${REPORT_FILE}`);
+
+    // Different suites (smoke / regression / vendor) all overwrite the single latest.html,
+    // so the last run to finish wins and a concurrent run clobbers yours. Write an extra
+    // suite-scoped copy (latest.<label>.html) that only that suite touches, so each run's
+    // result stays viewable regardless of what else ran. latest.html is kept as-is.
+    const label =
+      process.env.SMOKE_ONLY === "1"
+        ? "smoke"
+        : process.env.REGRESSION_ONLY === "1"
+          ? "regression"
+          : (process.env.REPORT_LABEL ?? "").trim() || null;
+    if (label) {
+      const labeledFile = path.join(REPORT_DIR, `latest.${label}.html`);
+      writeFileSync(labeledFile, html, "utf-8");
+      // eslint-disable-next-line no-console
+      console.log(`Suite-scoped copy written:        ${labeledFile}`);
+    }
   }
 }
 

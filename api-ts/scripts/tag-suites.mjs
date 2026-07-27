@@ -48,6 +48,7 @@ const files = [
   "tests/user.test.ts",
   "tests/userManagement.test.ts",
   "tests/vendor.test.ts",
+  "tests/vendorDirectory.test.ts",
 ];
 
 // ~20% highest-priority cases per spec, counted over the DEV-RUNNABLE (regression)
@@ -66,6 +67,10 @@ const SMOKE = new Set([
   // userManagement (36 dev-runnable: 16 test + 20 liveOnly -> 7)
   "TC-UMAPI-001", "TC-UMAPI-010", "TC-UMAPI-050", "TC-UMAPI-090",
   "TC-UMAPI-030", "TC-UMAPI-062", "TC-UMAPI-080",
+  // vendorDirectory (64 dev-runnable -> 13; one flagship per operation + auth)
+  "TC-VDAPI-001", "TC-VDAPI-002-1", "TC-VDAPI-015", "TC-VDAPI-016", "TC-VDAPI-030",
+  "TC-VDAPI-035", "TC-VDAPI-040", "TC-VDAPI-045", "TC-VDAPI-050", "TC-VDAPI-055",
+  "TC-VDAPI-060", "TC-VDAPI-095", "TC-VDSEC-014",
 ]);
 
 // Aliases whose tests RUN on the dev/live target (regression). Everything else that
