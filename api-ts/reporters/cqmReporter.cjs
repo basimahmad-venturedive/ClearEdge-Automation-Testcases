@@ -135,18 +135,6 @@ function formatScenarioTitle(record) {
   return base.replace(/\s+@\S+/g, '').trim();
 }
 
-// Suite classification for the CQM `test_type` column. Prefer the per-test tag in the
-// title (a @smoke case is also @regression, so @smoke wins as the more specific bucket);
-// fall back to the run mode set by the npm scripts (SMOKE_ONLY / REGRESSION_ONLY).
-function resolveTestType(record) {
-  const raw = `${record.fullTitle || ''} ${record.title || ''}`;
-  if (/@smoke\b/i.test(raw)) return 'smoke';
-  if (/@regression\b/i.test(raw)) return 'regression';
-  if (String(process.env.SMOKE_ONLY) === '1') return 'smoke';
-  if (String(process.env.REGRESSION_ONLY) === '1') return 'regression';
-  return null;
-}
-
 function loadDbConnectionModule() {
   const candidates = [
     '@test/integrations/src/integrations/db_connection',
@@ -560,7 +548,6 @@ class CqmReporter {
     this.results.push({
       test_case_name: formatScenarioTitle(record),
       test_case_status: testCaseStatus,
-      test_type: resolveTestType(record),
       failure_reason: isFailed ? cleanFailureReason(record.errorMessage || 'Unknown error') : null,
       test_start_time: formatDateTime(start),
       test_end_time: formatDateTime(end),
