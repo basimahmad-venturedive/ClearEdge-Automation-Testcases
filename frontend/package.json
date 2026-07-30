@@ -14,10 +14,17 @@
     "test:dev:auth": "node scripts/run-env.mjs dev tests/login.spec.ts",
     "test:qa": "node scripts/run-env.mjs qa",
     "test:prod": "node scripts/run-env.mjs prod",
+    "test:regression:dev": "node scripts/run-env.mjs dev --grep @regression",
+    "test:smoke:dev": "node scripts/run-env.mjs dev --grep @smoke",
+    "test:regression:qa": "node scripts/run-env.mjs qa --grep @regression",
+    "test:smoke:qa": "node scripts/run-env.mjs qa --grep @smoke",
     "jira:bug": "node ../scripts/jira-log-bug.mjs",
     "testrail:import": "node scripts/testrail-import.js",
     "testrail:create-run": "node scripts/testrail-create-run.js",
-    "testrail:execute": "node scripts/testrail-execute.js"
+    "testrail:execute": "node scripts/testrail-execute.js",
+    "test:qa:clause": "node scripts/run-env.mjs qa tests/clause-config-view.spec.ts",
+    "test:qa:vendor": "node scripts/run-env.mjs qa tests/vendors-add.spec.ts",
+    "test:qa:setup": "node scripts/run-env.mjs qa --project=setup"
   },
   "devDependencies": {
     "@playwright/test": "^1.50.0",

@@ -20,7 +20,7 @@ const BG = 'background' as const;
 const BG_NAME = CsCopy.sectionDisplayName.background;
 
 test.describe('US-CS-003 Edit / Save / dirty-check', () => {
-  test('TC-CSEDIT-001 enter edit on a single section; others stay read-only @smoke', async ({ page }) => {
+  test('TC-CSEDIT-001 enter edit on a single section; others stay read-only @smoke @regression', async ({ page }) => {
     const cs = new CompanySettingsPage(page);
     await cs.goto();
     await cs.enterEdit(BG);
@@ -29,14 +29,14 @@ test.describe('US-CS-003 Edit / Save / dirty-check', () => {
     await cs.expectReadOnly('terms_and_conditions');
   });
 
-  test('TC-CSEDIT-002 edit mode alone does not enable Save', async ({ page }) => {
+  test('TC-CSEDIT-002 edit mode alone does not enable Save @smoke @regression', async ({ page }) => {
     const cs = new CompanySettingsPage(page);
     await cs.goto();
     await cs.enterEdit(BG);
     await cs.expectSaveEnabled(BG, false);
   });
 
-  test('TC-CSEDIT-003 Save enables on any change, incl. a trailing-space-only change (BR-04)', async ({
+  test('TC-CSEDIT-003 Save enables on any change, incl. a trailing-space-only change (BR-04) @smoke @regression', async ({
     page,
   }) => {
     const cs = new CompanySettingsPage(page);
@@ -49,7 +49,7 @@ test.describe('US-CS-003 Edit / Save / dirty-check', () => {
     await cs.expectSaveEnabled(BG, true);
   });
 
-  test('TC-CSEDIT-004 Save re-disables on an exact character-for-character revert', async ({ page }) => {
+  test('TC-CSEDIT-004 Save re-disables on an exact character-for-character revert @smoke @regression', async ({ page }) => {
     const cs = new CompanySettingsPage(page);
     await cs.goto();
     await cs.enterEdit(BG);
@@ -60,7 +60,7 @@ test.describe('US-CS-003 Edit / Save / dirty-check', () => {
     await cs.expectSaveEnabled(BG, false);
   });
 
-  test('TC-CSEDIT-005 clearing the field (empty) is a valid change that enables Save (BR-05)', async ({
+  test('TC-CSEDIT-005 clearing the field (empty) is a valid change that enables Save (BR-05) @smoke @regression', async ({
     page,
   }) => {
     const cs = new CompanySettingsPage(page);
@@ -71,7 +71,7 @@ test.describe('US-CS-003 Edit / Save / dirty-check', () => {
     await cs.expectSaveEnabled(BG, true);
   });
 
-  test('TC-CSEDIT-006 plain-text only: HTML/rich text kept as literal text, line breaks preserved (AC-006, SR-003)', async ({
+  test('TC-CSEDIT-006 plain-text only: HTML/rich text kept as literal text, line breaks preserved (AC-006, SR-003) @regression', async ({
     page,
   }) => {
     const cs = new CompanySettingsPage(page);
@@ -82,7 +82,7 @@ test.describe('US-CS-003 Edit / Save / dirty-check', () => {
     await expect(page.locator('script:has-text("alert")')).toHaveCount(0);
   });
 
-  test('TC-CSEDIT-007 disabled-Save tooltip shows exact copy; gone once enabled (AC-007)', async ({
+  test('TC-CSEDIT-007 disabled-Save tooltip shows exact copy; gone once enabled (AC-007) @regression', async ({
     page,
   }) => {
     const cs = new CompanySettingsPage(page);
@@ -96,7 +96,7 @@ test.describe('US-CS-003 Edit / Save / dirty-check', () => {
     await expect(page.getByRole('tooltip')).toHaveCount(0);
   });
 
-  test('TC-CSEDIT-008 Discard reverts to last-saved, exits edit, no popup, no API call', async ({ page }) => {
+  test('TC-CSEDIT-008 Discard reverts to last-saved, exits edit, no popup, no API call @regression', async ({ page }) => {
     const cs = new CompanySettingsPage(page);
     const puts: string[] = [];
     page.on('request', (r) => {
@@ -112,7 +112,7 @@ test.describe('US-CS-003 Edit / Save / dirty-check', () => {
     expect(puts).toHaveLength(0);
   });
 
-  test('TC-CSEDIT-009 switch sections with no unsaved changes: silent, no popup (AC-009)', async ({
+  test('TC-CSEDIT-009 switch sections with no unsaved changes: silent, no popup (AC-009) @regression', async ({
     page,
   }) => {
     const cs = new CompanySettingsPage(page);
@@ -124,7 +124,7 @@ test.describe('US-CS-003 Edit / Save / dirty-check', () => {
     await cs.expectReadOnly(BG);
   });
 
-  test('TC-CSEDIT-010 switch sections with unsaved changes: popup shown, second blocked (AC-010)', async ({
+  test('TC-CSEDIT-010 switch sections with unsaved changes: popup shown, second blocked (AC-010) @regression', async ({
     page,
   }) => {
     const cs = new CompanySettingsPage(page);
@@ -138,7 +138,7 @@ test.describe('US-CS-003 Edit / Save / dirty-check', () => {
     await expect(cs.textarea('introduction')).toHaveCount(0); // not entered until resolved
   });
 
-  test('TC-CSEDIT-011 click outside the text box, no unsaved changes: nothing happens (AC-011, BR-08)', async ({
+  test('TC-CSEDIT-011 click outside the text box, no unsaved changes: nothing happens (AC-011, BR-08) @regression', async ({
     page,
   }) => {
     const cs = new CompanySettingsPage(page);
@@ -149,7 +149,7 @@ test.describe('US-CS-003 Edit / Save / dirty-check', () => {
     await expect(cs.popup).toHaveCount(0);
   });
 
-  test('TC-CSEDIT-012 click outside the text box, unsaved changes: nothing (no popup, no save/revert) (AC-012)', async ({
+  test('TC-CSEDIT-012 click outside the text box, unsaved changes: nothing (no popup, no save/revert) (AC-012) @regression', async ({
     page,
   }) => {
     const cs = new CompanySettingsPage(page);
@@ -167,7 +167,7 @@ test.describe('US-CS-003 Edit / Save / dirty-check', () => {
     expect(puts).toHaveLength(0);
   });
 
-  test('TC-CSEDIT-013 in-app navigation away with unsaved changes triggers the popup (AC-013)', async ({
+  test('TC-CSEDIT-013 in-app navigation away with unsaved changes triggers the popup (AC-013) @regression', async ({
     page,
   }) => {
     const cs = new CompanySettingsPage(page);
@@ -180,7 +180,7 @@ test.describe('US-CS-003 Edit / Save / dirty-check', () => {
     await expect(page).toHaveURL(/\/company-settings$/); // nav not completed yet
   });
 
-  test('TC-CSEDIT-014 popup Cancel aborts action; stays in edit mode, changes intact (AC-014, BR-07)', async ({
+  test('TC-CSEDIT-014 popup Cancel aborts action; stays in edit mode, changes intact (AC-014, BR-07) @regression', async ({
     page,
   }) => {
     const cs = new CompanySettingsPage(page);
@@ -197,7 +197,7 @@ test.describe('US-CS-003 Edit / Save / dirty-check', () => {
     await expect(cs.textarea('introduction')).toHaveCount(0);
   });
 
-  test('TC-CSEDIT-015 popup Save Changes commits, shows confirmation, then proceeds (AC-015/016/017)', async ({
+  test('TC-CSEDIT-015 popup Save Changes commits, shows confirmation, then proceeds (AC-015/016/017) @regression', async ({
     page,
   }) => {
     // Real PUT against dev; save-then-restore teardown leaves the tenant untouched.
@@ -222,7 +222,7 @@ test.describe('US-CS-003 Edit / Save / dirty-check', () => {
     }
   });
 
-  test('TC-CSEDIT-016 direct Save commits and returns section to read-only (AC-016)', async ({
+  test('TC-CSEDIT-016 direct Save commits and returns section to read-only (AC-016) @regression', async ({
     page,
   }) => {
     // Real PUT against dev; save-then-restore teardown leaves the tenant untouched.
@@ -239,7 +239,7 @@ test.describe('US-CS-003 Edit / Save / dirty-check', () => {
     }
   });
 
-  test('TC-CSEDIT-017 save confirmation shows exact copy at top of screen and auto-dismisses (AC-017)', async ({
+  test('TC-CSEDIT-017 save confirmation shows exact copy at top of screen and auto-dismisses (AC-017) @regression', async ({
     page,
   }) => {
     // Real PUT against dev; save-then-restore teardown leaves the tenant untouched.
@@ -256,7 +256,7 @@ test.describe('US-CS-003 Edit / Save / dirty-check', () => {
     }
   });
 
-  test('TC-CSEDIT-018 Save error (5xx): stays in edit mode, generic error, changes retained (§5.7)', async ({
+  test('TC-CSEDIT-018 Save error (5xx): stays in edit mode, generic error, changes retained (§5.7) @regression', async ({
     page,
   }) => {
     await page.route('**/company-settings/**', (route) =>
@@ -272,7 +272,7 @@ test.describe('US-CS-003 Edit / Save / dirty-check', () => {
     await expect(cs.textarea(BG)).toHaveValue(`${base} x`); // retained
   });
 
-  test('TC-CSEDIT-019 double-submit prevention: Save disables on click, one PUT only, re-enables on error (§5.7)', async ({
+  test('TC-CSEDIT-019 double-submit prevention: Save disables on click, one PUT only, re-enables on error (§5.7) @regression', async ({
     page,
   }) => {
     const puts: string[] = [];
@@ -299,7 +299,7 @@ test.describe('US-CS-003 Edit / Save / dirty-check', () => {
     expect(puts).toHaveLength(1);
   });
 
-  test('TC-CSEDIT-020 unsaved changes register the browser-level beforeunload guard (§5.8) [PARTIAL]', async ({
+  test('TC-CSEDIT-020 unsaved changes register the browser-level beforeunload guard (§5.8) [PARTIAL] @regression', async ({
     page,
   }) => {
     // The app registers the guard via addEventListener('beforeunload', …) (not
@@ -327,7 +327,7 @@ test.describe('US-CS-003 Edit / Save / dirty-check', () => {
     await cs.discard(BG); // leave the section clean (no save, no residue)
   });
 
-  test('TC-CSEDIT-021 exclusive editing: at most one section editable at any time (BR-02)', async ({
+  test('TC-CSEDIT-021 exclusive editing: at most one section editable at any time (BR-02) @regression', async ({
     page,
   }) => {
     const cs = new CompanySettingsPage(page);
@@ -347,7 +347,7 @@ test.describe('US-CS-003 Edit / Save / dirty-check', () => {
     test.info().annotations.push({ type: 'manual', description: 'AC-018 cross-feature — Sourcing snapshot mechanism' });
   });
 
-  test('TC-CSEDIT-023 save confirmation can be manually dismissed before auto-dismiss (REC-02)', async ({
+  test('TC-CSEDIT-023 save confirmation can be manually dismissed before auto-dismiss (REC-02) @regression', async ({
     page,
   }) => {
     // Real PUT against dev; save-then-restore teardown leaves the tenant untouched.
@@ -366,7 +366,7 @@ test.describe('US-CS-003 Edit / Save / dirty-check', () => {
     }
   });
 
-  test('TC-CSEDIT-024 popup Save Changes with a failing PUT aborts action, keeps edit mode (REC-04, §5.8)', async ({
+  test('TC-CSEDIT-024 popup Save Changes with a failing PUT aborts action, keeps edit mode (REC-04, §5.8) @regression', async ({
     page,
   }) => {
     await page.route('**/company-settings/**', (route) =>

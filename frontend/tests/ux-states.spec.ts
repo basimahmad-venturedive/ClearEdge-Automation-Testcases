@@ -12,7 +12,7 @@ import { seedHandedOverTenant } from '../utils/adminApi';
 
 test.describe('§10 UX states', () => {
   test(
-    'TC-ADMUX-001 unexpected API error shows the generic error toast',
+    'TC-ADMUX-001 unexpected API error shows the generic error toast @smoke @regression',
     async ({ authenticatedTenantList: list, createTenantPage, seeder }) => {
       // 1a — POST /admin/tenants mocked 500: generic toast, no internal detail,
       // triggering button re-enables; retry succeeds after the mock is removed.
@@ -46,7 +46,7 @@ test.describe('§10 UX states', () => {
   );
 
   test(
-    'TC-ADMUX-002 loading states on toggle confirmations and section saves',
+    'TC-ADMUX-002 loading states on toggle confirmations and section saves @regression',
     async ({ authenticatedTenantList: list, tenantProfilePage: profile, seeder }) => {
       const t = await seedHandedOverTenant(seeder);
       await list.searchTenants(t.companyName);

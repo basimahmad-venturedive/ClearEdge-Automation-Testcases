@@ -13,6 +13,8 @@
     "test:smoke": "cross-env SMOKE_ONLY=1 vitest run -t @smoke --hideSkippedTests --passWithNoTests",
     "test:regression:dev": "cross-env TEST_ENV=dev REGRESSION_ONLY=1 vitest run -t @regression --hideSkippedTests --passWithNoTests",
     "test:smoke:dev": "cross-env TEST_ENV=dev SMOKE_ONLY=1 vitest run -t @smoke --hideSkippedTests --passWithNoTests",
+    "test:regression:qa": "cross-env TEST_ENV=qa REGRESSION_ONLY=1 vitest run -t @regression --hideSkippedTests --passWithNoTests",
+    "test:smoke:qa": "cross-env TEST_ENV=qa SMOKE_ONLY=1 vitest run -t @smoke --hideSkippedTests --passWithNoTests",
     "test:spec": "node scripts/run-by-spec.mjs",
     "test:dev:usermgmt": "cross-env TEST_ENV=dev vitest run tests/userManagement.test.ts",
     "test:dev:auth": "cross-env TEST_ENV=dev vitest run tests/auth.test.ts",
@@ -24,7 +26,10 @@
     "testrail:prune": "node scripts/testrail-prune.cjs",
     "testrail:create-run": "node scripts/testrail-create-run.cjs",
     "testrail:execute": "node scripts/testrail-execute.cjs",
-    "test:dev:vendor": "cross-env TEST_ENV=dev VENDOR_REQUEST_TIMEOUT_MS=25000 vitest run tests/vendorDirectory.test.ts"
+    "test:dev:vendor": "cross-env TEST_ENV=dev VENDOR_REQUEST_TIMEOUT_MS=25000 vitest run tests/vendorDirectory.test.ts",
+    "test:dev:clause": "cross-env TEST_ENV=dev CLAUSE_REQUEST_TIMEOUT_MS=25000 vitest run tests/clauseConfiguration.test.ts",
+    "test:qa:vendor": "cross-env TEST_ENV=qa VENDOR_REQUEST_TIMEOUT_MS=25000 vitest run tests/vendorDirectory.test.ts",
+    "test:qa:clause": "cross-env TEST_ENV=qa CLAUSE_REQUEST_TIMEOUT_MS=25000 vitest run tests/clauseConfiguration.test.ts"
   },
   "devDependencies": {
     "@faker-js/faker": "^9.0.0",

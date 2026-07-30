@@ -30,19 +30,19 @@ test.describe('US-UM-003 User Management home', () => {
     await new AppLoginPage(page).ensureLoggedIn();
   });
 
-  test('TC-UMHOME-001 "Your Organization" card renders company/website/address; null → "—"; no edit controls', async ({ page }) => {
+  test('TC-UMHOME-001 "Your Organization" card renders company/website/address; null → "—"; no edit controls @smoke @regression', async ({ page }) => {
     const um = new UserManagementPage(page);
     await um.goto();
     await um.expectOrganizationCard(PO.companyName);
   });
 
-  test('TC-UMHOME-002 "Your Profile" card renders PO Name/Email/Role="Procurement Owner"; no edit controls', async ({ page }) => {
+  test('TC-UMHOME-002 "Your Profile" card renders PO Name/Email/Role="Procurement Owner"; no edit controls @smoke @regression', async ({ page }) => {
     const um = new UserManagementPage(page);
     await um.goto();
     await um.expectProfileCard(PO.profileName, PO.profileEmail);
   });
 
-  test('TC-UMHOME-003 managed-users card renders every specified element', async ({ page, request }) => {
+  test('TC-UMHOME-003 managed-users card renders every specified element @smoke @regression', async ({ page, request }) => {
     const um = new UserManagementPage(page);
     await um.goto();
     const tag = uniqueUserPrefix('Home003');
@@ -54,7 +54,7 @@ test.describe('US-UM-003 User Management home', () => {
     await expect(card.getByText(u.email)).toBeVisible();
   });
 
-  test('TC-UMHOME-004 list ordered newest-first; new user appears at top of page 1', async ({ page, request }) => {
+  test('TC-UMHOME-004 list ordered newest-first; new user appears at top of page 1 @regression', async ({ page, request }) => {
     const um = new UserManagementPage(page);
     await um.goto();
     const tag = uniqueUserPrefix('Home004');
@@ -66,7 +66,7 @@ test.describe('US-UM-003 User Management home', () => {
     expect(names[0]).toContain(`${tag} 2`);
   });
 
-  test('TC-UMHOME-005 search: case-insensitive partial match anywhere in name', async ({ page, request }) => {
+  test('TC-UMHOME-005 search: case-insensitive partial match anywhere in name @regression', async ({ page, request }) => {
     const um = new UserManagementPage(page);
     await um.goto();
     const tag = uniqueUserPrefix('Home005');
@@ -78,14 +78,14 @@ test.describe('US-UM-003 User Management home', () => {
     for (const n of names) expect(n.toLowerCase()).toContain(tag.toLowerCase());
   });
 
-  test('TC-UMHOME-006 search updates as the Owner types (debounced), no separate Search button', async ({ page }) => {
+  test('TC-UMHOME-006 search updates as the Owner types (debounced), no separate Search button @regression', async ({ page }) => {
     const um = new UserManagementPage(page);
     await um.goto();
     await um.search('ky');
     await expect(page.getByRole('button', { name: /^search$/i })).toHaveCount(0);
   });
 
-  test('TC-UMHOME-007 role filter (All / Manager / Analyst) and clear-back-to-All', async ({ page, request }) => {
+  test('TC-UMHOME-007 role filter (All / Manager / Analyst) and clear-back-to-All @regression', async ({ page, request }) => {
     const um = new UserManagementPage(page);
     await um.goto();
     const tag = uniqueUserPrefix('Home007');
@@ -101,7 +101,7 @@ test.describe('US-UM-003 User Management home', () => {
     await expect(um.cards).toHaveCount(2);
   });
 
-  test('TC-UMHOME-008 search + role filter combine with AND logic', async ({ page, request }) => {
+  test('TC-UMHOME-008 search + role filter combine with AND logic @regression', async ({ page, request }) => {
     const um = new UserManagementPage(page);
     await um.goto();
     const tag = uniqueUserPrefix('Home008');
@@ -128,7 +128,7 @@ test.describe('US-UM-003 User Management home', () => {
     // tenant can never be empty. Needs an isolated/fresh tenant (cf. TC-ADMLIST-007).
   });
 
-  test('TC-UMHOME-012 empty state "No users match your search." (users exist, filter yields zero)', async ({ page, request }) => {
+  test('TC-UMHOME-012 empty state "No users match your search." (users exist, filter yields zero) @regression', async ({ page, request }) => {
     const um = new UserManagementPage(page);
     await um.goto();
     // Ensure at least one user exists, then search a no-match term.
@@ -137,7 +137,7 @@ test.describe('US-UM-003 User Management home', () => {
     await um.expectNoMatchEmptyState();
   });
 
-  test('TC-UMHOME-013 PO\'s own account never appears in list, search, or filtered results', async ({ page, request }) => {
+  test('TC-UMHOME-013 PO\'s own account never appears in list, search, or filtered results @regression', async ({ page, request }) => {
     const um = new UserManagementPage(page);
     await um.goto();
     await new AppUserSeeder(page, request).seedUsers(1, uniqueUserPrefix('Home013'));
@@ -145,7 +145,7 @@ test.describe('US-UM-003 User Management home', () => {
     await um.expectNoMatchEmptyState();
   });
 
-  test('TC-UMHOME-014 User ID visible on every card and never editable', async ({ page, request }) => {
+  test('TC-UMHOME-014 User ID visible on every card and never editable @regression', async ({ page, request }) => {
     const um = new UserManagementPage(page);
     await um.goto();
     const tag = uniqueUserPrefix('Home014');
@@ -154,7 +154,7 @@ test.describe('US-UM-003 User Management home', () => {
     await expect(um.cardByName(u.name).getByText(/^USR-\d{4}$/)).toBeVisible();
   });
 
-  test('TC-UMHOME-015 whitespace-only search treated as an empty search', async ({ page }) => {
+  test('TC-UMHOME-015 whitespace-only search treated as an empty search @regression', async ({ page }) => {
     const um = new UserManagementPage(page);
     await um.goto();
     const all = (await um.expectVisibleCardNames()).length;
@@ -162,7 +162,7 @@ test.describe('US-UM-003 User Management home', () => {
     expect((await um.expectVisibleCardNames()).length).toBe(all);
   });
 
-  test('TC-UMHOME-016 same-name users disambiguated by email and User ID in results', async ({ page, request }) => {
+  test('TC-UMHOME-016 same-name users disambiguated by email and User ID in results @regression', async ({ page, request }) => {
     const um = new UserManagementPage(page);
     await um.goto();
     const tag = uniqueUserPrefix('Home016');
@@ -174,7 +174,7 @@ test.describe('US-UM-003 User Management home', () => {
     await expect(um.cards).toHaveCount(2);
   });
 
-  test('TC-UMHOME-017 clearing the search returns to the full list at page 1', async ({ page, request }) => {
+  test('TC-UMHOME-017 clearing the search returns to the full list at page 1 @regression', async ({ page, request }) => {
     const um = new UserManagementPage(page);
     await um.goto();
     await new AppUserSeeder(page, request).seedUsers(1, uniqueUserPrefix('Home017'));
@@ -185,7 +185,7 @@ test.describe('US-UM-003 User Management home', () => {
     expect((await um.expectVisibleCardNames()).length).toBeGreaterThan(0);
   });
 
-  test('TC-UMHOME-018 role filter with zero matches shows the no-match message, not a blank grid', async ({ page, request }) => {
+  test('TC-UMHOME-018 role filter with zero matches shows the no-match message, not a blank grid @regression', async ({ page, request }) => {
     const um = new UserManagementPage(page);
     await um.goto();
     const tag = uniqueUserPrefix('Home018');

@@ -12,7 +12,7 @@ import { seedSetupTenant, seedHandedOverTenant } from '../utils/adminApi';
 
 test.describe('US-2.2 Active/Inactive Toggle', () => {
   test(
-    'TC-ADMTOGGLE-001 toggle locked to Inactive while tenant is in Setup (card + profile)',
+    'TC-ADMTOGGLE-001 toggle locked to Inactive while tenant is in Setup (card + profile) @smoke @regression',
     async ({ authenticatedTenantList: list, tenantProfilePage: profile, seeder }) => {
       const t = await seedSetupTenant(seeder);
       await list.searchTenants(t.companyName);
@@ -37,7 +37,7 @@ test.describe('US-2.2 Active/Inactive Toggle', () => {
   );
 
   test(
-    'TC-ADMTOGGLE-002 post-handover activation dialog (exact copy) and confirmed toggle',
+    'TC-ADMTOGGLE-002 post-handover activation dialog (exact copy) and confirmed toggle @smoke @regression',
     async ({ authenticatedTenantList: list, tenantProfilePage: profile, seeder }) => {
       const t = await seedHandedOverTenant(seeder, { status: 'inactive' });
       await list.searchTenants(t.companyName);
@@ -56,7 +56,7 @@ test.describe('US-2.2 Active/Inactive Toggle', () => {
   );
 
   test(
-    'TC-ADMTOGGLE-003 post-handover deactivation dialog includes the access-revocation warning',
+    'TC-ADMTOGGLE-003 post-handover deactivation dialog includes the access-revocation warning @regression',
     async ({ authenticatedTenantList: list, tenantProfilePage: profile, seeder }) => {
       const t = await seedHandedOverTenant(seeder); // handover auto-activates → currently Active
       await list.searchTenants(t.companyName);
@@ -74,7 +74,7 @@ test.describe('US-2.2 Active/Inactive Toggle', () => {
   );
 
   test(
-    'TC-ADMTOGGLE-004 canceling the toggle dialog reverts with no change',
+    'TC-ADMTOGGLE-004 canceling the toggle dialog reverts with no change @regression',
     async ({ authenticatedTenantList: list, tenantProfilePage: profile, seeder }) => {
       const t = await seedHandedOverTenant(seeder);
       await list.searchTenants(t.companyName);
@@ -99,7 +99,7 @@ test.describe('US-2.2 Active/Inactive Toggle', () => {
   );
 
   test(
-    'TC-ADMTOGGLE-005 rapid repeated toggle clicks open only one dialog',
+    'TC-ADMTOGGLE-005 rapid repeated toggle clicks open only one dialog @regression',
     async ({ authenticatedTenantList: list, seeder }) => {
       const t = await seedHandedOverTenant(seeder);
       await list.searchTenants(t.companyName);
@@ -116,7 +116,7 @@ test.describe('US-2.2 Active/Inactive Toggle', () => {
   );
 
   test(
-    'TC-ADMTOGGLE-006 profile open at the moment of handover updates toggle live',
+    'TC-ADMTOGGLE-006 profile open at the moment of handover updates toggle live @regression',
     async ({ authenticatedTenantList: list, createTenantPage, tenantProfilePage: profile }) => {
       // Handover is irreversible → create a DISPOSABLE Setup tenant first.
       const tenant = uniqueTenant();
@@ -136,7 +136,7 @@ test.describe('US-2.2 Active/Inactive Toggle', () => {
   );
 
   test(
-    'TC-ADMTOGGLE-007 toggle works independently of section edit states',
+    'TC-ADMTOGGLE-007 toggle works independently of section edit states @regression',
     async ({ authenticatedTenantList: list, tenantProfilePage: profile, seeder }) => {
       const t = await seedHandedOverTenant(seeder);
       await list.searchTenants(t.companyName);

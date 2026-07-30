@@ -16,7 +16,7 @@ import { uniquePrefix } from '../utils/adminApi';
 
 test.describe('US-2.1 Tenant List', () => {
   test(
-    'TC-ADMLIST-001 tenant card renders every specified element',
+    'TC-ADMLIST-001 tenant card renders every specified element @smoke @regression',
     async ({ authenticatedTenantList: list, seeder }) => {
       // Seed a Setup tenant + a Handed-Over tenant under a per-run prefix, then
       // search that prefix to isolate exactly these two cards (dev is shared).
@@ -52,7 +52,7 @@ test.describe('US-2.1 Tenant List', () => {
   );
 
   test(
-    'TC-ADMLIST-002 newest-first ordering; newly created tenant appears at the top of page 1',
+    'TC-ADMLIST-002 newest-first ordering; newly created tenant appears at the top of page 1 @smoke @regression',
     async ({ authenticatedTenantList: list, createTenantPage, tenantProfilePage: profile }) => {
       // Precondition (TODO_FIXTURE): ≥ 3 tenants with distinct creation times.
       const newTenant = uniqueTenant();
@@ -79,7 +79,7 @@ test.describe('US-2.1 Tenant List', () => {
   );
 
   test(
-    'TC-ADMLIST-003 pagination boundary: 12 per page; controls appear only above 12',
+    'TC-ADMLIST-003 pagination boundary: 12 per page; controls appear only above 12 @smoke @regression',
     async ({ authenticatedTenantList: list, seeder }) => {
       // 3a — EXACTLY 12 tenants under one prefix -> no pagination in that set.
       const tag12 = uniquePrefix('Pg12');
@@ -100,7 +100,7 @@ test.describe('US-2.1 Tenant List', () => {
   );
 
   test(
-    'TC-ADMLIST-004 search filters by Company Name only, partial and case-insensitive',
+    'TC-ADMLIST-004 search filters by Company Name only, partial and case-insensitive @regression',
     async ({ authenticatedTenantList: list, seeder }) => {
       // Seed one tenant with a unique company-name fragment (dev is shared and
       // has other "Acme" tenants from prior runs — so we search our own tag).
@@ -130,7 +130,7 @@ test.describe('US-2.1 Tenant List', () => {
   );
 
   test(
-    'TC-ADMLIST-005 whitespace-only search = unfiltered; clearing search restores the full list',
+    'TC-ADMLIST-005 whitespace-only search = unfiltered; clearing search restores the full list @regression',
     async ({ authenticatedTenantList: list }) => {
       // Precondition (TODO_FIXTURE): ≥ 2 tenants seeded.
       const total = await list.tenantCountValue();
@@ -145,7 +145,7 @@ test.describe('US-2.1 Tenant List', () => {
   );
 
   test(
-    'TC-ADMLIST-006 no-match search shows the empty-results message',
+    'TC-ADMLIST-006 no-match search shows the empty-results message @regression',
     async ({ authenticatedTenantList: list }) => {
       // Precondition (TODO_FIXTURE): ≥ 1 tenant seeded, none matching.
       await list.searchTenants('zzz-no-match-xyz');
@@ -157,7 +157,7 @@ test.describe('US-2.1 Tenant List', () => {
   );
 
   test(
-    'TC-ADMLIST-007 zero tenants: "No tenants yet." with Create Tenant still visible',
+    'TC-ADMLIST-007 zero tenants: "No tenants yet." with Create Tenant still visible @regression',
     async ({ authenticatedTenantList: list }) => {
       // Precondition (TODO_FIXTURE): environment with ZERO tenants (fresh DB /
       // isolated tenant-set). If shared environments make that impossible,
@@ -169,7 +169,7 @@ test.describe('US-2.1 Tenant List', () => {
   );
 
   test(
-    'TC-ADMLIST-008 search resets to page 1; filtered results paginate',
+    'TC-ADMLIST-008 search resets to page 1; filtered results paginate @regression',
     async ({ authenticatedTenantList: list, seeder }) => {
       // Seed 14 tenants sharing a fragment -> the filtered set paginates (12 + 2).
       const tag = uniquePrefix('Fixture');
@@ -190,7 +190,7 @@ test.describe('US-2.1 Tenant List', () => {
   );
 
   test(
-    'TC-ADMLIST-009 running tenant count updates with search',
+    'TC-ADMLIST-009 running tenant count updates with search @regression',
     async ({ authenticatedTenantList: list, seeder }) => {
       // Seed a small known set under a unique prefix; the running count must
       // drop to exactly that set when the prefix is searched.
@@ -211,7 +211,7 @@ test.describe('US-2.1 Tenant List', () => {
   );
 
   test(
-    'TC-ADMLIST-010 "Create Tenant" navigates to the creation form',
+    'TC-ADMLIST-010 "Create Tenant" navigates to the creation form @regression',
     async ({ authenticatedTenantList: list, createTenantPage }) => {
       const mutations = list.trackTenantCreateRequests();
       await list.openCreateTenant();
@@ -224,7 +224,7 @@ test.describe('US-2.1 Tenant List', () => {
   );
 
   test(
-    'TC-ADMLIST-011 responsive grid: multi-column desktop, single column mobile',
+    'TC-ADMLIST-011 responsive grid: multi-column desktop, single column mobile @regression',
     async ({ authenticatedTenantList: list, seeder }) => {
       // Seed ≥ 4 tenants under a unique prefix and isolate them by search.
       const tag = uniquePrefix('Grid');

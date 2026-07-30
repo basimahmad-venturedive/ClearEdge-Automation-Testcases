@@ -12,7 +12,7 @@ import { seedSetupTenant, seedHandedOverTenant } from '../utils/adminApi';
 
 test.describe('US-2.3 Tenant Profile & Edit', () => {
   test(
-    'TC-ADMEDIT-001 profile shows two independent read-only sections with own Edit buttons',
+    'TC-ADMEDIT-001 profile shows two independent read-only sections with own Edit buttons @smoke @regression',
     async ({ authenticatedTenantList: list, tenantProfilePage: profile, seeder }) => {
       const t = await seedHandedOverTenant(seeder);
       await list.searchTenants(t.companyName);
@@ -34,7 +34,7 @@ test.describe('US-2.3 Tenant Profile & Edit', () => {
   );
 
   test(
-    'TC-ADMEDIT-002 section edit independence (one section, both sections, cancel one keeps the other)',
+    'TC-ADMEDIT-002 section edit independence (one section, both sections, cancel one keeps the other) @smoke @regression',
     async ({ authenticatedTenantList: list, tenantProfilePage: profile, seeder }) => {
       const t = await seedHandedOverTenant(seeder);
       await list.searchTenants(t.companyName);
@@ -65,7 +65,7 @@ test.describe('US-2.3 Tenant Profile & Edit', () => {
   );
 
   test(
-    'TC-ADMEDIT-003 save Company info: applies, returns read-only, never notifies the Owner',
+    'TC-ADMEDIT-003 save Company info: applies, returns read-only, never notifies the Owner @regression',
     async ({ authenticatedTenantList: list, tenantProfilePage: profile, seeder }) => {
       const t = await seedHandedOverTenant(seeder); // worst case for an accidental Owner notification
       await list.searchTenants(t.companyName);
@@ -92,7 +92,7 @@ test.describe('US-2.3 Tenant Profile & Edit', () => {
   );
 
   test(
-    'TC-ADMEDIT-004 PO name-only change: in-place update, no email, regardless of status',
+    'TC-ADMEDIT-004 PO name-only change: in-place update, no email, regardless of status @regression',
     async ({ authenticatedTenantList: list, tenantProfilePage: profile, seeder }) => {
       const newOwnerName = 'Thomas Whitfield';
       const setup = await seedSetupTenant(seeder);
@@ -129,7 +129,7 @@ test.describe('US-2.3 Tenant Profile & Edit', () => {
   );
 
   test(
-    'TC-ADMEDIT-005 PO email change on Handed-Over tenant: confirmation dialog (exact copy) then reassignment',
+    'TC-ADMEDIT-005 PO email change on Handed-Over tenant: confirmation dialog (exact copy) then reassignment @regression',
     async ({ authenticatedTenantList: list, tenantProfilePage: profile, seeder }) => {
       const t = await seedHandedOverTenant(seeder);
       await list.searchTenants(t.companyName);
@@ -158,7 +158,7 @@ test.describe('US-2.3 Tenant Profile & Edit', () => {
   );
 
   test(
-    'TC-ADMEDIT-006 PO email change during Setup: new setup password displayed, no dialog-email flow, no email',
+    'TC-ADMEDIT-006 PO email change during Setup: new setup password displayed, no dialog-email flow, no email @regression',
     async ({ authenticatedTenantList: list, tenantProfilePage: profile, seeder }) => {
       const t = await seedSetupTenant(seeder);
       await list.searchTenants(t.companyName);
@@ -183,7 +183,7 @@ test.describe('US-2.3 Tenant Profile & Edit', () => {
   );
 
   test(
-    'TC-ADMEDIT-007 duplicate checks on edit exclude self (domain + email)',
+    'TC-ADMEDIT-007 duplicate checks on edit exclude self (domain + email) @regression',
     async ({ authenticatedTenantList: list, tenantProfilePage: profile, seeder }) => {
       // Seed tenant A (collision source) and tenant B (the one we edit).
       const a = await seedSetupTenant(seeder, 'EditA');
@@ -221,7 +221,7 @@ test.describe('US-2.3 Tenant Profile & Edit', () => {
   );
 
   test(
-    'TC-ADMEDIT-008 closing the profile mid-edit discards unsaved changes in both sections',
+    'TC-ADMEDIT-008 closing the profile mid-edit discards unsaved changes in both sections @regression',
     async ({ authenticatedTenantList: list, tenantProfilePage: profile, seeder }) => {
       const t = await seedHandedOverTenant(seeder);
       await list.searchTenants(t.companyName);
@@ -247,7 +247,7 @@ test.describe('US-2.3 Tenant Profile & Edit', () => {
   );
 
   test(
-    'TC-ADMEDIT-009 saving the PO section with nothing changed is a no-op',
+    'TC-ADMEDIT-009 saving the PO section with nothing changed is a no-op @regression',
     async ({ authenticatedTenantList: list, tenantProfilePage: profile, seeder }) => {
       const t = await seedHandedOverTenant(seeder);
       await list.searchTenants(t.companyName);

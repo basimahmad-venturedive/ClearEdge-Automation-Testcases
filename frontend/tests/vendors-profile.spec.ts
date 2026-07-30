@@ -67,7 +67,7 @@ test.describe.serial('US-VD Vendor profile', () => {
     return profile;
   }
 
-  test('TC-VDUI-055 profile shows sidebar card + Linked Contracts / History / Awarded cards @smoke', async ({
+  test('TC-VDUI-055 profile shows sidebar card + Linked Contracts / History / Awarded cards @smoke @regression', async ({
     page,
   }) => {
     const profile = await openProfile(page);
@@ -77,7 +77,7 @@ test.describe.serial('US-VD Vendor profile', () => {
     await expect(profile.awardsCard).toBeVisible();
   });
 
-  test('TC-VDUI-059 Previous Spend inline edit: "Not set" default, accepts a numeric amount', async ({
+  test('TC-VDUI-059 Previous Spend inline edit: "Not set" default, accepts a numeric amount @regression', async ({
     page,
   }) => {
     const profile = await openProfile(page);
@@ -99,7 +99,7 @@ test.describe.serial('US-VD Vendor profile', () => {
     expect(resp.status()).toBeLessThan(300);
   });
 
-  test('TC-VDUI-064 status toggle on the profile uses the same confirmation', async ({ page }) => {
+  test('TC-VDUI-064 status toggle on the profile uses the same confirmation @regression', async ({ page }) => {
     const profile = await openProfile(page);
     await profile.statusToggle.click();
     await profile.confirmDeactivate(); // asserts verbatim body + clicks "Mark as Inactive"

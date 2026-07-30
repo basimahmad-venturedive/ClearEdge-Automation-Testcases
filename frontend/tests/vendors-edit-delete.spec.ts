@@ -60,7 +60,7 @@ test.describe.serial('US-VD-002/003 Edit & Delete Vendor', () => {
     }
   });
 
-  test('TC-VDUI-015 Edit opens the modal pre-populated with current values', async ({ page }) => {
+  test('TC-VDUI-015 Edit opens the modal pre-populated with current values @smoke @regression', async ({ page }) => {
     const directory = new VendorDirectoryPage(page);
     const profile = new VendorProfilePage(page);
     const form = new VendorFormModal(page, 'edit');
@@ -76,7 +76,7 @@ test.describe.serial('US-VD-002/003 Edit & Delete Vendor', () => {
     await form.cancel();
   });
 
-  test('TC-VDUI-016 Edit enforces mandatory fields (clearing name blocks save)', async ({ page }) => {
+  test('TC-VDUI-016 Edit enforces mandatory fields (clearing name blocks save) @smoke @regression', async ({ page }) => {
     const directory = new VendorDirectoryPage(page);
     const profile = new VendorProfilePage(page);
     const form = new VendorFormModal(page, 'edit');
@@ -93,7 +93,7 @@ test.describe.serial('US-VD-002/003 Edit & Delete Vendor', () => {
     await form.cancel();
   });
 
-  test('TC-VDUI-017 Edit saves changes; profile reflects the updated value', async ({ page }) => {
+  test('TC-VDUI-017 Edit saves changes; profile reflects the updated value @regression', async ({ page }) => {
     const directory = new VendorDirectoryPage(page);
     const profile = new VendorProfilePage(page);
     const form = new VendorFormModal(page, 'edit');
@@ -113,7 +113,7 @@ test.describe.serial('US-VD-002/003 Edit & Delete Vendor', () => {
     await expect(profile.header).toContainText(updatedName);
   });
 
-  test('TC-VDUI-018 Cancelling edit discards unsaved changes', async ({ page }) => {
+  test('TC-VDUI-018 Cancelling edit discards unsaved changes @regression', async ({ page }) => {
     const directory = new VendorDirectoryPage(page);
     const profile = new VendorProfilePage(page);
     const form = new VendorFormModal(page, 'edit');
@@ -129,7 +129,7 @@ test.describe.serial('US-VD-002/003 Edit & Delete Vendor', () => {
     await expect(profile.header).not.toContainText('DISCARDED');
   });
 
-  test('TC-VDUI-020 Delete button in edit footer opens confirmation with exact copy', async ({ page }) => {
+  test('TC-VDUI-020 Delete button in edit footer opens confirmation with exact copy @regression', async ({ page }) => {
     const directory = new VendorDirectoryPage(page);
     const profile = new VendorProfilePage(page);
     const form = new VendorFormModal(page, 'edit');
@@ -145,7 +145,7 @@ test.describe.serial('US-VD-002/003 Edit & Delete Vendor', () => {
     await expect(form.deleteConfirmOk).toBeVisible();
   });
 
-  test('TC-VDUI-021 Confirmed deletion soft-deletes, toasts "Vendor deleted.", redirects to directory', async ({
+  test('TC-VDUI-021 Confirmed deletion soft-deletes, toasts "Vendor deleted.", redirects to directory @regression', async ({
     page,
   }) => {
     const directory = new VendorDirectoryPage(page);

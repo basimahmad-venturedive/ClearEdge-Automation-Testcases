@@ -24,11 +24,14 @@ import {
   devTenantPassword,
   devPmUsername,
   devPmPassword,
+  devAnalystUsername,
+  devAnalystPassword,
 } from "../config/env";
 
 let cachedAdminIdToken: string | null = null;
 let cachedTenantIdToken: string | null = null;
 let cachedManagerIdToken: string | null = null;
+let cachedAnalystIdToken: string | null = null;
 
 interface InitiateAuthResult {
   AuthenticationResult?: { IdToken?: string; AccessToken?: string; RefreshToken?: string };
@@ -155,6 +158,45 @@ export async function getManagerIdToken(): Promise<string> {
   return idToken;
 }
 
+/**
+ * Returns a real tenant-pool ID token for the configured DEV_ANALYST_* user (a Procurement
+ * Analyst — view_vendors only, no manage_vendors). Same USER_PASSWORD_AUTH flow / app client
+ * as the PO. Used by the vendor Analyst view-only / 403 access cases (TC-VDACCESS-001…009).
+ */
+export async function getAnalystIdToken(): Promise<string> {
+  if (cachedAnalystIdToken) return cachedAnalystIdToken;
+
+  const endpoint = `https://cognito-idp.${cognitoRegion()}.amazonaws.com/`;
+  const response = await axios.post<InitiateAuthResult>(
+    endpoint,
+    {
+      AuthFlow: "USER_PASSWORD_AUTH",
+      ClientId: cognitoTenantAppClientIdLive(),
+      AuthParameters: { USERNAME: devAnalystUsername(), PASSWORD: devAnalystPassword() },
+    },
+    {
+      headers: {
+        "Content-Type": "application/x-amz-json-1.1",
+        "X-Amz-Target": "AWSCognitoIdentityProviderService.InitiateAuth",
+      },
+      validateStatus: () => true,
+    },
+  );
+
+  const idToken = response.data?.AuthenticationResult?.IdToken;
+  if (response.status !== 200 || !idToken) {
+    const challenge = response.data?.ChallengeName ? ` (challenge: ${response.data.ChallengeName})` : "";
+    throw new Error(
+      `Cognito InitiateAuth for the analyst user failed: HTTP ${response.status}${challenge} — ` +
+        `${JSON.stringify(response.data)}. Check DEV_ANALYST_USERNAME/DEV_ANALYST_PASSWORD and ` +
+        "COGNITO_TENANT_APP_CLIENT_ID in envs/.env.<env>.",
+    );
+  }
+
+  cachedAnalystIdToken = idToken;
+  return idToken;
+}
+
 /** Decodes the (unverified) claims of a JWT — used to read tenant_id/sub off a live token. */
 export function decodeJwtClaims(token: string): Record<string, unknown> {
   const payload = token.split(".")[1];
@@ -167,4 +209,5 @@ export function resetTokenCache(): void {
   cachedAdminIdToken = null;
   cachedTenantIdToken = null;
   cachedManagerIdToken = null;
+  cachedAnalystIdToken = null;
 }

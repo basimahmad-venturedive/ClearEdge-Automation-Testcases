@@ -46,7 +46,7 @@ test.describe.serial('US-VD-005/024 Vendor Overview — dataset-dependent', () =
     }
   });
 
-  test('TC-VDUI-042 pagination: 10 per page, controls appear when >10, arrows disable at ends', async ({
+  test('TC-VDUI-042 pagination: 10 per page, controls appear when >10, arrows disable at ends @smoke @regression', async ({
     page,
   }) => {
     const directory = new VendorDirectoryPage(page);
@@ -63,7 +63,7 @@ test.describe.serial('US-VD-005/024 Vendor Overview — dataset-dependent', () =
     expect(await directory.isNextDisabled()).toBe(true);
   });
 
-  test('TC-VDUI-043 page resets to 1 when the search changes', async ({ page }) => {
+  test('TC-VDUI-043 page resets to 1 when the search changes @smoke @regression', async ({ page }) => {
     const directory = new VendorDirectoryPage(page);
     await directory.goto();
     await directory.search(prefix);
@@ -79,7 +79,7 @@ test.describe.serial('US-VD-005/024 Vendor Overview — dataset-dependent', () =
     }
   });
 
-  test('TC-VDUI-044 no pagination controls when ≤10 vendors', async ({ page }) => {
+  test('TC-VDUI-044 no pagination controls when ≤10 vendors @regression', async ({ page }) => {
     const directory = new VendorDirectoryPage(page);
     await directory.goto();
     await directory.search(`${prefix} 0`); // 01..09 → 9 rows (≤10)
@@ -87,7 +87,7 @@ test.describe.serial('US-VD-005/024 Vendor Overview — dataset-dependent', () =
     await expect(directory.pagination).toHaveCount(0);
   });
 
-  test('TC-VDUI-039 sort Vendor name A-Z then Z-A', async ({ page }) => {
+  test('TC-VDUI-039 sort Vendor name A-Z then Z-A @regression', async ({ page }) => {
     const directory = new VendorDirectoryPage(page);
     await directory.goto();
     await directory.search(`${prefix} 0`); // 9 rows, single page — order is unambiguous
@@ -107,7 +107,7 @@ test.describe.serial('US-VD-005/024 Vendor Overview — dataset-dependent', () =
     expect(desc[desc.length - 1]).toBe(`${prefix} 01`);
   });
 
-  test('TC-VDUI-040 default sort is Date Added descending; toggles oldest/newest', async ({ page }) => {
+  test('TC-VDUI-040 default sort is Date Added descending; toggles oldest/newest @regression', async ({ page }) => {
     const directory = new VendorDirectoryPage(page);
     await directory.goto();
     await directory.search(`${prefix} 0`); // 9 rows, single page
@@ -129,7 +129,7 @@ test.describe.serial('US-VD-005/024 Vendor Overview — dataset-dependent', () =
     await expect.poll(async () => (await directory.orderedVendorNames())[0]).toBe(`${prefix} 01`);
   });
 
-  test('TC-VDUI-038 Primary Vendors toggle filter shows only starred vendors', async ({ page }) => {
+  test('TC-VDUI-038 Primary Vendors toggle filter shows only starred vendors @regression', async ({ page }) => {
     const directory = new VendorDirectoryPage(page);
     await directory.goto();
     await directory.search(prefix); // all 12

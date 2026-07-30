@@ -10,7 +10,7 @@ import { CompanySettingsPage } from '../pages/CompanySettingsPage';
 import { CsCopy } from './fixtures/expectedCopyCompanySettings';
 
 test.describe('US-CS-002 View Company Settings sections', () => {
-  test('TC-CSVIEW-001 three sections render with exact "Company …" titles @smoke', async ({ page }) => {
+  test('TC-CSVIEW-001 three sections render with exact "Company …" titles @smoke @regression', async ({ page }) => {
     const cs = new CompanySettingsPage(page);
     await cs.goto();
     // antd Card title (not role=heading) carries the section display name.
@@ -21,7 +21,7 @@ test.describe('US-CS-002 View Company Settings sections', () => {
     );
   });
 
-  test('TC-CSVIEW-002 all sections read-only by default; Edit enabled, Save disabled, no Discard', async ({
+  test('TC-CSVIEW-002 all sections read-only by default; Edit enabled, Save disabled, no Discard @regression', async ({
     page,
   }) => {
     const cs = new CompanySettingsPage(page);
@@ -31,7 +31,7 @@ test.describe('US-CS-002 View Company Settings sections', () => {
     await cs.expectReadOnly('terms_and_conditions');
   });
 
-  test('TC-CSVIEW-003 page heading is exactly "Company Settings" with subtitle', async ({ page }) => {
+  test('TC-CSVIEW-003 page heading is exactly "Company Settings" with subtitle @regression', async ({ page }) => {
     const cs = new CompanySettingsPage(page);
     await cs.goto();
     await expect(page.getByRole('heading', { name: CsCopy.pageHeading, exact: true })).toBeVisible();
@@ -52,7 +52,7 @@ test.describe('US-CS-002 View Company Settings sections', () => {
     await expect(cs.contentReadonly('terms_and_conditions')).toHaveText('');
   });
 
-  test('TC-CSVIEW-005 section text uses the primary (non-muted) text colour', async ({ page }) => {
+  test('TC-CSVIEW-005 section text uses the primary (non-muted) text colour @regression', async ({ page }) => {
     // Intent: section content is standard body text, NOT gray/muted. The built app
     // renders it with the antd `colorText` token (a near-black, theme-aware value —
     // rgba(0,0,0,0.88) in light, near-white in dark), while the subtitle uses the
@@ -69,7 +69,7 @@ test.describe('US-CS-002 View Company Settings sections', () => {
     expect(contentColor).not.toBe(mutedColor);
   });
 
-  test('TC-CSVIEW-006 page load fires GET /company-settings and returns 200', async ({ page }) => {
+  test('TC-CSVIEW-006 page load fires GET /company-settings and returns 200 @regression', async ({ page }) => {
     const cs = new CompanySettingsPage(page);
     const [resp] = await Promise.all([
       page.waitForResponse(

@@ -14,7 +14,7 @@ import { seedSetupTenant, seedHandedOverTenant } from '../utils/adminApi';
 
 test.describe('US-4.1 Setup Password & Setup Banner', () => {
   test(
-    'TC-ADMSETUP-001 setup password displayed in profile with show/hide; stable across views',
+    'TC-ADMSETUP-001 setup password displayed in profile with show/hide; stable across views @smoke @regression',
     async ({ authenticatedTenantList: list, tenantProfilePage: profile, seeder }) => {
       const t = await seedSetupTenant(seeder);
       await list.searchTenants(t.companyName);
@@ -34,7 +34,7 @@ test.describe('US-4.1 Setup Password & Setup Banner', () => {
   );
 
   test(
-    'TC-ADMSETUP-002 setup banner: exact copy during Setup; disappears permanently after handover',
+    'TC-ADMSETUP-002 setup banner: exact copy during Setup; disappears permanently after handover @smoke @regression',
     async ({ authenticatedTenantList: list, tenantProfilePage: profile, seeder }) => {
       const setup = await seedSetupTenant(seeder);
       const handedOver = await seedHandedOverTenant(seeder);
@@ -54,7 +54,7 @@ test.describe('US-4.1 Setup Password & Setup Banner', () => {
 
 test.describe('US-4.2 Handover', () => {
   test(
-    'TC-ADMHAND-001 handover action available only during Setup; dialog copy is exact and named',
+    'TC-ADMHAND-001 handover action available only during Setup; dialog copy is exact and named @regression',
     async ({ authenticatedTenantList: list, tenantProfilePage: profile, seeder }) => {
       const setup = await seedSetupTenant(seeder);
       const handedOver = await seedHandedOverTenant(seeder);
@@ -76,7 +76,7 @@ test.describe('US-4.2 Handover', () => {
   );
 
   test(
-    'TC-ADMHAND-002 confirmed handover applies all UI effects together',
+    'TC-ADMHAND-002 confirmed handover applies all UI effects together @regression',
     async ({ authenticatedTenantList: list, tenantProfilePage: profile, seeder }) => {
       const t = await seedSetupTenant(seeder); // disposable Setup tenant; handover is irreversible
       await list.searchTenants(t.companyName);
@@ -109,7 +109,7 @@ test.describe('US-4.2 Handover', () => {
   );
 
   test(
-    'TC-ADMHAND-003 canceling the handover dialog performs none of the effects',
+    'TC-ADMHAND-003 canceling the handover dialog performs none of the effects @regression',
     async ({ authenticatedTenantList: list, tenantProfilePage: profile, seeder }) => {
       const t = await seedSetupTenant(seeder);
       await list.searchTenants(t.companyName);
@@ -133,7 +133,7 @@ test.describe('US-4.2 Handover', () => {
   );
 
   test(
-    'TC-ADMHAND-004 post-handover text is static: unaffected by later PO edits; date = handover date',
+    'TC-ADMHAND-004 post-handover text is static: unaffected by later PO edits; date = handover date @regression',
     async ({ authenticatedTenantList: list, tenantProfilePage: profile, seeder }) => {
       const t = await seedSetupTenant(seeder); // disposable; will be handed over below
       await list.searchTenants(t.companyName);

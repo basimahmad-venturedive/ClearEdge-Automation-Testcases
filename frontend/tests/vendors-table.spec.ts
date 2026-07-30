@@ -64,7 +64,7 @@ test.describe.serial('US-VD-005/024 Vendor Overview table', () => {
     }
   });
 
-  test('TC-VDUI-030 Overview renders 9 columns in the defined order @smoke', async ({ page }) => {
+  test('TC-VDUI-030 Overview renders 9 columns in the defined order @smoke @regression', async ({ page }) => {
     const directory = new VendorDirectoryPage(page);
     await directory.goto();
     await directory.waitForListSettled();
@@ -72,7 +72,7 @@ test.describe.serial('US-VD-005/024 Vendor Overview table', () => {
     expect(headers).toEqual([...VendorCopy.columnHeaders]);
   });
 
-  test('TC-VDUI-031 vendor name is the navigation target → profile', async ({ page }) => {
+  test('TC-VDUI-031 vendor name is the navigation target → profile @smoke @regression', async ({ page }) => {
     const directory = new VendorDirectoryPage(page);
     const profile = new VendorProfilePage(page);
     await directory.goto();
@@ -82,7 +82,7 @@ test.describe.serial('US-VD-005/024 Vendor Overview table', () => {
     expect(page.url()).toMatch(/\/vendors\/[^/]+$/);
   });
 
-  test('TC-VDUI-032 category cell shows both primary + subcategory chips', async ({ page }) => {
+  test('TC-VDUI-032 category cell shows both primary + subcategory chips @regression', async ({ page }) => {
     const directory = new VendorDirectoryPage(page);
     await directory.goto();
     await directory.search(vendorName);
@@ -91,7 +91,7 @@ test.describe.serial('US-VD-005/024 Vendor Overview table', () => {
     await expect(row).toContainText(VendorCopy.category.technologySub);
   });
 
-  test('TC-VDUI-033 search filters the table (debounced GET ?search=)', async ({ page }) => {
+  test('TC-VDUI-033 search filters the table (debounced GET ?search=) @regression', async ({ page }) => {
     const directory = new VendorDirectoryPage(page);
     await directory.goto();
     await directory.waitForListSettled();
@@ -101,14 +101,14 @@ test.describe.serial('US-VD-005/024 Vendor Overview table', () => {
     await expect.poll(() => directory.rows.count()).toBeGreaterThanOrEqual(1);
   });
 
-  test('TC-VDUI-036 no-results search shows the empty-state message', async ({ page }) => {
+  test('TC-VDUI-036 no-results search shows the empty-state message @regression', async ({ page }) => {
     const directory = new VendorDirectoryPage(page);
     await directory.goto();
     await directory.search('zzz-no-such-vendor-zzz');
     await expect(directory.emptyState).toContainText(VendorCopy.emptyNoMatch);
   });
 
-  test('TC-VDUI-045 star toggle is immediate', async ({ page }) => {
+  test('TC-VDUI-045 star toggle is immediate @regression', async ({ page }) => {
     const directory = new VendorDirectoryPage(page);
     await directory.goto();
     await directory.search(vendorName);
@@ -122,7 +122,7 @@ test.describe.serial('US-VD-005/024 Vendor Overview table', () => {
     await star.click(); // restore original state
   });
 
-  test('TC-VDUI-046 Active→Inactive requires the verbatim confirmation', async ({ page }) => {
+  test('TC-VDUI-046 Active→Inactive requires the verbatim confirmation @regression', async ({ page }) => {
     const directory = new VendorDirectoryPage(page);
     await directory.goto();
     await directory.search(vendorName);
@@ -145,7 +145,7 @@ test.describe.serial('US-VD-005/024 Vendor Overview table', () => {
     await expect(directory.rowByName(vendorName)).toContainText('Inactive');
   });
 
-  test('TC-VDUI-047 Inactive→Active is immediate (no confirmation)', async ({ page }) => {
+  test('TC-VDUI-047 Inactive→Active is immediate (no confirmation) @regression', async ({ page }) => {
     const directory = new VendorDirectoryPage(page);
     await directory.goto();
     await directory.search(vendorName);
@@ -167,7 +167,7 @@ test.describe.serial('US-VD-005/024 Vendor Overview table', () => {
     await expect(toggle).toHaveText('Active'); // exact — 'Active' ⊂ 'Inactive'
   });
 
-  test('TC-VDUI-049 Vendor ID column shows VEN-XXXXXX', async ({ page }) => {
+  test('TC-VDUI-049 Vendor ID column shows VEN-XXXXXX @regression', async ({ page }) => {
     const directory = new VendorDirectoryPage(page);
     await directory.goto();
     await directory.search(vendorName);

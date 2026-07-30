@@ -37,7 +37,7 @@ async function watchForVendorPost(page: import('@playwright/test').Page, action:
 }
 
 test.describe('US-VD-001 Add Vendor', () => {
-  test('TC-VDUI-001 add vendor happy path → 201, navigates to new profile, appears in table @smoke', async ({
+  test('TC-VDUI-001 add vendor happy path → 201, navigates to new profile, appears in table @smoke @regression', async ({
     page,
   }) => {
     const directory = new VendorDirectoryPage(page);
@@ -70,7 +70,7 @@ test.describe('US-VD-001 Add Vendor', () => {
     await directory.expectToast(VendorCopy.vendorDeletedToast);
   });
 
-  test('TC-VDUI-002 mandatory field validation shows "This field is required." and blocks submit', async ({
+  test('TC-VDUI-002 mandatory field validation shows "This field is required." and blocks submit @smoke @regression', async ({
     page,
   }) => {
     const directory = new VendorDirectoryPage(page);
@@ -91,7 +91,7 @@ test.describe('US-VD-001 Add Vendor', () => {
     await expect(form.modal).toBeVisible(); // form stays open
   });
 
-  test('TC-VDUI-003 invalid primary-contact email shows "Please enter a valid email address."', async ({
+  test('TC-VDUI-003 invalid primary-contact email shows "Please enter a valid email address." @regression', async ({
     page,
   }) => {
     const directory = new VendorDirectoryPage(page);
@@ -115,7 +115,7 @@ test.describe('US-VD-001 Add Vendor', () => {
     expect(posted).toBe(false);
   });
 
-  test('TC-VDUI-004 invalid primary-contact phone shows "Please enter a valid phone number."', async ({
+  test('TC-VDUI-004 invalid primary-contact phone shows "Please enter a valid phone number." @regression', async ({
     page,
   }) => {
     const directory = new VendorDirectoryPage(page);
@@ -139,7 +139,7 @@ test.describe('US-VD-001 Add Vendor', () => {
     expect(posted).toBe(false);
   });
 
-  test('TC-VDUI-005 subcategory disabled until a primary category is selected', async ({ page }) => {
+  test('TC-VDUI-005 subcategory disabled until a primary category is selected @regression', async ({ page }) => {
     const directory = new VendorDirectoryPage(page);
     const form = new VendorFormModal(page, 'create');
 
@@ -152,7 +152,7 @@ test.describe('US-VD-001 Add Vendor', () => {
     await expect(form.subcategory).not.toHaveClass(/ant-select-disabled/);
   });
 
-  test('TC-VDUI-006 changing the primary category resets the subcategory to empty', async ({ page }) => {
+  test('TC-VDUI-006 changing the primary category resets the subcategory to empty @regression', async ({ page }) => {
     const directory = new VendorDirectoryPage(page);
     const form = new VendorFormModal(page, 'create');
 
@@ -167,7 +167,7 @@ test.describe('US-VD-001 Add Vendor', () => {
     await expect(form.subcategory).not.toContainText(VendorCopy.category.technologySub);
   });
 
-  test('TC-VDUI-007 secondary contact collapsed by default; expand shows fields', async ({ page }) => {
+  test('TC-VDUI-007 secondary contact collapsed by default; expand shows fields @regression', async ({ page }) => {
     const directory = new VendorDirectoryPage(page);
     const form = new VendorFormModal(page, 'create');
 
@@ -186,7 +186,7 @@ test.describe('US-VD-001 Add Vendor', () => {
     await expect(form.secondaryNameInput).toHaveCount(0);
   });
 
-  test('TC-VDUI-009 Cancel discards the form without creating a vendor', async ({ page }) => {
+  test('TC-VDUI-009 Cancel discards the form without creating a vendor @regression', async ({ page }) => {
     const directory = new VendorDirectoryPage(page);
     const form = new VendorFormModal(page, 'create');
 
@@ -201,7 +201,7 @@ test.describe('US-VD-001 Add Vendor', () => {
     expect(posted).toBe(false);
   });
 
-  test('TC-VDUI-010 compliance upload rejects a non-PDF with "Only PDF files are accepted."', async ({
+  test('TC-VDUI-010 compliance upload rejects a non-PDF with "Only PDF files are accepted." @regression', async ({
     page,
   }) => {
     const directory = new VendorDirectoryPage(page);
@@ -217,7 +217,7 @@ test.describe('US-VD-001 Add Vendor', () => {
     await expect(form.modal.getByText(VendorCopy.docTypeError)).toBeVisible();
   });
 
-  test('TC-VDUI-011 primary contact address section shows its 5 sub-fields by default', async ({ page }) => {
+  test('TC-VDUI-011 primary contact address section shows its 5 sub-fields by default @regression', async ({ page }) => {
     const directory = new VendorDirectoryPage(page);
     const form = new VendorFormModal(page, 'create');
 

@@ -9,7 +9,9 @@
  *
  * Gating (honest, no fabricated passes):
  *  - VDDB-* : DB-layer — need TEST_DATABASE_URL (no dev DB reachability) → skipped on dev.
- *  - VDACCESS-* (Analyst/Manager/Admin/external) : only a PO token is provisioned on dev → skipped.
+ *  - VDACCESS Analyst (001…009) : run when DEV_ANALYST_* is configured (QA) — view_vendors only,
+ *    writes rejected 403; skip otherwise. Manager (012) runs with DEV_PM_*. Admin (010) / external
+ *    (011) still need dedicated fixtures → skipped.
  *  - VDSEC no-right / dual-right / 2nd-tenant / inactive-tenant : need tokens/tenants not provisioned → skipped.
  *  - Delete-blocked-by-contracts/participation (041/042), invite-already-invited (098) : the backend binds
  *    Stub Contract/Sourcing adapters that always return empty/false, so the block cannot be triggered → skipped.
@@ -20,8 +22,8 @@
 import { afterAll, beforeAll, describe, expect } from "vitest";
 import { test, deferred } from "../src/utils/suite";
 import { VendorDirectoryClient } from "../src/clients/vendorDirectoryClient";
-import { isLiveEnv, hasLiveManagerUser } from "../src/config/env";
-import { liveOwnerContext, liveManagerContext, type OwnerContext } from "../src/utils/poContext";
+import { isLiveEnv, hasLiveManagerUser, hasLiveAnalystUser } from "../src/config/env";
+import { liveOwnerContext, liveManagerContext, liveAnalystContext, type OwnerContext } from "../src/utils/poContext";
 import * as P from "../src/payloads/vendorDirectoryPayloads";
 import * as S from "../src/schemas/vendorDirectory.schema";
 import { assertResponseTime, assertErrorEnvelope } from "../src/utils/assertions";
@@ -59,6 +61,14 @@ async function mkVendor(overrides: Partial<P.CreateVendorBody> = {}): Promise<st
   const id = res.data?.data?.id as string;
   created.push(id);
   return id;
+}
+
+// Shared PO-created vendor used as the target for the Analyst write-403 cases (the
+// Analyst is always rejected, so it is never mutated — safe to reuse across cases).
+let accessFixtureId: string | undefined;
+async function accessFixture(): Promise<string> {
+  if (!accessFixtureId) accessFixtureId = await mkVendor();
+  return accessFixtureId;
 }
 
 d("CEIQ-FEAT-005 Vendor Directory — API (dev)", () => {
@@ -648,19 +658,91 @@ d("CEIQ-FEAT-005 Vendor Directory — API (dev)", () => {
   deferred("TC-VDSEC-015 — request on an inactive tenant → 403 ERR_TENANT_INACTIVE [blocked: no inactive-tenant fixture on dev]", () => {});
 
   // ─────────────────────────── Access / RBAC (VDACCESS) — need non-PO tokens ───────────────────────────
-  deferred("TC-VDACCESS-001 — Analyst cannot create a vendor (API 403) [blocked: no Analyst token on dev]", () => {});
-  deferred("TC-VDACCESS-002 — Analyst cannot edit a vendor (API 403) [blocked: no Analyst token on dev]", () => {});
-  deferred("TC-VDACCESS-003 — Analyst cannot delete a vendor (API 403) [blocked: no Analyst token on dev]", () => {});
-  deferred("TC-VDACCESS-004 — Analyst cannot toggle status (API 403) [blocked: no Analyst token on dev]", () => {});
-  deferred("TC-VDACCESS-005 — Analyst cannot star/unstar (API 403) [blocked: no Analyst token on dev]", () => {});
-  deferred("TC-VDACCESS-006 — Analyst cannot invite to sourcing (API 403) [blocked: no Analyst token on dev]", () => {});
-  deferred("TC-VDACCESS-007 — Analyst can view directory/profile/search/filter/sort/history [blocked: no Analyst token on dev]", () => {});
-  deferred("TC-VDACCESS-008 — Analyst can view/download docs but not upload/replace/delete [blocked: no Analyst token on dev]", () => {});
-  deferred("TC-VDACCESS-009 — Analyst cannot edit previous spend (API 403) [blocked: no Analyst token on dev]", () => {});
+  // Analyst = view_vendors only (no manage_vendors). Runs when DEV_ANALYST_* is configured
+  // (QA); otherwise skips with reason. Write attempts must be rejected 403 server-side.
+  const analystOnly = hasLiveAnalystUser() ? test : deferred;
+
+  analystOnly("TC-VDACCESS-001 — Analyst cannot create a vendor (API 403) @regression", async () => {
+    const an = await liveAnalystContext();
+    const res = await client.createVendor<any>(P.newVendor(ctx.cat), an.token);
+    assertResponseTime(res);
+    expect(res.status, `analyst create: ${JSON.stringify(res.data)}`).toBe(403);
+  });
+
+  analystOnly("TC-VDACCESS-002 — Analyst cannot edit a vendor (API 403) @regression", async () => {
+    const an = await liveAnalystContext();
+    const id = await accessFixture();
+    const res = await client.updateVendor<any>(id, P.newVendor(ctx.cat, { name: "Analyst edit attempt" }), an.token);
+    assertResponseTime(res);
+    expect(res.status).toBe(403);
+  });
+
+  analystOnly("TC-VDACCESS-003 — Analyst cannot delete a vendor (API 403) @regression", async () => {
+    const an = await liveAnalystContext();
+    const id = await accessFixture();
+    const res = await client.deleteVendor<any>(id, an.token);
+    assertResponseTime(res);
+    expect(res.status).toBe(403);
+  });
+
+  analystOnly("TC-VDACCESS-004 — Analyst cannot toggle status (API 403) @regression", async () => {
+    const an = await liveAnalystContext();
+    const id = await accessFixture();
+    const res = await client.setStatus<any>(id, P.STATUS_INACTIVE, an.token);
+    assertResponseTime(res);
+    expect(res.status).toBe(403);
+  });
+
+  analystOnly("TC-VDACCESS-005 — Analyst cannot star/unstar (API 403) @regression", async () => {
+    const an = await liveAnalystContext();
+    const id = await accessFixture();
+    const res = await client.setPrimary<any>(id, P.PRIMARY_TRUE, an.token);
+    assertResponseTime(res);
+    expect(res.status).toBe(403);
+  });
+
+  analystOnly("TC-VDACCESS-006 — Analyst cannot invite to sourcing (API 403) @regression", async () => {
+    const an = await liveAnalystContext();
+    const id = await accessFixture();
+    const res = await client.invite<any>(id, P.newInvite(["11111111-1111-4111-8111-111111111111"]), an.token);
+    assertResponseTime(res);
+    expect(res.status).toBe(403);
+  });
+
+  analystOnly("TC-VDACCESS-007 — Analyst can view directory + profile (read access) @regression", async () => {
+    const an = await liveAnalystContext();
+    const id = await accessFixture();
+    const list = await client.listVendors<any>({}, an.token);
+    assertResponseTime(list);
+    expect(list.status, `analyst list: ${JSON.stringify(list.data)}`).toBe(200);
+    const profile = await client.getVendor<any>(id, an.token);
+    assertResponseTime(profile);
+    expect(profile.status).toBe(200);
+  });
+
+  analystOnly("TC-VDACCESS-008 — Analyst cannot upload a document (403); read endpoint is not permission-blocked @regression", async () => {
+    const an = await liveAnalystContext();
+    const id = await accessFixture();
+    const upload = await client.requestUploadUrl<any>(id, "w9", P.newUploadRequest(), an.token);
+    assertResponseTime(upload);
+    expect(upload.status, "analyst upload must be forbidden").toBe(403);
+    // The read/download endpoint must NOT be permission-blocked for the Analyst
+    // (404 when no document exists is acceptable — it proves reach, not a 403 gate).
+    const view = await client.getDocumentUrl<any>(id, "w9", an.token);
+    expect(view.status).not.toBe(403);
+  });
+
+  analystOnly("TC-VDACCESS-009 — Analyst cannot edit previous spend (API 403) @regression", async () => {
+    const an = await liveAnalystContext();
+    const id = await accessFixture();
+    const res = await client.setPreviousSpend<any>(id, P.SPEND_VALID, an.token);
+    assertResponseTime(res);
+    expect(res.status).toBe(403);
+  });
   deferred("TC-VDACCESS-010 — Platform Admin has no access to the Vendor tab [blocked: admin-pool token not accepted by tenant endpoints; needs explicit fixture]", () => {});
   deferred("TC-VDACCESS-011 — External Vendor role has no access [blocked: no external-vendor token on dev]", () => {});
   const managerParity = hasLiveManagerUser() ? test : deferred;
-  managerParity("TC-VDACCESS-012 — Procurement Manager has full write parity with Owner", async () => {
+  managerParity("TC-VDACCESS-012 — Procurement Manager has full write parity with Owner @regression", async () => {
     const mgr = await liveManagerContext();
     // Manager (manage_vendors) must be able to create, edit, toggle status, and delete — same as Owner.
     const create = await client.createVendor<any>(P.newVendor(ctx.cat), mgr.token);

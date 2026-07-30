@@ -15,7 +15,7 @@ import type { CreateField } from '../locators/createTenant';
 
 test.describe('US-3.1 Create Tenant', () => {
   test(
-    'TC-ADMCREATE-001 happy path: create tenant + PO, land on page 1 with toast',
+    'TC-ADMCREATE-001 happy path: create tenant + PO, land on page 1 with toast @smoke @regression',
     async ({ authenticatedTenantList: list, createTenantPage, tenantProfilePage: profile }) => {
       // Precondition (TODO_FIXTURE): domain + owner email unused by any tenant/user.
       const tenant = uniqueTenant();
@@ -43,7 +43,7 @@ test.describe('US-3.1 Create Tenant', () => {
   );
 
   test(
-    'TC-ADMCREATE-002 per-field validation messages (blur + submit; first invalid field scrolled into view)',
+    'TC-ADMCREATE-002 per-field validation messages (blur + submit; first invalid field scrolled into view) @smoke @regression',
     async ({ authenticatedTenantList: list, createTenantPage }) => {
       const createRequests = createTenantPage.trackCreateRequests();
       await list.openCreateTenant();
@@ -81,7 +81,7 @@ test.describe('US-3.1 Create Tenant', () => {
   );
 
   test(
-    'TC-ADMCREATE-003 field max-length boundaries (255 / 255 / 500 / 255 / 320)',
+    'TC-ADMCREATE-003 field max-length boundaries (255 / 255 / 500 / 255 / 320) @regression',
     async ({ authenticatedTenantList: list, createTenantPage }) => {
       await list.openCreateTenant();
       await createTenantPage.expectFormVisible();
@@ -108,7 +108,7 @@ test.describe('US-3.1 Create Tenant', () => {
   );
 
   test(
-    'TC-ADMCREATE-004 duplicate domain and duplicate email are blocked with exact messages',
+    'TC-ADMCREATE-004 duplicate domain and duplicate email are blocked with exact messages @regression',
     async ({ authenticatedTenantList: list, createTenantPage, seeder }) => {
       // Seed a base tenant to collide against (self-contained on shared dev).
       const tag = uniquePrefix('Dup');
@@ -139,7 +139,7 @@ test.describe('US-3.1 Create Tenant', () => {
   );
 
   test(
-    'TC-ADMCREATE-005 domain normalization: protocol / www. / path variants collide',
+    'TC-ADMCREATE-005 domain normalization: protocol / www. / path variants collide @regression',
     async ({ authenticatedTenantList: list, createTenantPage, seeder }) => {
       // Seed a base tenant; every variant normalizes to its bare domain, which
       // is now taken → duplicate-domain error (parameterized 5a–5d).
@@ -175,7 +175,7 @@ test.describe('US-3.1 Create Tenant', () => {
   );
 
   test(
-    'TC-ADMCREATE-006 double-click submit creates exactly one tenant; button disables with loading state',
+    'TC-ADMCREATE-006 double-click submit creates exactly one tenant; button disables with loading state @regression',
     async ({ authenticatedTenantList: list, createTenantPage }) => {
       // Precondition (TODO_FIXTURE): valid, unique form data.
       const tenant = uniqueTenant();
@@ -198,7 +198,7 @@ test.describe('US-3.1 Create Tenant', () => {
   );
 
   test(
-    'TC-ADMCREATE-007 cancel returns to the Tenant List without saving',
+    'TC-ADMCREATE-007 cancel returns to the Tenant List without saving @regression',
     async ({ authenticatedTenantList: list, createTenantPage }) => {
       // Precondition: create form open with all fields filled (unique values).
       const tenant = uniqueTenant();

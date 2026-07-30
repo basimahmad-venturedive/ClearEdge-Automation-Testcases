@@ -20,7 +20,7 @@ const poProject: PlaywrightTestProject[] = hasPoCreds
         // PO-only tenant-app screens: User Management (FEAT-003), Company
         // Settings (FEAT-004), and Vendor Directory (FEAT-005) all live behind
         // the Procurement-Owner session.
-        testMatch: /(user-management-.*|company-settings-.*|vendors-.*)\.spec\.ts/,
+        testMatch: /(user-management-.*|company-settings-.*|vendors-.*|clause-config-.*)\.spec\.ts/,
       },
     ]
   : [];

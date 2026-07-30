@@ -9,7 +9,7 @@ import { test, expect } from '@playwright/test';
 import { CompanySettingsPage } from '../pages/CompanySettingsPage';
 
 test.describe('US-CS-001 Company Settings access (Owner-only)', () => {
-  test('TC-CSACCESS-001 Owner sees "Company Settings" in the dropdown and it opens the screen @smoke', async ({
+  test('TC-CSACCESS-001 Owner sees "Company Settings" in the dropdown and it opens the screen @smoke @regression', async ({
     page,
   }) => {
     const cs = new CompanySettingsPage(page);

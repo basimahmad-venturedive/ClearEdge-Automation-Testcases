@@ -75,9 +75,15 @@ export const devTenantPassword = (): string => getRequired("DEV_TENANT_PASSWORD"
 // Procurement Manager (same tenant pool + app client as the PO) — for role-parity cases.
 export const devPmUsername = (): string => getRequired("DEV_PM_USERNAME");
 export const devPmPassword = (): string => getRequired("DEV_PM_PASSWORD");
+// Procurement Analyst (view_vendors only, no manage_vendors) — for view-only / 403 access cases.
+export const devAnalystUsername = (): string => getRequired("DEV_ANALYST_USERNAME");
+export const devAnalystPassword = (): string => getRequired("DEV_ANALYST_PASSWORD");
 // True when a real dev tenant-pool user is configured (enables live tenant-scoped runs).
 export const hasLiveTenantUser = (): boolean =>
   isEnvVarSet("DEV_TENANT_USERNAME") && isEnvVarSet("DEV_TENANT_PASSWORD");
 // True when a real dev Procurement-Manager user is configured (enables manager-parity cases).
 export const hasLiveManagerUser = (): boolean =>
   isEnvVarSet("DEV_PM_USERNAME") && isEnvVarSet("DEV_PM_PASSWORD");
+// True when a real Procurement-Analyst user is configured (enables Analyst view-only / 403 cases).
+export const hasLiveAnalystUser = (): boolean =>
+  isEnvVarSet("DEV_ANALYST_USERNAME") && isEnvVarSet("DEV_ANALYST_PASSWORD");

@@ -49,6 +49,7 @@ const files = [
   "tests/userManagement.test.ts",
   "tests/vendor.test.ts",
   "tests/vendorDirectory.test.ts",
+  "tests/clauseConfiguration.test.ts",
 ];
 
 // ~20% highest-priority cases per spec, counted over the DEV-RUNNABLE (regression)
@@ -71,12 +72,17 @@ const SMOKE = new Set([
   "TC-VDAPI-001", "TC-VDAPI-002-1", "TC-VDAPI-015", "TC-VDAPI-016", "TC-VDAPI-030",
   "TC-VDAPI-035", "TC-VDAPI-040", "TC-VDAPI-045", "TC-VDAPI-050", "TC-VDAPI-055",
   "TC-VDAPI-060", "TC-VDAPI-095", "TC-VDSEC-014",
+  // clauseConfiguration (20 dev-runnable liveOnly -> 4; read / write / auth / validation)
+  "TC-CCAPI-001", "TC-CCAPI-020", "TC-CCAPI-006", "TC-CCAPI-024",
 ]);
 
 // Aliases whose tests RUN on the dev/live target (regression). Everything else that
 // declares a test (localOnly, dbOnly, test.skipIf, test.runIf, test.skip) is local-only
 // or skipped and gets NO tag.
-const DEV_RUNNING = new Set(["test", "liveOnly", "liveTest"]);
+// `analystOnly`/`managerParity` (vendorDirectory) = hasLive{Analyst,Manager}User() ? test : deferred
+// — they RUN on a target that has DEV_ANALYST_*/DEV_PM_* creds (e.g. QA), so they belong to
+// regression; without those creds they resolve to `deferred` and drop (no skip).
+const DEV_RUNNING = new Set(["test", "liveOnly", "liveTest", "analystOnly", "managerParity"]);
 
 // Longest-id-wins so TC-ADMAPI-011-1 is not read as TC-ADMAPI-011.
 const TC_ID = /TC-[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*-\d+(?:-\d+)?/;
@@ -85,7 +91,7 @@ const TC_ID = /TC-[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*-\d+(?:-\d+)?/;
 // Classification (regression vs not) is decided by DEV_RUNNING above.
 // Longer alternatives first so `test.skipIf` wins over `test.skip`/`test`.
 const HEAD =
-  /^(\s*)(test\.skipIf|test\.runIf|test\.skip|test|localOnly|dbOnly|liveOnly|liveTest)(?:\([^)]*\))?\s*\((["'`])/;
+  /^(\s*)(test\.skipIf|test\.runIf|test\.skip|test|localOnly|dbOnly|liveOnly|liveTest|analystOnly|managerParity)(?:\([^)]*\))?\s*\((["'`])/;
 
 function stripTags(title) {
   // remove any trailing/inner ` @smoke` / ` @regression` tokens
