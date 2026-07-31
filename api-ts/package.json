@@ -23,6 +23,7 @@
     "local:jwks-mock": "tsx local-env/runJwksServer.ts",
     "jira:bug": "node ../scripts/jira-log-bug.mjs",
     "testrail:import": "node scripts/testrail-import.cjs",
+    "testrail:sync-mapping": "node scripts/testrail-sync-mapping.cjs",
     "testrail:prune": "node scripts/testrail-prune.cjs",
     "testrail:create-run": "node scripts/testrail-create-run.cjs",
     "testrail:execute": "node scripts/testrail-execute.cjs",
