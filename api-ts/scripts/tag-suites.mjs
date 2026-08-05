@@ -50,6 +50,7 @@ const files = [
   "tests/vendor.test.ts",
   "tests/vendorDirectory.test.ts",
   "tests/clauseConfiguration.test.ts",
+  "tests/sourcingEvents.test.ts",
 ];
 
 // ~20% highest-priority cases per spec, counted over the DEV-RUNNABLE (regression)
@@ -74,6 +75,9 @@ const SMOKE = new Set([
   "TC-VDAPI-060", "TC-VDAPI-095", "TC-VDSEC-014",
   // clauseConfiguration (20 dev-runnable liveOnly -> 4; read / write / auth / validation)
   "TC-CCAPI-001", "TC-CCAPI-020", "TC-CCAPI-006", "TC-CCAPI-024",
+  // sourcingEvents (43 dev-runnable -> 9; one flagship per lifecycle stage + auth)
+  "TC-SRCAPI-002", "TC-SRCAPI-001", "TC-SRCAPI-014", "TC-SRCAPI-026", "TC-SRCAPI-032",
+  "TC-SRCAPI-044", "TC-SRCAPI-057", "TC-SRCAPI-090", "TC-SRCAPI-048",
 ]);
 
 // Aliases whose tests RUN on the dev/live target (regression). Everything else that

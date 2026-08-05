@@ -19,11 +19,48 @@ const poProject: PlaywrightTestProject[] = hasPoCreds
         use: { storageState: 'playwright/.auth/po.json' },
         // PO-only tenant-app screens: User Management (FEAT-003), Company
         // Settings (FEAT-004), and Vendor Directory (FEAT-005) all live behind
-        // the Procurement-Owner session.
-        testMatch: /(user-management-.*|company-settings-.*|vendors-.*|clause-config-.*)\.spec\.ts/,
+        // the Procurement-Owner session. Each prefix is anchored to a path
+        // boundary ([\\/]) so it matches only specs whose FILENAME starts with it
+        // — otherwise the bare `sourcing-` alternative would also swallow the
+        // role-access specs (…-sourcing-access.spec.ts), which must run under the
+        // pm/analyst sessions instead.
+        testMatch: /[\\/](user-management|company-settings|vendors|clause-config|sourcing)-[^\\/]*\.spec\.ts$/,
       },
     ]
   : [];
+
+/**
+ * Role-based access projects for FEAT-007 Sourcing. Each loads the storageState of
+ * its role (saved by auth.setup) and runs ONLY that role's access spec, so the
+ * assertions run under the right permission set (Manager = manage_sourcing parity
+ * with the Owner; Analyst = view_sourcing read-only). Gated on the role creds so a
+ * credential-less run simply skips them instead of ERRORing on a missing session.
+ */
+const hasPmCreds = hasVar('PM_EMAIL') && hasVar('PM_PASSWORD');
+const hasAnalystCreds = hasVar('ANALYST_EMAIL') && hasVar('ANALYST_PASSWORD');
+
+const roleProjects: PlaywrightTestProject[] = [
+  ...(hasPmCreds
+    ? [
+        {
+          name: 'pm',
+          dependencies: ['setup'],
+          use: { storageState: 'playwright/.auth/pm.json' },
+          testMatch: /manager-sourcing-access\.spec\.ts/,
+        },
+      ]
+    : []),
+  ...(hasAnalystCreds
+    ? [
+        {
+          name: 'analyst',
+          dependencies: ['setup'],
+          use: { storageState: 'playwright/.auth/analyst.json' },
+          testMatch: /analyst-sourcing-access\.spec\.ts/,
+        },
+      ]
+    : []),
+];
 
 /**
  * Integration reporters (TestRail + CQM) are opt-in and only appended when their
@@ -117,5 +154,6 @@ export default defineConfig({
       testMatch: /(tenant-list|tenant-create|tenant-edit|tenant-toggle|setup-handover|ux-states)\.spec\.ts/,
     },
     ...poProject,
+    ...roleProjects,
   ],
 });

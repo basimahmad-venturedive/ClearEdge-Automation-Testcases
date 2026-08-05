@@ -151,6 +151,24 @@ export function poPassword(): string {
   return requireVar('PO_PASSWORD');
 }
 
+/** Procurement Manager email (same tenant pool as PO) — for manager-parity access cases. */
+export function pmEmail(): string {
+  return requireVar('PM_EMAIL');
+}
+/** Procurement Manager password — SECRET. Guard with hasVar('PM_PASSWORD') + test.skip. */
+export function pmPassword(): string {
+  return requireVar('PM_PASSWORD');
+}
+
+/** Procurement Analyst email (view-only) — for read-only access cases. */
+export function analystEmail(): string {
+  return requireVar('ANALYST_EMAIL');
+}
+/** Procurement Analyst password — SECRET. Guard with hasVar('ANALYST_PASSWORD') + test.skip. */
+export function analystPassword(): string {
+  return requireVar('ANALYST_PASSWORD');
+}
+
 /** Non-secret CI knob. */
 export function isCi(): boolean {
   return readVar('CI') !== undefined;

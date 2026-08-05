@@ -30,7 +30,8 @@
     "test:dev:vendor": "cross-env TEST_ENV=dev VENDOR_REQUEST_TIMEOUT_MS=25000 vitest run tests/vendorDirectory.test.ts",
     "test:dev:clause": "cross-env TEST_ENV=dev CLAUSE_REQUEST_TIMEOUT_MS=25000 vitest run tests/clauseConfiguration.test.ts",
     "test:qa:vendor": "cross-env TEST_ENV=qa VENDOR_REQUEST_TIMEOUT_MS=25000 vitest run tests/vendorDirectory.test.ts",
-    "test:qa:clause": "cross-env TEST_ENV=qa CLAUSE_REQUEST_TIMEOUT_MS=25000 vitest run tests/clauseConfiguration.test.ts"
+    "test:qa:clause": "cross-env TEST_ENV=qa CLAUSE_REQUEST_TIMEOUT_MS=25000 vitest run tests/clauseConfiguration.test.ts",
+    "test:qa:sourcing": "cross-env TEST_ENV=qa SOURCING_REQUEST_TIMEOUT_MS=25000 vitest run tests/sourcingEvents.test.ts"
   },
   "devDependencies": {
     "@faker-js/faker": "^9.0.0",
