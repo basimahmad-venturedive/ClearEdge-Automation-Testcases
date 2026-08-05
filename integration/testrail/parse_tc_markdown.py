@@ -74,6 +74,7 @@ def _build_custom(fields: dict[str, str]) -> dict[str, object]:
         for key, label in (
             ("priority", "Priority"),
             ("type", "Type"),
+            ("actor / role", "Actor / Role"),
             ("spec reference", "Spec reference"),
             ("module / layer", "Module / Layer"),
         )
@@ -81,13 +82,29 @@ def _build_custom(fields: dict[str, str]) -> dict[str, object]:
     ]
     if meta:
         preconds_parts.append(" | ".join(meta))
+    # The text template has no dedicated field for these rows — fold them into
+    # Preconditions so nothing authored in the markdown is dropped on publish.
+    for key, label in (
+        ("automation readiness", "Automation readiness"),
+        ("notes / dependencies", "Notes / dependencies"),
+    ):
+        if fields.get(key):
+            preconds_parts.append(f"{label}: {fields[key]}")
     if preconds_parts:
         custom["custom_preconds"] = "\n\n".join(preconds_parts)
 
     if fields.get("steps"):
         custom["custom_steps"] = fields["steps"]
+
+    expected_parts: list[str] = []
     if fields.get("expected results"):
-        custom["custom_expected"] = fields["expected results"]
+        expected_parts.append(fields["expected results"])
+    if fields.get("postconditions / cleanup"):
+        expected_parts.append(
+            f"Postconditions / cleanup: {fields['postconditions / cleanup']}"
+        )
+    if expected_parts:
+        custom["custom_expected"] = "\n\n".join(expected_parts)
 
     return custom
 
