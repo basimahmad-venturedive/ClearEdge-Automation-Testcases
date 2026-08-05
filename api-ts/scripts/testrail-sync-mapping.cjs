@@ -23,7 +23,9 @@ const { MappingStore } = require('../testrail/mappingStore/mappingStore.cjs');
 
 // Keep in sync with testrail-create-run.cjs / publishRecords.cjs.
 const TC_ID_PATTERN = /TC-[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*-\d+(?:-\d+)?/g;
-const TEST_DECLARATION_PATTERN = /\b(?:test|liveTest|liveOnly|dbOnly|localOnly|it)(?:\.\w+)*\s*(?:\([^)]*\))?\s*\(/;
+// ANY call whose first arg is a "TC-..." string — captures every wrapper (incl. local
+// consts like analystOnly/managerParity) without an allowlist that goes stale.
+const TEST_DECLARATION_PATTERN = /\(\s*[`'"]TC-[A-Z]/;
 const TESTS_DIR = path.resolve(__dirname, '..', 'tests');
 
 function collectActiveTcIds(dir, found = new Set()) {

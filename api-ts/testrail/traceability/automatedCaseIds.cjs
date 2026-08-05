@@ -7,10 +7,10 @@ const TC_ID_IN_TEST_PATTERN = /TC-[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*-\d+(?:-\d+)?/g;
 // Only lines that declare a test carry real case ids — file headers / TODO comments
 // reference related-but-not-automated ids (e.g. fault-injection cases) and must not
 // be treated as automated.
-// Must list EVERY test-declaring wrapper used in tests/ (see testrail-create-run.cjs):
-// liveOnly/dbOnly/localOnly are our env-gating wrappers, else the run and the published
-// results disagree on which cases exist.
-const TEST_DECLARATION_PATTERN = /\b(?:test|liveTest|liveOnly|dbOnly|localOnly|it)(?:\.\w+)*\s*(?:\([^)]*\))?\s*\(/;
+// Matches ANY call whose first argument is a "TC-..." string (see testrail-create-run.cjs):
+// captures every wrapper incl. local consts (analystOnly/managerParity/manual) without an
+// allowlist that goes stale.
+const TEST_DECLARATION_PATTERN = /\(\s*[`'"]TC-[A-Z]/;
 
 /**
  * Parse testcases/TRACEABILITY.md and return TC-IDs with a real backend automation path.
