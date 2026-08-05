@@ -175,7 +175,63 @@ async function publishRecordsToTestRail(records) {
 
   await markCasesAutomated(client, resultsByCaseId, mapping, kitEnv.testRail.customAutomatedYes);
 
+  // Results are posted only for cases that actually executed (passed/failed);
+  // skipped cases are never posted and would otherwise linger as "Untested" in
+  // the run. Trim the run down to exactly the executed cases so the run reflects
+  // only passed + failed. Runs after publish (add_results_for_cases requires the
+  // case to still be in the run); removing an untested case removes only its
+  // empty test row, never a posted result. Opt out with TESTRAIL_TRIM_UNTESTED=false.
+  if (asBool(process.env.TESTRAIL_TRIM_UNTESTED, true)) {
+    await trimRunToExecutedCases(client, runContext.runId, payload);
+  }
+
   return { published: resultsByCaseId.size, runId: runContext.runId };
+}
+
+// TestRail status_id 3 == "Untested" (the initial, no-result state of a case in a run).
+const TESTRAIL_STATUS_UNTESTED = 3;
+
+/**
+ * Trim a run so it contains only cases that have a result (passed/failed/etc.),
+ * dropping every "Untested" case. Keys off the run's OWN state via get_tests, so
+ * it never deletes a previously-posted result even if the run is published to in
+ * multiple batches — it only removes case rows that truly never executed.
+ */
+async function trimRunToExecutedCases(client, runId, justPublishedPayload) {
+  // Always keep the cases we just posted; add any other case that already carries a
+  // result from an earlier batch. This never drops a just-published pass/fail even if
+  // get_tests is truncated or fails.
+  const keep = new Set(justPublishedPayload.map((row) => row.case_id));
+  try {
+    const tests = await client.getTests(runId);
+    for (const test of tests) {
+      if (test.status_id !== TESTRAIL_STATUS_UNTESTED) {
+        keep.add(test.case_id);
+      }
+    }
+  } catch (error) {
+    // Non-fatal: fall back to just the cases we posted (correct for the common
+    // single-publish-per-run flow).
+    // eslint-disable-next-line no-console
+    console.warn(`[TestRail] get_tests failed (${error.message}); trimming to just-published cases.`);
+  }
+
+  const uniqueCaseIds = [...keep].filter((id) => Number.isFinite(id));
+  if (uniqueCaseIds.length === 0) {
+    return;
+  }
+
+  try {
+    await client.updateRun(runId, { include_all: false, case_ids: uniqueCaseIds });
+    // eslint-disable-next-line no-console
+    console.log(
+      `[TestRail] Trimmed run ${runId} to ${uniqueCaseIds.length} executed case(s); Untested cases removed.`
+    );
+  } catch (error) {
+    // Non-fatal: results are already posted. The run just keeps its Untested rows.
+    // eslint-disable-next-line no-console
+    console.warn(`[TestRail] Could not trim Untested cases from run ${runId}: ${error.message}`);
+  }
 }
 
 async function markCasesAutomated(client, resultsByCaseId, mapping, customAutomatedYes) {

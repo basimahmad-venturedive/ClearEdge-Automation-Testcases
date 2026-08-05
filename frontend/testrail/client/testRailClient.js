@@ -96,6 +96,31 @@ class TestRailClient {
     return await this.request('POST', `/add_run/${projectId}`, payload);
   }
 
+  async updateRun(runId, payload) {
+    return await this.request('POST', `/update_run/${runId}`, payload);
+  }
+
+  async getTests(runId) {
+    // TestRail Cloud paginates bulk GETs (default 250/page). Loop until drained so
+    // large runs are not silently truncated. Older instances return a plain array.
+    const limit = 250;
+    let offset = 0;
+    const all = [];
+
+    for (;;) {
+      const data = await this.request('GET', `/get_tests/${runId}&limit=${limit}&offset=${offset}`);
+      const page = Array.isArray(data) ? data : data.tests || [];
+      all.push(...page);
+
+      if (Array.isArray(data) || page.length < limit) {
+        break;
+      }
+      offset += limit;
+    }
+
+    return all;
+  }
+
   async addResultsForCases(runId, results) {
     return await this.request('POST', `/add_results_for_cases/${runId}`, { results });
   }
