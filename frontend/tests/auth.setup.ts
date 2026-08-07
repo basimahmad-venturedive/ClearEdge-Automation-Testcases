@@ -45,7 +45,9 @@ setup('authenticate Procurement Manager (main app)', async ({ page }) => {
     !hasVar('PM_EMAIL') || !hasVar('PM_PASSWORD'),
     'Set PM_EMAIL and PM_PASSWORD in automation/frontend/.env.<env>',
   );
-  await new AppLoginPage(page).login(pmEmail(), pmPassword());
+  const pmLogin = new AppLoginPage(page);
+  await pmLogin.goto(); // must land on /login before filling — login() assumes the view is present
+  await pmLogin.login(pmEmail(), pmPassword());
   await page.context().storageState({ path: PM_STORAGE });
 });
 
@@ -54,6 +56,8 @@ setup('authenticate Procurement Analyst (main app)', async ({ page }) => {
     !hasVar('ANALYST_EMAIL') || !hasVar('ANALYST_PASSWORD'),
     'Set ANALYST_EMAIL and ANALYST_PASSWORD in automation/frontend/.env.<env>',
   );
-  await new AppLoginPage(page).login(analystEmail(), analystPassword());
+  const analystLogin = new AppLoginPage(page);
+  await analystLogin.goto(); // must land on /login before filling — login() assumes the view is present
+  await analystLogin.login(analystEmail(), analystPassword());
   await page.context().storageState({ path: ANALYST_STORAGE });
 });
