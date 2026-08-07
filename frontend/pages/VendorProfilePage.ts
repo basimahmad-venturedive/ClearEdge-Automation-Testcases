@@ -41,9 +41,14 @@ export class VendorProfilePage {
   get starToggle(): Locator {
     return this.page.getByTestId(L.detailStarToggle);
   }
-  /** The detail status control's Switch (testId is on the span wrapping it). */
+  /**
+   * The detail status control's Switch. It's the shared VendorStatusToggle, which
+   * sets the testId directly on the AntD Switch (role="switch") — so the testId
+   * element IS the switch; no descendant `getByRole('switch')` lookup is needed
+   * (that would resolve to 0 and hang the click).
+   */
   get statusToggle(): Locator {
-    return this.page.getByTestId(L.detailStatusToggle).getByRole('switch');
+    return this.page.getByTestId(L.detailStatusToggle);
   }
 
   async openEdit(): Promise<void> {

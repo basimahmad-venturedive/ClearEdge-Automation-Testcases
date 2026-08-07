@@ -19,6 +19,7 @@ import { SourcingListPage } from '../pages/SourcingListPage';
 import { SourcingDetailPage } from '../pages/SourcingDetailPage';
 import { SourcingEditPage } from '../pages/SourcingEditPage';
 import { SourcingApi } from '../utils/sourcingApi';
+import { appBaseUrl } from '../utils/env';
 
 const created: string[] = [];
 
@@ -36,14 +37,18 @@ test.describe('Sourcing access — Procurement Manager (manage_sourcing parity)'
     await expect(list.newButton()).toBeVisible();
   });
 
-  test('TC-SRCACCESS-005 — Manager sees Edit / Invite / Delete on a draft detail @regression', async ({ page, request }) => {
+  test('TC-SRCACCESS-005 — Manager sees the manage controls (Invite / Delete) on a published event detail @regression', async ({ page, request }) => {
+    // On this build a DRAFT has no standalone detail page (it opens straight in the
+    // editor — see TC-SRCACCESS-006), so the manage-only detail controls surface on a
+    // PUBLISHED event's detail. Published details expose Invite + Delete (there is no
+    // Edit button once published); both are canManage-gated, so a Manager (manage_sourcing
+    // parity with the Owner) sees them.
     await new SourcingListPage(page).goto();
-    const { id } = await new SourcingApi(page, request).createDraft('rfp'); // Manager token creates
+    const { id } = await new SourcingApi(page, request).createPublishedEvent(); // Manager token
     created.push(id);
     const detail = new SourcingDetailPage(page);
     await detail.gotoEvent(id);
-    // The whole action block is canManage-gated — Manager sees every control.
-    await expect(detail.editButton()).toBeVisible();   // "Edit draft" (draft status)
+    await expect(detail.header()).toBeVisible();
     await expect(detail.inviteButton()).toBeVisible();  // "Invite vendors"
     await expect(detail.deleteButton()).toBeVisible();  // "Delete"
   });
@@ -52,9 +57,11 @@ test.describe('Sourcing access — Procurement Manager (manage_sourcing parity)'
     await new SourcingListPage(page).goto();
     const { id } = await new SourcingApi(page, request).createDraft('rfp');
     created.push(id);
-    const detail = new SourcingDetailPage(page);
-    await detail.gotoEvent(id);
-    await detail.clickEdit(); // asserts URL → /sourcing/:id/edit (guard did NOT redirect)
+    // A draft's canonical URL redirects straight to the editor for a manage user — so
+    // landing on /sourcing/:id/edit IS the proof the manage_sourcing guard let the
+    // Manager through (an Analyst is bounced off /edit instead).
+    await page.goto(`${appBaseUrl().replace(/\/$/, '')}/sourcing/${id}`);
+    await page.waitForURL(/\/sourcing\/[^/]+\/edit(\b|$|\?)/, { timeout: 30000 });
     await new SourcingEditPage(page).expectLoaded();
   });
 });

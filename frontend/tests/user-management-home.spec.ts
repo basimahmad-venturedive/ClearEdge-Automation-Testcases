@@ -12,13 +12,14 @@ import { AppLoginPage } from '../pages/AppLoginPage';
 import { UserManagementPage } from '../pages/UserManagementPage';
 import { AppUserSeeder, uniqueUserPrefix } from '../utils/appApi';
 import { UmCopy } from './fixtures/expectedCopyUserMgmt';
-import { hasVar } from '../utils/env';
+import { hasVar, poEmail } from '../utils/env';
 
-// Real dev PO tenant data (account ubaid.rehman+01@venturedive.com).
+// The logged-in PO's email is the one env-anchored identity fact (PO_EMAIL for the
+// selected environment). Company name and PO display name are per-tenant DATA and
+// differ by environment, so the identity cases assert AC invariants (see the page
+// object) rather than hardcoding a specific tenant's strings.
 const PO = {
-  companyName: 'Ubaid',
-  profileName: 'Ubaid 01',
-  profileEmail: 'ubaid.rehman+01@venturedive.com',
+  profileEmail: poEmail(),
 };
 
 test.describe('US-UM-003 User Management home', () => {
@@ -33,13 +34,13 @@ test.describe('US-UM-003 User Management home', () => {
   test('TC-UMHOME-001 "Your Organization" card renders company/website/address; null → "—"; no edit controls @smoke @regression', async ({ page }) => {
     const um = new UserManagementPage(page);
     await um.goto();
-    await um.expectOrganizationCard(PO.companyName);
+    await um.expectOrganizationCard();
   });
 
   test('TC-UMHOME-002 "Your Profile" card renders PO Name/Email/Role="Procurement Owner"; no edit controls @smoke @regression', async ({ page }) => {
     const um = new UserManagementPage(page);
     await um.goto();
-    await um.expectProfileCard(PO.profileName, PO.profileEmail);
+    await um.expectProfileCard(PO.profileEmail);
   });
 
   test('TC-UMHOME-003 managed-users card renders every specified element @smoke @regression', async ({ page, request }) => {
@@ -141,7 +142,10 @@ test.describe('US-UM-003 User Management home', () => {
     const um = new UserManagementPage(page);
     await um.goto();
     await new AppUserSeeder(page, request).seedUsers(1, uniqueUserPrefix('Home013'));
-    await um.search(PO.profileName); // the PO's own name → excluded from the managed list
+    // Search the PO's OWN email — a unique identifier for the logged-in Owner. The
+    // managed-users list excludes the Owner, so searching their own email yields the
+    // no-match empty state (proving the Owner's own account is not in the results).
+    await um.search(PO.profileEmail);
     await um.expectNoMatchEmptyState();
   });
 

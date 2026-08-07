@@ -131,6 +131,30 @@ export function appApiBaseUrl(): string {
   return requireVar('APP_API_BASE_URL');
 }
 
+/**
+ * Vendor-Portal invitation token (PORTAL_TOKEN) — the sole access credential for
+ * the unauthenticated `/portal/:token` route (CEIQ-FEAT-008 ASM-01). It is NOT a
+ * login secret: it is minted by the Sourcing "invite vendor" action (SRC-06), not
+ * deployed, so there is currently no way to seed one. Guard with hasPortalEnv() +
+ * test.skip before calling; a missing value throws the standard loud config error.
+ */
+export function portalToken(): string {
+  return requireVar('PORTAL_TOKEN');
+}
+
+/**
+ * True only when the Vendor Portal can actually be driven end-to-end: a portal
+ * host (APP_BASE_URL — the public tenant-facing origin the `/portal/:token` route
+ * lives on) AND a seeded invitation token (PORTAL_TOKEN) are both present. The
+ * portal is public/unauthenticated, so there are no credentials to check — only
+ * the host + a live token. tests/vendor-portal.spec.ts gates its whole describe on
+ * this so a run without a seeded token SKIPS cleanly (never fails, never hits the
+ * network) — see testcases/TC-CEIQ-FEAT-008.md §6 Gaps.
+ */
+export function hasPortalEnv(): boolean {
+  return hasVar('APP_BASE_URL') && hasVar('PORTAL_TOKEN');
+}
+
 /** Platform Admin email — SECRET. Guard with hasVar('PA_EMAIL') + test.skip before calling. */
 export function paEmail(): string {
   return requireVar('PA_EMAIL');

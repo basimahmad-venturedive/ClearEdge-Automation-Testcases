@@ -166,7 +166,15 @@ test.describe('US-3.1 Create Tenant', () => {
       await list.openCreateTenant();
       for (const variant of variants) {
         await createTenantPage.fillForm(uniqueTenant({ websiteUrl: variant.input }));
-        await createTenantPage.submit();
+        // Two distinct paths to the inline error:
+        //  - protocol/www/path variants are FORMAT-valid, so Submit is enabled — clicking
+        //    it runs the server-side duplicate check that returns the duplicate-domain error;
+        //  - the :port variant fails the CLIENT url-format pre-check, which disables Submit and
+        //    surfaces the "invalid URL" error immediately (no submit possible). Only click when
+        //    enabled so the disabled :port case doesn't hang on an un-clickable button.
+        if (await createTenantPage.submitButton.isEnabled()) {
+          await createTenantPage.submit();
+        }
         await createTenantPage.expectFieldError('websiteUrl', variant.error);
       }
       // The stored-value assertion (tenants.domain normalized) belongs to

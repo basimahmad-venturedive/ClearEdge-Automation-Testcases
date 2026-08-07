@@ -159,9 +159,12 @@ test.describe('US-2.1 Tenant List', () => {
   test(
     'TC-ADMLIST-007 zero tenants: "No tenants yet." with Create Tenant still visible @regression',
     async ({ authenticatedTenantList: list }) => {
-      // Precondition (TODO_FIXTURE): environment with ZERO tenants (fresh DB /
-      // isolated tenant-set). If shared environments make that impossible,
-      // downgrade to PARTIAL per the TC file.
+      // Un-runnable on a SHARED backend: the "No tenants yet." empty state only renders
+      // when the tenant set is truly EMPTY, but the shared QA admin backend already holds
+      // many tenants and exposes NO delete endpoint (seeded tenants persist), so zero
+      // total can never be reached. The TC file's own precondition calls for a fresh /
+      // isolated tenant-set; skip cleanly until one exists (same limitation as TC-UMHOME-011).
+      test.skip(true, 'Needs a zero-tenant (fresh/isolated) backend; the shared QA env can never be empty.');
       await list.expectEmptyState();
       await list.expectPaginationHidden();
       await list.expectCreateTenantEnabled();

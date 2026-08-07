@@ -104,8 +104,10 @@ test.describe.serial('US-VD Vendor profile', () => {
     await profile.statusToggle.click();
     await profile.confirmDeactivate(); // asserts verbatim body + clicks "Mark as Inactive"
     // Reactivate — immediate, no modal — to leave the vendor Active for cleanup.
+    // Assert on VISIBLE confirms only: the just-closed deactivate modal can linger in
+    // the DOM through its leave-animation, so a bare count flakes (same fix as TC-VDUI-047).
     await profile.statusToggle.click();
-    await expect(page.locator('.ant-modal-confirm')).toHaveCount(0);
+    await expect(page.locator('.ant-modal-confirm:visible')).toHaveCount(0);
   });
 
   test.skip('TC-VDUI-056 History tab rows/ordering/withdrawn/awarded/empty [blocked: Sourcing history absent]', () => {});

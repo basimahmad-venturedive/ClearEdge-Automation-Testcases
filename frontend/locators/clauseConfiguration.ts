@@ -19,16 +19,21 @@ export const ClauseLocators = {
   navItemName: 'Clause Configuration',
 
   alert: '.ant-alert',
-  table: '.ant-table',
-  tableRows: '.ant-table-tbody tr.ant-table-row',
+  // The clause library is a DELIBERATELY-native HTML <table> (see the app's
+  // ClauseLibraryTable.tsx: "Deliberately a plain HTML <table>, not AntD Table"),
+  // so it carries NO `.ant-table*` classes — locate it by its real data-testids.
+  table: '[data-testid="clause-library-table"]',
+  tableRows: '[data-testid="clause-library-table"] tbody tr',
   toast: '.ant-message-notice-content',
   tooltip: '.ant-tooltip-inner',
   confirmModal: '.ant-modal-confirm',
   dropdownMenu: '.ant-dropdown-menu:visible',
   skeleton: '.ant-skeleton',
 
-  // row-scoped controls (within a `.ant-table-row`)
-  rowCheckbox: '.ant-checkbox-input',
+  // row-scoped controls (within a `<tr data-testid="clause-row-…">`). The row
+  // checkbox is an AntD Checkbox — its native `.ant-checkbox-input` is visually
+  // hidden (opacity:0), so assert on the VISIBLE `.ant-checkbox-wrapper` label.
+  rowCheckbox: '.ant-checkbox-wrapper',
   rowStandardClauseSelect: '.ant-select',
   rowRiskPill: '[data-risk], .ant-tag',
 } as const;

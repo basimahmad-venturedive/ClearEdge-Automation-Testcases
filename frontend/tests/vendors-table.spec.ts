@@ -126,8 +126,9 @@ test.describe.serial('US-VD-005/024 Vendor Overview table', () => {
     const directory = new VendorDirectoryPage(page);
     await directory.goto();
     await directory.search(vendorName);
-    // testId is on the span wrapping the Switch + label; click the Switch itself.
-    await page.getByTestId(L.rowStatusToggle(vendorId)).getByRole('switch').click();
+    // The row testId is set directly on the AntD Switch (role="switch"), so the
+    // testId element IS the switch — click it directly (no descendant lookup).
+    await page.getByTestId(L.rowStatusToggle(vendorId)).click();
     const confirm = page.locator(L.confirmModal);
     // Behavioural AC (hard): confirmation is required — the "Mark as Inactive"
     // action button is the unique, reliably-visible proof (title text renders
@@ -142,29 +143,33 @@ test.describe.serial('US-VD-005/024 Vendor Overview table', () => {
       });
     }
     await confirm.getByRole('button', { name: VendorCopy.statusConfirmOk }).click();
-    await expect(directory.rowByName(vendorName)).toContainText('Inactive');
+    // The Switch reflects the new state via aria-checked (its DOM always contains
+    // BOTH "Active" and "Inactive" labels, so text can't distinguish state).
+    await expect(page.getByTestId(L.rowStatusToggle(vendorId))).not.toBeChecked();
   });
 
   test('TC-VDUI-047 Inactive→Active is immediate (no confirmation) @regression', async ({ page }) => {
     const directory = new VendorDirectoryPage(page);
     await directory.goto();
     await directory.search(vendorName);
+    // The testId element IS the Switch (role="switch"). Its DOM always contains
+    // BOTH "Active" and "Inactive" labels (antd checked/unchecked children), so
+    // state must be read from aria-checked (via toBeChecked), never from text.
     const toggle = page.getByTestId(L.rowStatusToggle(vendorId));
-    const switchEl = toggle.getByRole('switch');
 
     // Self-establish the precondition (decoupled from TC-VDUI-046 under retries):
     // if the vendor is currently Active, deactivate + confirm to reach Inactive.
-    if (!((await toggle.textContent()) ?? '').includes('Inactive')) {
-      await switchEl.click();
+    if ((await toggle.getAttribute('aria-checked')) === 'true') {
+      await toggle.click();
       await page.locator(L.confirmModal).getByRole('button', { name: VendorCopy.statusConfirmOk }).click();
-      await expect(toggle).toHaveText('Inactive');
+      await expect(toggle).not.toBeChecked();
     }
 
     // Reactivate: inactive→active must be IMMEDIATE — no confirmation modal shown.
     // Assert on VISIBLE confirms only (antd may keep a hidden closed-modal node).
-    await switchEl.click();
+    await toggle.click();
     await expect(page.locator(`${L.confirmModal}:visible`)).toHaveCount(0);
-    await expect(toggle).toHaveText('Active'); // exact — 'Active' ⊂ 'Inactive'
+    await expect(toggle).toBeChecked();
   });
 
   test('TC-VDUI-049 Vendor ID column shows VEN-XXXXXX @regression', async ({ page }) => {

@@ -148,6 +148,16 @@ export default defineConfig({
       testMatch: /login\.spec\.ts/,
     },
     {
+      // CEIQ-FEAT-008 Vendor Portal — the /portal/:token route is PUBLIC and
+      // unauthenticated (ASM-01), so this project deliberately has NO storageState
+      // and NO setup dependency: it must start with a clean, logged-out context
+      // (like `login`). The spec skips its whole describe when the portal env +
+      // seeded token are absent (utils/env.hasPortalEnv), so a credential-less run
+      // simply reports skips instead of running or failing.
+      name: 'portal',
+      testMatch: /vendor-portal\.spec\.ts/,
+    },
+    {
       name: 'admin',
       dependencies: ['setup'],
       use: { storageState: 'playwright/.auth/admin.json' },

@@ -9,6 +9,7 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 import { UserManagementLocators as L } from '../locators/userManagement';
 import { UmCopy } from '../tests/fixtures/expectedCopyUserMgmt';
+import { appBaseUrl } from '../utils/env';
 
 export interface UserFormValues {
   role: 'Procurement Manager' | 'Procurement Analyst';
@@ -21,15 +22,37 @@ export class UserManagementPage {
 
   // ---------------------------------------------------------------- navigation
   // The app guards /user-management CLIENT-SIDE with an in-memory session — a
-  // hard page.goto reloads and loses it (bounces to /dashboard). So navigate via
-  // the app nav menu item instead, preserving the PO session. Assumes login
-  // already happened (AppLoginPage.loginAsPO in a beforeEach) and we're in the app.
+  // hard page.goto reloads and loses it (bounces to /dashboard). "User Management"
+  // also moved OUT of the left nav INTO the avatar dropdown (AppShell.tsx: it now
+  // lives below Company Settings, gated by the manage_users right). So navigate the
+  // same way CompanySettingsPage does: land in-app, open the avatar dropdown, then
+  // click the "User Management" item — preserving the PO session. Assumes login
+  // already happened (AppLoginPage.ensureLoggedIn in a beforeEach).
+  private appUrl(path: string): string {
+    return `${appBaseUrl().replace(/\/$/, '')}${path}`;
+  }
+
+  /** Land on an in-app page with the shell present, without losing the session. */
+  async ensureInApp(): Promise<void> {
+    if (!this.page.url().startsWith(appBaseUrl().replace(/\/$/, ''))) {
+      await this.page.goto(this.appUrl('/dashboard'));
+    }
+    await expect(this.page.locator('.ant-avatar').first()).toBeVisible({ timeout: 45000 });
+  }
+
+  /** Open the avatar dropdown that hosts the "User Management" item. */
+  async openAccountMenu(): Promise<void> {
+    await this.page.locator('.ant-avatar').first().click();
+  }
+
   async goto(): Promise<void> {
     if (!this.page.url().includes('/user-management')) {
+      await this.ensureInApp();
+      await this.openAccountMenu();
       await this.page.getByRole('menuitem', { name: 'User Management' }).click();
     }
     await this.page.waitForURL(/\/user-management/, { timeout: 30000 });
-    // Heading specifically — "User Management" also appears as a nav menu item.
+    // Heading specifically — "User Management" also appears as a menu item.
     await expect(this.page.getByRole('heading', { name: UmCopy.pageTitle })).toBeVisible();
   }
 
@@ -63,19 +86,30 @@ export class UserManagementPage {
   }
 
   // ------------------------------------------------------------- summary cards
-  async expectOrganizationCard(companyName: string): Promise<void> {
+  // Identity values (company name, PO display name) are per-tenant DATA, not spec
+  // invariants, so we assert the AC invariants instead of hardcoding a specific
+  // tenant's strings: the fields RENDER (non-empty), the logged-in PO's EMAIL is
+  // shown exactly (env truth), the ROLE is exactly "Procurement Owner", and there
+  // are NO edit controls. This keeps the case correct on any environment.
+  async expectOrganizationCard(): Promise<void> {
     const card = this.page.getByTestId(L.orgCard);
     await expect(card).toBeVisible();
-    await expect(card.getByTestId(L.orgCompanyName)).toHaveText(companyName);
+    // Company / website / address all render (a null field shows the "—" placeholder,
+    // which is still non-empty text — §5.2).
+    await expect(card.getByTestId(L.orgCompanyName)).not.toBeEmpty();
+    await expect(card.getByTestId(L.orgWebsite)).not.toBeEmpty();
+    await expect(card.getByTestId(L.orgAddress)).not.toBeEmpty();
     // No edit controls in the card.
     await expect(card.getByRole('button', { name: /edit/i })).toHaveCount(0);
   }
 
-  async expectProfileCard(name: string, email: string): Promise<void> {
+  async expectProfileCard(email: string): Promise<void> {
     const card = this.page.getByTestId(L.profileCard);
-    await expect(card.getByTestId(L.profileName)).toHaveText(name);
+    await expect(card.getByTestId(L.profileName)).not.toBeEmpty();
     await expect(card.getByTestId(L.profileEmail)).toHaveText(email);
     await expect(card.getByTestId(L.profileRole)).toHaveText(UmCopy.profileRole);
+    // No edit controls in the card.
+    await expect(card.getByRole('button', { name: /edit/i })).toHaveCount(0);
   }
 
   // --------------------------------------------------------- search and filter
