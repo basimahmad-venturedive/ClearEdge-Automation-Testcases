@@ -27,6 +27,7 @@
     "testrail:prune": "node scripts/testrail-prune.cjs",
     "testrail:create-run": "node scripts/testrail-create-run.cjs",
     "testrail:execute": "node scripts/testrail-execute.cjs",
+    "testrail:trim-untested": "node scripts/testrail-trim-untested.cjs",
     "test:dev:vendor": "cross-env TEST_ENV=dev VENDOR_REQUEST_TIMEOUT_MS=25000 vitest run tests/vendorDirectory.test.ts",
     "test:dev:clause": "cross-env TEST_ENV=dev CLAUSE_REQUEST_TIMEOUT_MS=25000 vitest run tests/clauseConfiguration.test.ts",
     "test:qa:vendor": "cross-env TEST_ENV=qa VENDOR_REQUEST_TIMEOUT_MS=25000 vitest run tests/vendorDirectory.test.ts",

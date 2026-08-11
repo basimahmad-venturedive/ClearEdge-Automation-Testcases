@@ -2,6 +2,7 @@ const { trimmed, asBool, env: kitEnv } = require('../config/env.cjs');
 const { TestRailClient } = require('./client/testRailClient.cjs');
 const { MappingStore } = require('./mappingStore/mappingStore.cjs');
 const { ResultPublisher } = require('./resultPublisher/resultPublisher.cjs');
+const { trimUntestedFromRun } = require('./runTrimmer/untestedTrimmer.cjs');
 const { testRailConfig } = require('./config/testrailConfig.cjs');
 
 // ClearEdge TC-IDs only (e.g. TC-AUTH-001, TC-ADMAPI-050, TC-UAUTH-API-002,
@@ -173,64 +174,47 @@ async function publishRecordsToTestRail(records) {
   const apiResponse = await publisher.publish(payload);
   assertTestRailAddResultsOk(apiResponse);
 
-  await markCasesAutomated(client, resultsByCaseId, mapping, kitEnv.testRail.customAutomatedYes);
-
-  // Results are posted only for cases that actually executed (passed/failed);
-  // skipped cases are never posted and would otherwise linger as "Untested" in
-  // the run. Trim the run down to exactly the executed cases so the run reflects
-  // only passed + failed. Runs after publish (add_results_for_cases requires the
-  // case to still be in the run); removing an untested case removes only its
-  // empty test row, never a posted result. Opt out with TESTRAIL_TRIM_UNTESTED=false.
+  // Trim BEFORE marking cases automated. Skipped cases are never posted (TestRail
+  // rejects status_id 3) and would otherwise linger as "Untested" in the run. This
+  // must run immediately after publish: markCasesAutomated below is one HTTP call per
+  // case, so putting anything after it risks the process ending — or that loop
+  // throwing — before the trim ever happens (the bug that left 88 Untested rows in
+  // the 2026-08-10 nightly). Removing an untested case removes only its empty test
+  // row, never a posted result. Opt out with TESTRAIL_TRIM_UNTESTED=false.
   if (asBool(process.env.TESTRAIL_TRIM_UNTESTED, true)) {
     await trimRunToExecutedCases(client, runContext.runId, payload);
+  }
+
+  // Best-effort: a failure here must never lose the trim above or fail the publish.
+  try {
+    await markCasesAutomated(client, resultsByCaseId, mapping, kitEnv.testRail.customAutomatedYes);
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.warn(`[TestRail] Could not set custom_automated on published cases: ${error.message}`);
   }
 
   return { published: resultsByCaseId.size, runId: runContext.runId };
 }
 
-// TestRail status_id 3 == "Untested" (the initial, no-result state of a case in a run).
-const TESTRAIL_STATUS_UNTESTED = 3;
-
 /**
  * Trim a run so it contains only cases that have a result (passed/failed/etc.),
- * dropping every "Untested" case. Keys off the run's OWN state via get_tests, so
- * it never deletes a previously-posted result even if the run is published to in
- * multiple batches — it only removes case rows that truly never executed.
+ * dropping every "Untested" case. Delegates to the shared trimmer (retries
+ * get_tests + update_run, verifies the result, refuses to empty a run) so the
+ * in-process path and the standalone CI post-step behave identically.
+ *
+ * Never fatal: results are already posted at this point, so a trim failure is
+ * reported and swallowed — the standalone `testrail:trim-untested` step will
+ * clean up the run afterwards.
  */
 async function trimRunToExecutedCases(client, runId, justPublishedPayload) {
-  // Always keep the cases we just posted; add any other case that already carries a
-  // result from an earlier batch. This never drops a just-published pass/fail even if
-  // get_tests is truncated or fails.
-  const keep = new Set(justPublishedPayload.map((row) => row.case_id));
   try {
-    const tests = await client.getTests(runId);
-    for (const test of tests) {
-      if (test.status_id !== TESTRAIL_STATUS_UNTESTED) {
-        keep.add(test.case_id);
-      }
-    }
+    return await trimUntestedFromRun(client, runId, {
+      alwaysKeepCaseIds: justPublishedPayload.map((row) => row.case_id)
+    });
   } catch (error) {
-    // Non-fatal: fall back to just the cases we posted (correct for the common
-    // single-publish-per-run flow).
     // eslint-disable-next-line no-console
-    console.warn(`[TestRail] get_tests failed (${error.message}); trimming to just-published cases.`);
-  }
-
-  const uniqueCaseIds = [...keep].filter((id) => Number.isFinite(id));
-  if (uniqueCaseIds.length === 0) {
-    return;
-  }
-
-  try {
-    await client.updateRun(runId, { include_all: false, case_ids: uniqueCaseIds });
-    // eslint-disable-next-line no-console
-    console.log(
-      `[TestRail] Trimmed run ${runId} to ${uniqueCaseIds.length} executed case(s); Untested cases removed.`
-    );
-  } catch (error) {
-    // Non-fatal: results are already posted. The run just keeps its Untested rows.
-    // eslint-disable-next-line no-console
-    console.warn(`[TestRail] Could not trim Untested cases from run ${runId}: ${error.message}`);
+    console.warn(`[TestRail] Trim of run ${runId} threw unexpectedly: ${error.message}`);
+    return { status: 'failed', error: error.message };
   }
 }
 
