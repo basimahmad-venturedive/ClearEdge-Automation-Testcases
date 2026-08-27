@@ -80,8 +80,23 @@ class TestRailClient {
   }
 
   async getCases(projectId) {
-    const data = await this.request('GET', `/get_cases/${projectId}`);
-    return Array.isArray(data) ? data : data.cases || [];
+    // TestRail Cloud paginates bulk GETs (default 250/page). A single call silently
+    // truncates to the first 250 cases — so suites with higher case-ids (added later)
+    // never match. Loop until drained, like getTests. Older instances return a plain array.
+    const limit = 250;
+    let offset = 0;
+    const all = [];
+
+    for (;;) {
+      const data = await this.request('GET', `/get_cases/${projectId}&limit=${limit}&offset=${offset}`);
+      const page = Array.isArray(data) ? data : data.cases || [];
+      all.push(...page);
+      if (Array.isArray(data) || page.length < limit) {
+        break;
+      }
+      offset += limit;
+    }
+    return all;
   }
 
   async addCase(sectionId, payload) {

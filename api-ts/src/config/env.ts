@@ -87,3 +87,42 @@ export const hasLiveManagerUser = (): boolean =>
 // True when a real Procurement-Analyst user is configured (enables Analyst view-only / 403 cases).
 export const hasLiveAnalystUser = (): boolean =>
   isEnvVarSet("DEV_ANALYST_USERNAME") && isEnvVarSet("DEV_ANALYST_PASSWORD");
+
+// ---------------------------------------------------------------------------
+// CEIQ-FEAT-008 Vendor Portal — public, unauthenticated endpoints under
+// /api/portal/:token. The portal has NO login: the 32-byte URL-safe portal token
+// IS the sole credential (a path param, never a header) and is minted by the
+// Sourcing "invite vendor" action (FEAT-007), which cannot be deployed/seeded in a
+// test env this cycle. So every portal test gates on PORTAL_TOKEN — absent ⇒ the
+// suite skips-with-reason and makes NO network call. See tests/vendorPortal.test.ts.
+// ---------------------------------------------------------------------------
+
+/**
+ * Origin for the vendor-portal endpoints. Prefers PORTAL_API_BASE_URL; falls back to
+ * the origin of API_BASE_URL because portal routes live under /api/portal (not the
+ * /api/v1 prefix carried by apiBaseUrl()). Throws only when neither is set — and only
+ * when called from inside a running (non-skipped) test.
+ */
+export const portalApiBaseUrl = (): string => {
+  const explicit = getOptional("PORTAL_API_BASE_URL");
+  if (explicit) return explicit.replace(/\/+$/, "");
+  return new URL(apiBaseUrl()).origin;
+};
+
+/** The seeded vendor-portal token — the sole credential (path param, never a header). */
+export const portalToken = (): string => getRequired("PORTAL_TOKEN");
+
+/**
+ * Per-state seeded token accessor. A test that needs a specific proposal state
+ * (invited / submitted / withdrawn / awarded / deleted-event / …) can be pointed at a
+ * dedicated seeded token via PORTAL_TOKEN_<STATE>; it falls back to the generic
+ * PORTAL_TOKEN so a single seeded token still exercises the read-only paths.
+ */
+export const portalTokenFor = (state: string): string =>
+  getOptional(`PORTAL_TOKEN_${state.toUpperCase()}`) || getRequired("PORTAL_TOKEN");
+
+/** A spare Cognito JWT used only by the "portal ignores JWT" negative case (TC-VPSEC-001). */
+export const portalSpareJwt = (): string => getRequired("PORTAL_SPARE_COGNITO_JWT");
+
+/** True when a seeded portal token is configured — the sole gate for the portal suite. */
+export const hasPortalEnv = (): boolean => isEnvVarSet("PORTAL_TOKEN");
