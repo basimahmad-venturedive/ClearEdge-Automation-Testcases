@@ -21,7 +21,8 @@
  * asserted here. Spec-silent shapes/codes are flagged `contract TBD`, never invented.
  */
 import axios, { type AxiosResponse } from "axios";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect } from "vitest";
+import { test } from "../src/utils/suite";
 import { PortalClient } from "../src/clients/portalClient";
 import { portalSpareJwt, portalTokenFor } from "../src/config/env";
 import { liveOwnerContext } from "../src/utils/poContext";
@@ -154,7 +155,7 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
   // Endpoint #1 — GET /api/portal/:token (resolve)
   // =========================================================================
   describe("Endpoint #1 — GET resolve (SPEC §4.2 #1)", () => {
-    it("TC-VPAPI-001 — GET resolve returns 200 vendor-safe envelope for an invited proposal @smoke @regression", async () => {
+    test("TC-VPAPI-001 — GET resolve returns 200 vendor-safe envelope for an invited proposal @smoke @regression", async () => {
       const res = await client.resolve(portalTokenFor("invited"));
       assertResponseTime(res);
       expect(res.status).toBe(200);
@@ -164,7 +165,7 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
       expect(data.blockedReason).toBeNull();
     });
 
-    it("TC-VPAPI-002 — Resolve response excludes budget and all procurement-only fields @regression", async () => {
+    test("TC-VPAPI-002 — Resolve response excludes budget and all procurement-only fields @regression", async () => {
       const res = await client.resolve(portalTokenFor("invited"));
       assertResponseTime(res);
       expect(res.status).toBe(200);
@@ -178,7 +179,7 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
       expect(serialized).not.toMatch(/"aiSummary"/i);
     });
 
-    it("TC-VPAPI-003 — GET resolve unknown token returns 404 ERR_PORTAL_TOKEN_NOT_FOUND @regression", async () => {
+    test("TC-VPAPI-003 — GET resolve unknown token returns 404 ERR_PORTAL_TOKEN_NOT_FOUND @regression", async () => {
       const res = await client.resolve(TOKEN_UNKNOWN);
       const body = assertError(res, 404, PORTAL_ERROR_CODES.TOKEN_NOT_FOUND);
       // Contract = status + code. The human message ("Portal invitation was not found." on the
@@ -187,13 +188,13 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
       expect(body.error.message).toMatch(/invitation.*not found/i);
     });
 
-    it("TC-VPAPI-004 — GET resolve malformed token returns 404 (not 500) @regression", async () => {
+    test("TC-VPAPI-004 — GET resolve malformed token returns 404 (not 500) @regression", async () => {
       const res = await client.resolve(TOKEN_MALFORMED);
       assertError(res, 404, PORTAL_ERROR_CODES.TOKEN_NOT_FOUND);
       expect(res.status).not.toBe(500);
     });
 
-    it("TC-VPAPI-005 — Deleted event returns 200 isBlocked=true reason event_deleted @regression", async () => {
+    test("TC-VPAPI-005 — Deleted event returns 200 isBlocked=true reason event_deleted @regression", async () => {
       const res = await client.resolve(portalTokenFor("deleted_event"));
       assertResponseTime(res);
       expect(res.status).toBe(200);
@@ -203,7 +204,7 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
       expect(data.event).toBeDefined();
     });
 
-    it("TC-VPAPI-006 — Deleted vendor returns 200 isBlocked=true reason vendor_deleted @regression", async () => {
+    test("TC-VPAPI-006 — Deleted vendor returns 200 isBlocked=true reason vendor_deleted @regression", async () => {
       const res = await client.resolve(portalTokenFor("deleted_vendor"));
       assertResponseTime(res);
       expect(res.status).toBe(200);
@@ -212,7 +213,7 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
       expect(data.blockedReason).toBe("vendor_deleted");
     });
 
-    it("TC-VPAPI-007 — Deadline passed returns 200 isBlocked=true reason deadline_passed @regression", async () => {
+    test("TC-VPAPI-007 — Deadline passed returns 200 isBlocked=true reason deadline_passed @regression", async () => {
       // PLACEHOLDER — always passes. A deadline-passed event cannot be seeded on QA (the update
       // API rejects a past submission_deadline; no manual-close endpoint; no DB access). Real
       // assertion removed per QA-lead decision (2026-08-13). RESTORE when a deadline-passed fixture
@@ -221,7 +222,7 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
       expect(true).toBe(true);
     });
 
-    it("TC-VPAPI-008 — visibleSections returns only non-empty sections; RFQ returns empty array @regression", async () => {
+    test("TC-VPAPI-008 — visibleSections returns only non-empty sections; RFQ returns empty array @regression", async () => {
       const rfp = await client.resolve(portalTokenFor("invited"));
       assertResponseTime(rfp);
       const rfpData = resolveResponseSchema.parse(rfp.data).data;
@@ -231,7 +232,7 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
       expect(resolveResponseSchema.parse(rfq.data).data.event.visibleSections).toEqual([]);
     });
 
-    it("TC-VPAPI-009 — selectedQualifications and questions ordered by sort_order @regression", async () => {
+    test("TC-VPAPI-009 — selectedQualifications and questions ordered by sort_order @regression", async () => {
       const res = await client.resolve(portalTokenFor("invited"));
       assertResponseTime(res);
       const { data } = resolveResponseSchema.parse(res.data);
@@ -241,7 +242,7 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
       for (const q of data.event.selectedQualifications) expect(q.label.length).toBeGreaterThan(0);
     });
 
-    it("TC-VPAPI-010 — Issuer and vendor blocks populated from joins @regression", async () => {
+    test("TC-VPAPI-010 — Issuer and vendor blocks populated from joins @regression", async () => {
       const res = await client.resolve(portalTokenFor("invited"));
       assertResponseTime(res);
       const { data } = resolveResponseSchema.parse(res.data);
@@ -256,7 +257,7 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
       expect((data.vendor.primaryContactEmail ?? "").length).toBeGreaterThan(0);
     });
 
-    it("TC-VPAPI-011 — submittedAt reflects last active submission on a submitted proposal @regression", async () => {
+    test("TC-VPAPI-011 — submittedAt reflects last active submission on a submitted proposal @regression", async () => {
       const res = await client.resolve(portalTokenFor("submitted"));
       assertResponseTime(res);
       const { data } = resolveResponseSchema.parse(res.data);
@@ -264,7 +265,7 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
       expect(data.proposal.submittedAt).not.toBeNull();
     });
 
-    it("TC-VPAPI-012 — Awarded proposal returns awarded=true with status still submitted @regression", async () => {
+    test("TC-VPAPI-012 — Awarded proposal returns awarded=true with status still submitted @regression", async () => {
       const res = await client.resolve(portalTokenFor("awarded"));
       assertResponseTime(res);
       const { data } = resolveResponseSchema.parse(res.data);
@@ -273,7 +274,7 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
       expect(data.isBlocked).toBe(false);
     });
 
-    it("TC-VPAPI-013 — submissionDeadline returned in date-only YYYY-MM-DD format @regression", async () => {
+    test("TC-VPAPI-013 — submissionDeadline returned in date-only YYYY-MM-DD format @regression", async () => {
       const res = await client.resolve(portalTokenFor("invited"));
       assertResponseTime(res);
       const { data } = resolveResponseSchema.parse(res.data);
@@ -285,7 +286,7 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
   // Endpoint #1a — POST /api/portal/:token/attachments/upload-url (presign)
   // =========================================================================
   describe("Endpoint #1a — POST presign (SPEC §4.2 #1a)", () => {
-    it("TC-VPAPI-014 — Presign happy path returns 200 with uploadUrl, server s3Key, echoed metadata @smoke @regression", async () => {
+    test("TC-VPAPI-014 — Presign happy path returns 200 with uploadUrl, server s3Key, echoed metadata @smoke @regression", async () => {
       const body = presignRequest();
       const res = await client.requestUploadUrl(portalTokenFor("invited"), body);
       assertResponseTime(res);
@@ -298,7 +299,7 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
       expect(data.fileSizeBytes).toBe(body.fileSizeBytes);
     });
 
-    it("TC-VPAPI-015 — s3Key uses server-generated uploadId with no filename or path separators from input @regression", async () => {
+    test("TC-VPAPI-015 — s3Key uses server-generated uploadId with no filename or path separators from input @regression", async () => {
       const res = await client.requestUploadUrl(portalTokenFor("invited"), PRESIGN_TRAVERSAL_FILENAME);
       assertResponseTime(res);
       expect(res.status).toBe(200);
@@ -311,12 +312,12 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
       expect(data.s3Key).not.toContain("secret payload");
     });
 
-    it("TC-VPAPI-016 — Presign rejects disallowed MIME/extension with 400 ERR_FILE_TYPE_NOT_ALLOWED @regression", async () => {
+    test("TC-VPAPI-016 — Presign rejects disallowed MIME/extension with 400 ERR_FILE_TYPE_NOT_ALLOWED @regression", async () => {
       const res = await client.requestUploadUrl(portalTokenFor("invited"), PRESIGN_DISALLOWED_TYPE);
       assertError(res, 400, PORTAL_ERROR_CODES.FILE_TYPE_NOT_ALLOWED);
     });
 
-    it("TC-VPAPI-017 — Presign rejects oversize file (> 10,485,760 bytes) with 400 ERR_FILE_TOO_LARGE @regression", async () => {
+    test("TC-VPAPI-017 — Presign rejects oversize file (> 10,485,760 bytes) with 400 ERR_FILE_TOO_LARGE @regression", async () => {
       const over = await client.requestUploadUrl(portalTokenFor("invited"), PRESIGN_OVER_LIMIT);
       assertError(over, 400, PORTAL_ERROR_CODES.FILE_TOO_LARGE);
       // At-limit (10,485,760) is accepted — the in-boundary half of the trio.
@@ -325,7 +326,7 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
       expect(atLimit.status).toBe(200);
     });
 
-    it("TC-VPAPI-018 — Presign rejects fileSizeBytes <= 0 with 400 (reject code contract TBD) @regression", async () => {
+    test("TC-VPAPI-018 — Presign rejects fileSizeBytes <= 0 with 400 (reject code contract TBD) @regression", async () => {
       const res = await client.requestUploadUrl(portalTokenFor("invited"), PRESIGN_ZERO_SIZE);
       // contract TBD: spec pins ERR_FILE_TOO_LARGE only for the upper bound; assert 400 + no uploadUrl.
       assertResponseTime(res);
@@ -334,19 +335,19 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
       expect(body.error.code).toBeTruthy();
     });
 
-    it("TC-VPAPI-019 — Presign on a submission-blocked event returns 409 ERR_PORTAL_SUBMISSION_BLOCKED @regression", async () => {
+    test("TC-VPAPI-019 — Presign on a submission-blocked event returns 409 ERR_PORTAL_SUBMISSION_BLOCKED @regression", async () => {
       // PLACEHOLDER — always passes (deadline-passed fixture unseedable on QA; see TC-VPAPI-007).
       // Original contract: presign on a deadline-blocked event → 409 ERR_PORTAL_SUBMISSION_BLOCKED,
       // details.reason "deadline_passed". RESTORE when a deadline-passed token exists.
       expect(true).toBe(true);
     });
 
-    it("TC-VPAPI-020 — Presign with unknown token returns 404 ERR_PORTAL_TOKEN_NOT_FOUND @regression", async () => {
+    test("TC-VPAPI-020 — Presign with unknown token returns 404 ERR_PORTAL_TOKEN_NOT_FOUND @regression", async () => {
       const res = await client.requestUploadUrl(TOKEN_UNKNOWN, presignRequest());
       assertError(res, 404, PORTAL_ERROR_CODES.TOKEN_NOT_FOUND);
     });
 
-    it("TC-VPAPI-021 — Presigned URL is 5-minute-scoped to the key with status=pending tag @regression", async () => {
+    test("TC-VPAPI-021 — Presigned URL is 5-minute-scoped to the key with status=pending tag @regression", async () => {
       const res = await client.requestUploadUrl(portalTokenFor("invited"), PRESIGN_PDF_VALID);
       assertResponseTime(res);
       expect(res.status).toBe(200);
@@ -364,7 +365,7 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
   // Endpoint #2 — POST /api/portal/:token/submit
   // =========================================================================
   describe("Endpoint #2 — POST submit (SPEC §4.2 #2)", () => {
-    it("TC-VPAPI-022 — Submit happy path returns 201 with submittedAt, vendorName, attachmentRetained @smoke @regression", async () => {
+    test("TC-VPAPI-022 — Submit happy path returns 201 with submittedAt, vendorName, attachmentRetained @smoke @regression", async () => {
       const f = await mintFreshInvited();
       const res = await client.submit(f.token, submitRequest({ answers: answersFor(f), attachment: await realAttachment(f.token) }));
       assertResponseTime(res);
@@ -375,7 +376,7 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
       expect(data.attachmentRetained).toBe(true);
     });
 
-    it("TC-VPAPI-023 — Submit creates submissions row status=active with submitted_at (read-after-write via resolve) @regression", async () => {
+    test("TC-VPAPI-023 — Submit creates submissions row status=active with submitted_at (read-after-write via resolve) @regression", async () => {
       const f = await mintFreshInvited();
       const res = await client.submit(f.token, submitRequest({ price: 50000, deliveryWeeks: 8, answers: answersFor(f) }));
       assertResponseTime(res);
@@ -387,7 +388,7 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
       // MANUAL: direct submissions-row (status='active') assertion — no QA DB.
     });
 
-    it("TC-VPAPI-024 — Submit creates one submission_answers row per question with sort_order @regression", async () => {
+    test("TC-VPAPI-024 — Submit creates one submission_answers row per question with sort_order @regression", async () => {
       const f = await mintFreshInvited();
       const res = await client.submit(f.token, submitRequest({ answers: answersFor(f) }));
       assertResponseTime(res);
@@ -395,7 +396,7 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
       // MANUAL: per-row submission_answers sort_order assertion — no QA DB.
     });
 
-    it("TC-VPAPI-025 — Submit updates parent proposal to submitted with denormalized price/delivery/last_submission_id @regression", async () => {
+    test("TC-VPAPI-025 — Submit updates parent proposal to submitted with denormalized price/delivery/last_submission_id @regression", async () => {
       const f = await mintFreshInvited();
       const res = await client.submit(f.token, submitRequest({ price: 72000, deliveryWeeks: 10, answers: answersFor(f) }));
       assertResponseTime(res);
@@ -407,7 +408,7 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
       // MANUAL: direct current_price/current_delivery_weeks/last_submission_id columns — no QA DB.
     });
 
-    it("TC-VPAPI-026 — Submit generates zero-padded per-tenant SUB-NNNNN display_id (not exposed in response) @regression", async () => {
+    test("TC-VPAPI-026 — Submit generates zero-padded per-tenant SUB-NNNNN display_id (not exposed in response) @regression", async () => {
       const f = await mintFreshInvited();
       const res = await client.submit(f.token, submitRequest({ answers: answersFor(f) }));
       assertResponseTime(res);
@@ -417,7 +418,7 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
       // MANUAL: DB sequence/format (SUB-00001) assertion — no QA DB.
     });
 
-    it("TC-VPAPI-027 — Submit rejects attachment whose s3Key does not match the issued proposal prefix @regression", async () => {
+    test("TC-VPAPI-027 — Submit rejects attachment whose s3Key does not match the issued proposal prefix @regression", async () => {
       const f = await mintFreshInvited();
       const res = await client.submit(f.token, { ...SUBMIT_FOREIGN_PREFIX_ATTACHMENT, answers: answersFor(f) });
       // contract TBD: exact reject code (ERR_VALIDATION.document vs dedicated) not pinned — assert 4xx + no state change.
@@ -429,7 +430,7 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
       expect(resolveResponseSchema.parse(follow.data).data.proposal.status).toBe("invited");
     });
 
-    it("TC-VPAPI-028 — Submit verifies pending object via HeadObject (type/size/tag must match issued metadata) @regression", async () => {
+    test("TC-VPAPI-028 — Submit verifies pending object via HeadObject (type/size/tag must match issued metadata) @regression", async () => {
       const f = await mintFreshInvited();
       const res = await client.submit(f.token, { ...SUBMIT_MISMATCHED_ATTACHMENT, answers: answersFor(f) });
       // contract TBD: HeadObject-failure reject code not enumerated — assert 4xx.
@@ -439,7 +440,7 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
       // MANUAL: priming a real mismatched/pending S3 object is infra (no QA S3).
     });
 
-    it("TC-VPAPI-029 — Submit rejects arbitrary/caller-selected bucket s3Key (IDOR on attachment) @regression", async () => {
+    test("TC-VPAPI-029 — Submit rejects arbitrary/caller-selected bucket s3Key (IDOR on attachment) @regression", async () => {
       const f = await mintFreshInvited();
       const res = await client.submit(f.token, { ...SUBMIT_ARBITRARY_BUCKET_ATTACHMENT, answers: answersFor(f) });
       assertResponseTime(res);
@@ -448,14 +449,14 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
       errorEnvelopeSchema.parse(res.data);
     });
 
-    it("TC-VPAPI-030 — Submit on deadline-passed event returns 409 reason deadline_passed @regression", async () => {
+    test("TC-VPAPI-030 — Submit on deadline-passed event returns 409 reason deadline_passed @regression", async () => {
       // PLACEHOLDER — always passes (deadline-passed fixture unseedable on QA; see TC-VPAPI-007).
       // Original contract: submit on a deadline-passed event → 409 ERR_PORTAL_SUBMISSION_BLOCKED,
       // details.reason "deadline_passed". RESTORE when a deadline-passed token exists.
       expect(true).toBe(true);
     });
 
-    it("TC-VPAPI-031 — Submit on deleted event returns 409 reason event_deleted @regression", async () => {
+    test("TC-VPAPI-031 — Submit on deleted event returns 409 reason event_deleted @regression", async () => {
       const token = portalTokenFor("deleted_event");
       // Send VALID answers (from the blocked event's own questions) so the submission-blocked
       // check — not body validation — is what rejects it (spec §4.2 #2). Fabricated answers would
@@ -468,7 +469,7 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
       expect(body.error.details?.reason).toBe("event_deleted");
     });
 
-    it("TC-VPAPI-032 — Submit on deleted vendor returns 409 reason vendor_deleted @regression", async () => {
+    test("TC-VPAPI-032 — Submit on deleted vendor returns 409 reason vendor_deleted @regression", async () => {
       const token = portalTokenFor("deleted_vendor");
       // Valid answers so the blocked-check (not body validation) decides — see TC-VPAPI-031.
       const resolved = await client.resolve<any>(token);
@@ -479,7 +480,7 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
       expect(body.error.details?.reason).toBe("vendor_deleted");
     });
 
-    it("TC-VPAPI-033 — Submit rejects non-integer and empty price with exact field messages @regression", async () => {
+    test("TC-VPAPI-033 — Submit rejects non-integer and empty price with exact field messages @regression", async () => {
       const token = portalTokenFor("invited");
       const a = await client.submit(token, SUBMIT_PRICE_NON_INTEGER);
       const aBody = assertError(a, 400, PORTAL_ERROR_CODES.VALIDATION);
@@ -493,7 +494,7 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
       expect((bBody.error.details?.fields as Record<string, unknown> | undefined)?.price, 'price field flagged').toBeTruthy();
     });
 
-    it("TC-VPAPI-034 — Submit rejects empty deliveryWeeks with 'This field is required.' @regression", async () => {
+    test("TC-VPAPI-034 — Submit rejects empty deliveryWeeks with 'This field is required.' @regression", async () => {
       const token = portalTokenFor("invited");
       const empty = await client.submit(token, SUBMIT_DELIVERY_MISSING);
       const emptyBody = assertError(empty, 400, PORTAL_ERROR_CODES.VALIDATION);
@@ -504,7 +505,7 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
       expect((nonIntBody.error.details?.fields as Record<string, unknown> | undefined)?.deliveryWeeks, 'deliveryWeeks flagged').toBeTruthy();
     });
 
-    it("TC-VPAPI-035 — Submit rejects answers with missing, duplicate, or unrelated question IDs @regression", async () => {
+    test("TC-VPAPI-035 — Submit rejects answers with missing, duplicate, or unrelated question IDs @regression", async () => {
       const token = portalTokenFor("invited");
       for (const body of [SUBMIT_ANSWERS_MISSING, SUBMIT_ANSWERS_DUPLICATE, SUBMIT_ANSWERS_UNRELATED]) {
         const res = await client.submit(token, body);
@@ -512,7 +513,7 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
       }
     });
 
-    it("TC-VPAPI-036 — Submit rejects empty answerText with 'This field is required.' @regression", async () => {
+    test("TC-VPAPI-036 — Submit rejects empty answerText with 'This field is required.' @regression", async () => {
       const res = await client.submit(portalTokenFor("invited"), SUBMIT_ANSWER_EMPTY_TEXT);
       const body = assertError(res, 400, PORTAL_ERROR_CODES.VALIDATION);
       // An answer-level validation error is flagged (exact key/wording is cosmetic — see TC-VPAPI-033).
@@ -520,7 +521,7 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
       expect(Object.keys(fields).some((k) => k.startsWith('answers')), 'an answers field is flagged').toBe(true);
     });
 
-    it("TC-VPAPI-037 — Submit price/deliveryWeeks positive-integer boundary (>0 accepted; 0/negative rejected) @regression", async () => {
+    test("TC-VPAPI-037 — Submit price/deliveryWeeks positive-integer boundary (>0 accepted; 0/negative rejected) @regression", async () => {
       const f = await mintFreshInvited();
       const inside = await client.submit(f.token, { ...SUBMIT_JUST_INSIDE, answers: answersFor(f) });
       assertResponseTime(inside);
@@ -532,7 +533,7 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
       }
     });
 
-    it("TC-VPAPI-038 — Submit without attachment returns 201 attachmentRetained=false @regression", async () => {
+    test("TC-VPAPI-038 — Submit without attachment returns 201 attachmentRetained=false @regression", async () => {
       const f = await mintFreshInvited();
       const res = await client.submit(f.token, submitRequest({ answers: answersFor(f) }));
       assertResponseTime(res);
@@ -540,7 +541,7 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
       expect(submitResponseSchema.parse(res.data).data.attachmentRetained).toBe(false);
     });
 
-    it("TC-VPAPI-039 — Resubmit after withdraw creates a new submission and returns proposal to submitted @regression", async () => {
+    test("TC-VPAPI-039 — Resubmit after withdraw creates a new submission and returns proposal to submitted @regression", async () => {
       // Fresh fixture driven to withdrawn, then resubmit is the assertion under test.
       const f = await mintFreshInvited();
       const s1 = await client.submit(f.token, submitRequest({ answers: answersFor(f) }));
@@ -555,7 +556,7 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
       // MANUAL: new submissions row + new SUB-NNNNN, prior withdrawn row retained — no QA DB.
     });
 
-    it("TC-VPAPI-040 — Submit recomputes deterministic highlights on the event (side-effect) @regression", async () => {
+    test("TC-VPAPI-040 — Submit recomputes deterministic highlights on the event (side-effect) @regression", async () => {
       const f = await mintFreshInvited();
       const res = await client.submit(f.token, submitRequest({ price: 60000, deliveryWeeks: 9, answers: answersFor(f) }));
       assertResponseTime(res);
@@ -563,7 +564,7 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
       // MANUAL: highlight recompute (FEAT-007 §6.3) is cross-module DB/admin — not in portal response.
     });
 
-    it("TC-VPAPI-041 — Submit enqueues AI tradeoff-summary regeneration job (async side-effect) @regression", async () => {
+    test("TC-VPAPI-041 — Submit enqueues AI tradeoff-summary regeneration job (async side-effect) @regression", async () => {
       const f = await mintFreshInvited();
       const res = await client.submit(f.token, submitRequest({ answers: answersFor(f) }));
       assertResponseTime(res);
@@ -571,7 +572,7 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
       // MANUAL: BullMQ enqueue assertion needs queue inspection — infra.
     });
 
-    it("TC-VPAPI-042 — Submit enqueues confirmation-email job to the Email Worker queue @regression", async () => {
+    test("TC-VPAPI-042 — Submit enqueues confirmation-email job to the Email Worker queue @regression", async () => {
       const f = await mintFreshInvited();
       const res = await client.submit(f.token, submitRequest({ answers: answersFor(f) }));
       assertResponseTime(res);
@@ -579,7 +580,7 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
       // MANUAL: enqueued email payload/recipient (§6.1) needs queue inspection — infra.
     });
 
-    it("TC-VPAPI-043 — Confirmation-email dispatch failure does not fail the submission (non-blocking) @regression", async () => {
+    test("TC-VPAPI-043 — Confirmation-email dispatch failure does not fail the submission (non-blocking) @regression", async () => {
       const f = await mintFreshInvited();
       const res = await client.submit(f.token, submitRequest({ answers: answersFor(f) }));
       assertResponseTime(res);
@@ -589,12 +590,12 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
       // MANUAL: forcing email/queue failure requires env control; log assertion — infra.
     });
 
-    it("TC-VPAPI-044 — Submit with unknown token returns 404 ERR_PORTAL_TOKEN_NOT_FOUND @regression", async () => {
+    test("TC-VPAPI-044 — Submit with unknown token returns 404 ERR_PORTAL_TOKEN_NOT_FOUND @regression", async () => {
       const res = await client.submit(TOKEN_UNKNOWN, submitRequest());
       assertError(res, 404, PORTAL_ERROR_CODES.TOKEN_NOT_FOUND);
     });
 
-    it("TC-VPAPI-045 — Attachment tag confirmed after commit; compensation on failure sets attachmentRetained=false @regression", async () => {
+    test("TC-VPAPI-045 — Attachment tag confirmed after commit; compensation on failure sets attachmentRetained=false @regression", async () => {
       const f = await mintFreshInvited();
       const res = await client.submit(f.token, submitRequest({ answers: answersFor(f), attachment: await realAttachment(f.token) }));
       assertResponseTime(res);
@@ -603,7 +604,7 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
       // MANUAL: forced tag-confirm failure → attachmentRetained=false + row-compensation is S3/DB — infra.
     });
 
-    it("TC-VPAPI-055 — Q&A PDF generated at submit with required content structure @regression", async () => {
+    test("TC-VPAPI-055 — Q&A PDF generated at submit with required content structure @regression", async () => {
       const f = await mintFreshInvited();
       const res = await client.submit(f.token, submitRequest({ answers: answersFor(f) }));
       assertResponseTime(res);
@@ -611,7 +612,7 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
       // MANUAL: PDF text/structure is an email attachment, not in the portal response.
     });
 
-    it("TC-VPAPI-056 — Confirmation email template variables and attachment list assembled per §6.1 @regression", async () => {
+    test("TC-VPAPI-056 — Confirmation email template variables and attachment list assembled per §6.1 @regression", async () => {
       const withAttFixture = await mintFreshInvited();
       const withAtt = await client.submit(withAttFixture.token, submitRequest({ answers: answersFor(withAttFixture), attachment: await realAttachment(withAttFixture.token) }));
       assertResponseTime(withAtt);
@@ -623,7 +624,7 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
       // MANUAL: enqueued template vars + attachment list (Q&A PDF ± proposal doc) — queue inspection.
     });
 
-    it("TC-VPAPI-057 — Submit does not honor a client-supplied currency; amount is server-fixed USD @regression", async () => {
+    test("TC-VPAPI-057 — Submit does not honor a client-supplied currency; amount is server-fixed USD @regression", async () => {
       const f = await mintFreshInvited();
       const res = await client.submit(f.token, { ...SUBMIT_WITH_CURRENCY, answers: answersFor(f) });
       // contract TBD: unknown field may be ignored (201) or strictly rejected (400 ERR_VALIDATION).
@@ -638,7 +639,7 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
   // Endpoint #3 — DELETE /api/portal/:token/submit (withdraw)
   // =========================================================================
   describe("Endpoint #3 — DELETE withdraw (SPEC §4.2 #3)", () => {
-    it("TC-VPAPI-046 — Withdraw a submitted proposal returns 200 status=withdrawn @smoke @regression", async () => {
+    test("TC-VPAPI-046 — Withdraw a submitted proposal returns 200 status=withdrawn @smoke @regression", async () => {
       const f = await freshSubmitted();
       const res = await client.withdraw(f.token);
       assertResponseTime(res);
@@ -646,7 +647,7 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
       expect(withdrawResponseSchema.parse(res.data).data.status).toBe("withdrawn");
     });
 
-    it("TC-VPAPI-047 — Withdraw marks the active submission withdrawn and sets withdrawn_at (row retained) @regression", async () => {
+    test("TC-VPAPI-047 — Withdraw marks the active submission withdrawn and sets withdrawn_at (row retained) @regression", async () => {
       const f = await freshSubmitted();
       const res = await client.withdraw(f.token);
       assertResponseTime(res);
@@ -654,7 +655,7 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
       // MANUAL: submission row status='withdrawn' + withdrawn_at, row not hard-deleted — no QA DB.
     });
 
-    it("TC-VPAPI-048 — Withdraw resets parent proposal (status withdrawn; price/delivery/last_* null) @regression", async () => {
+    test("TC-VPAPI-048 — Withdraw resets parent proposal (status withdrawn; price/delivery/last_* null) @regression", async () => {
       const f = await freshSubmitted();
       const res = await client.withdraw(f.token);
       assertResponseTime(res);
@@ -665,13 +666,13 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
       expect(data.proposal.submittedAt).toBeNull();
     });
 
-    it("TC-VPAPI-049 — Withdraw a non-submitted proposal returns 409 ERR_PORTAL_NOT_SUBMITTED @regression", async () => {
+    test("TC-VPAPI-049 — Withdraw a non-submitted proposal returns 409 ERR_PORTAL_NOT_SUBMITTED @regression", async () => {
       const res = await client.withdraw(portalTokenFor("invited"));
       const body = assertError(res, 409, PORTAL_ERROR_CODES.NOT_SUBMITTED);
       expect(body.error.message).toBe("No active submission to withdraw.");
     });
 
-    it("TC-VPAPI-050 — Withdraw an awarded proposal returns 409 ERR_PORTAL_PROPOSAL_AWARDED @regression", async () => {
+    test("TC-VPAPI-050 — Withdraw an awarded proposal returns 409 ERR_PORTAL_PROPOSAL_AWARDED @regression", async () => {
       const token = portalTokenFor("awarded");
       const res = await client.withdraw(token);
       assertError(res, 409, PORTAL_ERROR_CODES.PROPOSAL_AWARDED);
@@ -679,14 +680,14 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
       expect(resolveResponseSchema.parse(follow.data).data.proposal.status).toBe("submitted");
     });
 
-    it("TC-VPAPI-051 — Withdraw on a submission-blocked event returns 409 ERR_PORTAL_SUBMISSION_BLOCKED @regression", async () => {
+    test("TC-VPAPI-051 — Withdraw on a submission-blocked event returns 409 ERR_PORTAL_SUBMISSION_BLOCKED @regression", async () => {
       // PLACEHOLDER — always passes (submitted+deadline-passed fixture unseedable on QA; see TC-VPAPI-007).
       // Original contract: withdraw on a deadline-blocked event → 409 ERR_PORTAL_SUBMISSION_BLOCKED,
       // details.reason "deadline_passed". RESTORE when a submitted-then-closed token exists.
       expect(true).toBe(true);
     });
 
-    it("TC-VPAPI-052 — Withdraw recomputes highlights and triggers tradeoff-summary regeneration @regression", async () => {
+    test("TC-VPAPI-052 — Withdraw recomputes highlights and triggers tradeoff-summary regeneration @regression", async () => {
       const f = await freshSubmitted();
       const res = await client.withdraw(f.token);
       assertResponseTime(res);
@@ -694,12 +695,12 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
       // MANUAL: highlight recompute + tradeoff-summary enqueue — DB/queue, no QA access.
     });
 
-    it("TC-VPAPI-053 — Withdraw with unknown token returns 404 ERR_PORTAL_TOKEN_NOT_FOUND @regression", async () => {
+    test("TC-VPAPI-053 — Withdraw with unknown token returns 404 ERR_PORTAL_TOKEN_NOT_FOUND @regression", async () => {
       const res = await client.withdraw(TOKEN_UNKNOWN);
       assertError(res, 404, PORTAL_ERROR_CODES.TOKEN_NOT_FOUND);
     });
 
-    it("TC-VPAPI-054 — Withdrawn proposal is excluded from event comparison (cross-module effect) @regression", async () => {
+    test("TC-VPAPI-054 — Withdrawn proposal is excluded from event comparison (cross-module effect) @regression", async () => {
       const f = await freshSubmitted();
       const res = await client.withdraw(f.token);
       assertResponseTime(res);
@@ -712,7 +713,7 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
   // Security — TC-VPSEC-001…006, 010…012
   // =========================================================================
   describe("Security (SPEC §7)", () => {
-    it("TC-VPSEC-001 — Portal routes reject Cognito JWT; PortalTokenGuard is the sole auth @regression", async () => {
+    test("TC-VPSEC-001 — Portal routes reject Cognito JWT; PortalTokenGuard is the sole auth @regression", async () => {
       const jwt = { Authorization: `Bearer ${portalSpareJwt()}` };
       // A: valid JWT + unknown token → still 404 (JWT does not grant access).
       const a = await client.resolve(TOKEN_UNKNOWN, jwt);
@@ -724,7 +725,7 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
       resolveResponseSchema.parse(b.data);
     });
 
-    it("TC-VPSEC-002 — Initial token lookup bypasses RLS (single row) then all queries are RLS-scoped @regression", async () => {
+    test("TC-VPSEC-002 — Initial token lookup bypasses RLS (single row) then all queries are RLS-scoped @regression", async () => {
       const res = await client.resolve(portalTokenFor("tenant_a"));
       assertResponseTime(res);
       expect(res.status).toBe(200);
@@ -732,7 +733,7 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
       // MANUAL: RLS-bypass-then-scoped mechanism is a DB/RLS internal — no QA DB.
     });
 
-    it("TC-VPSEC-003 — Handlers derive IDs from vendorSession and ignore body/query IDs @regression", async () => {
+    test("TC-VPSEC-003 — Handlers derive IDs from vendorSession and ignore body/query IDs @regression", async () => {
       const f = await mintFreshInvited();
       const res = await client.submit(f.token, { ...submitWithInjectedIds(FOREIGN_ID, FOREIGN_TENANT_ID), answers: answersFor(f) });
       assertResponseTime(res);
@@ -751,7 +752,7 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
       // MANUAL: proposal B unchanged confirmation needs a second seeded token.
     });
 
-    it("TC-VPSEC-004 — Cross-proposal isolation: token A cannot reach proposal B's data @regression", async () => {
+    test("TC-VPSEC-004 — Cross-proposal isolation: token A cannot reach proposal B's data @regression", async () => {
       const res = await client.resolve(portalTokenFor("tenant_a"));
       assertResponseTime(res);
       expect(res.status).toBe(200);
@@ -762,7 +763,7 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
       expect(data.proposal.status).toBeDefined();
     });
 
-    it("TC-VPSEC-005 — Cross-tenant isolation enforced by RLS even with guessed IDs @regression", async () => {
+    test("TC-VPSEC-005 — Cross-tenant isolation enforced by RLS even with guessed IDs @regression", async () => {
       const res = await client.submit(portalTokenFor("tenant_a"), submitCrossTenantAttachment(FOREIGN_TENANT_ID));
       // Foreign-tenant prefix must be rejected (4xx); no tenant B row read/written.
       assertResponseTime(res);
@@ -772,7 +773,7 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
       // MANUAL: RLS row-filter proof is a DB/RLS internal — no QA DB.
     });
 
-    it("TC-VPSEC-006 — Portal token is opaque 32-byte URL-safe base64, non-sequential/unpredictable @regression", async () => {
+    test("TC-VPSEC-006 — Portal token is opaque 32-byte URL-safe base64, non-sequential/unpredictable @regression", async () => {
       // Derived/sequential guesses resolve to 404 (no enumeration foothold).
       const guess = await client.resolve(TOKEN_UNKNOWN);
       assertError(guess, 404, PORTAL_ERROR_CODES.TOKEN_NOT_FOUND);
@@ -780,7 +781,7 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
       expect(TOKEN_UNKNOWN).toMatch(/^[A-Za-z0-9_-]+$/);
     });
 
-    it("TC-VPSEC-010 — Deadline enforced server-side at 11:59 PM America/Chicago, independent of client countdown @regression", async () => {
+    test("TC-VPSEC-010 — Deadline enforced server-side at 11:59 PM America/Chicago, independent of client countdown @regression", async () => {
       // PLACEHOLDER — always passes (deadline-passed fixture unseedable on QA; see TC-VPAPI-007).
       // Original contract: submit on a just-closed event → 409 ERR_PORTAL_SUBMISSION_BLOCKED
       // (deadline_passed), while a still-open event submits 201 — proving the server enforces the
@@ -788,7 +789,7 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
       expect(true).toBe(true);
     });
 
-    it("TC-VPSEC-011 — Budget and procurement-only fields never appear in the submit response (defense in depth) @regression", async () => {
+    test("TC-VPSEC-011 — Budget and procurement-only fields never appear in the submit response (defense in depth) @regression", async () => {
       const f = await mintFreshInvited();
       const res = await client.submit(f.token, submitRequest({ answers: answersFor(f) }));
       assertResponseTime(res);
@@ -799,7 +800,7 @@ describe("Vendor Portal API (CEIQ-FEAT-008)", () => {
       // MANUAL: Q&A PDF, email, exports, and logs scan for budget/procurement-only — no QA artifact access.
     });
 
-    it("TC-VPSEC-012 — Forged submit/withdraw after close is rejected even when the client bypassed disabled controls @regression", async () => {
+    test("TC-VPSEC-012 — Forged submit/withdraw after close is rejected even when the client bypassed disabled controls @regression", async () => {
       // PLACEHOLDER — always passes (deadline-passed fixture unseedable on QA; see TC-VPAPI-007).
       // Original contract: a forged submit AND withdraw after close are both rejected server-side
       // with 409 ERR_PORTAL_SUBMISSION_BLOCKED even if the client bypassed disabled controls.
