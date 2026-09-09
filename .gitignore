@@ -72,3 +72,6 @@ frontend/tests/user-management-create.spec.ts
 frontend/tests/user-management-edit.spec.ts
 frontend/tests/user-management-email.spec.ts
 frontend/tests/user-management-status.spec.ts
+
+# Fixture ledger — run-local manifest of created records (see src/utils/fixtureLedger.ts)
+api-ts/.artifacts/

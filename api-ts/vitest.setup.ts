@@ -3,6 +3,7 @@ import path from "path";
 import { afterEach } from "vitest";
 import { installApiCapture, drainApiCalls } from "./src/utils/apiCapture";
 import { installNetworkRetry } from "./src/utils/networkRetry";
+import { installLedgerInterceptor } from "./src/utils/ledgerInterceptor";
 
 // TEST_ENV selects automation/api-ts/envs/.env.<local|qa|prod> — defaults to local.
 const targetEnv = process.env.TEST_ENV ?? "local";
@@ -24,6 +25,13 @@ installApiCapture();
 // capture interceptor so a retried request is still recorded. See networkRetry.ts
 // for why only idempotent methods are replayed.
 installNetworkRetry();
+
+// Record every created record to a disk ledger and drop it again on a successful DELETE.
+// Per-suite teardown already works on a clean run (verified on QA 2026-09-09: four suites,
+// counts identical before and after), so on a healthy run this leaves the ledger empty. It
+// earns its keep when a run is KILLED — a CI timeout or Ctrl-C skips afterAll entirely, and
+// the manifest is then the only record of what to clean. scripts/sweep-fixtures.mjs drains it.
+installLedgerInterceptor();
 afterEach((ctx) => {
   const calls = drainApiCalls();
   if (calls.length > 0) {

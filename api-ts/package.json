@@ -51,7 +51,10 @@
     "test:dev:notifications": "cross-env TEST_ENV=dev NOTIFICATIONS_REQUEST_TIMEOUT_MS=25000 vitest run tests/notifications.test.ts",
     "test:qa:notifications": "cross-env TEST_ENV=qa NOTIFICATIONS_REQUEST_TIMEOUT_MS=25000 vitest run tests/notifications.test.ts",
     "test:qa:chat": "cross-env TEST_ENV=qa CHAT_REQUEST_TIMEOUT_MS=150000 vitest run tests/chat.test.ts --testTimeout=900000",
-    "test:qa:chat:slow": "cross-env TEST_ENV=qa CHAT_RUN_SLOW=1 vitest run tests/chat.test.ts --testTimeout=900000"
+    "test:qa:chat:slow": "cross-env TEST_ENV=qa CHAT_RUN_SLOW=1 vitest run tests/chat.test.ts --testTimeout=900000",
+    "sweep": "node scripts/sweep-fixtures.mjs",
+    "sweep:qa": "cross-env TEST_ENV=qa node scripts/sweep-fixtures.mjs",
+    "sweep:qa:apply": "cross-env TEST_ENV=qa node scripts/sweep-fixtures.mjs --apply"
   },
   "devDependencies": {
     "@faker-js/faker": "^9.0.0",
