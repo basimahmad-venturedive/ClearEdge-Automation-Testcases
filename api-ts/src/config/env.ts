@@ -42,7 +42,27 @@ export const maxResponseTimeS = (): number => Number(getOptional("MAX_RESPONSE_T
 
 export const useMock = (): boolean => getOptional("USE_MOCK", "0") === "1";
 
-export const isEnvVarSet = (key: string): boolean => Boolean(process.env[key]?.trim());
+/**
+ * Placeholder convention used by envs/.env.<env>.example: `__set_in_jenkins_<CRED_NAME>__`.
+ * The CI script (51_dependencies.sh) strips these lines and injects the real secret, so a
+ * placeholder surviving into process.env means the credential was NOT provided.
+ */
+const PLACEHOLDER_RE = /^__.*__$/;
+
+/**
+ * True when `key` holds a REAL value.
+ *
+ * A surviving placeholder counts as unset. Learned the hard way on Jenkins build #172: the
+ * credential-gated cases treat "non-empty" as "configured", so an un-stripped
+ * `__set_in_jenkins_CLEAREDGE_QA_TENANT2_PASSWORD__` made hasSecondTenant() true, the
+ * cross-tenant cases ran, and nine consecutive failed Cognito logins locked the account with
+ * "Password attempts exceeded". Skipping is the correct behaviour for a missing credential;
+ * hammering the pool with a literal placeholder is not.
+ */
+export const isEnvVarSet = (key: string): boolean => {
+  const v = process.env[key]?.trim();
+  return Boolean(v) && !PLACEHOLDER_RE.test(v as string);
+};
 
 // ---------------------------------------------------------------------------
 // Environment selection + live-target auth (dev/qa/prod).
@@ -81,7 +101,7 @@ export const devPmPassword = (): string => getRequired("DEV_PM_PASSWORD");
 export const devTenant2Username = (): string => getOptional("DEV_TENANT2_USERNAME", "");
 export const devTenant2Password = (): string => getOptional("DEV_TENANT2_PASSWORD", "");
 export const hasSecondTenant = (): boolean =>
-  Boolean(process.env.DEV_TENANT2_USERNAME?.trim() && process.env.DEV_TENANT2_PASSWORD?.trim());
+  isEnvVarSet("DEV_TENANT2_USERNAME") && isEnvVarSet("DEV_TENANT2_PASSWORD");
 
 // Procurement Analyst (view_vendors only, no manage_vendors) — for view-only / 403 access cases.
 export const devAnalystUsername = (): string => getRequired("DEV_ANALYST_USERNAME");
