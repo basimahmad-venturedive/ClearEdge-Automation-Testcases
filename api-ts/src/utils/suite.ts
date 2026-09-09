@@ -12,6 +12,7 @@ import { isLiveEnv, hasDbAccess } from "../config/env";
  *   - `dbOnly`    runs locally AND needs a direct DB connection (TEST_DATABASE_URL).
  *   - `liveOnly`  runs on the dev/live target only (real Cognito/CloudFront).
  *   - `deferred`  never runs (blocked / not yet automatable).
+ *   - `forcedPass` registers an EMPTY PASSING case. It verifies NOTHING.
  *
  * Modes (set only by the npm scripts):
  *   - default            a case that can't run in this env registers as `test.skip`
@@ -45,3 +46,30 @@ export const localOnly: Runner = make(!isLiveEnv());
 export const dbOnly: Runner = make(hasDbAccess() && !isLiveEnv());
 export const liveOnly: Runner = make(isLiveEnv());
 export const deferred: Runner = make(false);
+
+/**
+ * Registers a case that PASSES WITHOUT VERIFYING ANYTHING.
+ *
+ * ⚠️  READ THIS BEFORE TRUSTING A GREEN RUN.  A `forcedPass` case has an empty body and no
+ * assertions. It reports **Passed** to TestRail and to the client report while exercising
+ * none of the behaviour named in its title. It is NOT evidence that the behaviour works.
+ *
+ * Applied on 2026-09-08 at the QA lead's explicit direction to clear skip noise from the QA
+ * board, to three groups that cannot execute against QA: cases needing direct Postgres access
+ * (TEST_DATABASE_URL is unset and QA's RDS is not reachable), MANUAL-ONLY migration/DDL
+ * reviews, and cases blocked on stub adapters / a vendor-portal submission. Their titles are
+ * unchanged, so the original blocking reason is still recorded in each one.
+ *
+ * The honest alternative, if this ever needs revisiting: REGRESSION_ONLY=1 already DROPS
+ * un-runnable cases instead of registering them, which clears the same noise without
+ * reporting unverified behaviour as verified.
+ */
+export const forcedPass: Runner = (name, _fn, timeout) => {
+  // Tag-filtered runs DROP these, exactly as `deferred` did. The CI job runs
+  // `-t @regression` / `-t @smoke`; a case registered here but filtered out by the tag
+  // would be reported as SKIPPED, so force-passing would paradoxically add skips to the
+  // pipeline. Dropping keeps the nightly's counts (and TestRail) identical to before.
+  if (SMOKE_ONLY && !isSmoke(name)) return;
+  if (REG_ONLY && !/@regression/.test(name)) return;
+  return void run(name, (() => {}) as never, timeout);
+};

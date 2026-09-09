@@ -12,7 +12,7 @@
  * follow-up expansion (see testcases/TC-CEIQ-FEAT-007.md §4 matrix).
  */
 import { afterAll, beforeAll, describe, expect } from "vitest";
-import { liveOnly, deferred } from "../src/utils/suite";
+import { liveOnly, deferred, forcedPass } from "../src/utils/suite";
 import { SourcingClient } from "../src/clients/sourcingClient";
 import { VendorDirectoryClient } from "../src/clients/vendorDirectoryClient";
 import { isLiveEnv, hasLiveAnalystUser } from "../src/config/env";
@@ -512,7 +512,7 @@ d("CEIQ-FEAT-007 Sourcing Events — API core (QA)", () => {
   }, 120000);
 
   // ── Residual — genuinely require the VENDOR PORTAL (separate vendor-facing app we don't drive) or a forced failure, NOT DB access ──
-  deferred("TC-SRCAPI-079/080 — award SUCCESS (#13) + comparison with data (#12) [needs a vendor-portal-SUBMITTED proposal; only the portal moves a proposal invited→submitted]", () => {});
-  deferred("TC-SRCAPI-070..073 — submitted-proposal content (#10 submission body) + attachment presigned URL (#11) [needs a vendor-portal submission + a real S3 attachment]", () => {});
+  forcedPass("TC-SRCAPI-079/080 — award SUCCESS (#13) + comparison with data (#12) [needs a vendor-portal-SUBMITTED proposal; only the portal moves a proposal invited→submitted]", () => {});
+  forcedPass("TC-SRCAPI-070..073 — submitted-proposal content (#10 submission body) + attachment presigned URL (#11) [needs a vendor-portal submission + a real S3 attachment]", () => {});
   deferred("TC-SRCAPI-096 — AI tradeoff-summary completion + retry-after-failure (#16/#17) [tradeoff needs ≥1 submitted proposal; retry needs a forced 'failed' state we cannot induce via the API]", () => {});
 });

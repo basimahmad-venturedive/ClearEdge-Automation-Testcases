@@ -7,7 +7,13 @@
  * Procurement Owner. This helper returns that live context so the env-agnostic read/validation
  * cases can run unchanged on a live target.
  */
-import { getTenantIdToken, getManagerIdToken, getAnalystIdToken, decodeJwtClaims } from "./tokenProvider";
+import {
+  getTenantIdToken,
+  getManagerIdToken,
+  getAnalystIdToken,
+  getTenant2IdToken,
+  decodeJwtClaims,
+} from "./tokenProvider";
 
 export interface OwnerContext {
   token: string;
@@ -43,6 +49,21 @@ export async function liveManagerContext(): Promise<OwnerContext> {
 /** Real Procurement-Analyst context (view_vendors only) on a live target: log in as DEV_ANALYST_*. */
 export async function liveAnalystContext(): Promise<OwnerContext> {
   const token = await getAnalystIdToken();
+  const c = decodeJwtClaims(token);
+  return {
+    token,
+    tenantId: String(c["custom:tenant_id"] ?? ""),
+    cognitoSub: String(c.sub ?? ""),
+    email: String(c.email ?? ""),
+  };
+}
+
+/**
+ * A Procurement Owner in a DIFFERENT tenant (DEV_TENANT2_*), for cross-tenant isolation cases.
+ * Gate the calling case on hasSecondTenant() - this throws when it is not configured.
+ */
+export async function liveSecondTenantContext(): Promise<OwnerContext> {
+  const token = await getTenant2IdToken();
   const c = decodeJwtClaims(token);
   return {
     token,

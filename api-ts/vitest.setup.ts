@@ -2,6 +2,7 @@ import dotenv from "dotenv";
 import path from "path";
 import { afterEach } from "vitest";
 import { installApiCapture, drainApiCalls } from "./src/utils/apiCapture";
+import { installNetworkRetry } from "./src/utils/networkRetry";
 
 // TEST_ENV selects automation/api-ts/envs/.env.<local|qa|prod> — defaults to local.
 const targetEnv = process.env.TEST_ENV ?? "local";
@@ -18,6 +19,11 @@ console.log(`[vitest.setup] Loaded environment: ${targetEnv}`);
 // (vitest.config.ts fileParallelism:false), so the shared buffer maps cleanly
 // to one test at a time — afterEach hands the current test's calls to task.meta.
 installApiCapture();
+
+// Retry read-only requests through transient socket drops. Installed after the
+// capture interceptor so a retried request is still recorded. See networkRetry.ts
+// for why only idempotent methods are replayed.
+installNetworkRetry();
 afterEach((ctx) => {
   const calls = drainApiCalls();
   if (calls.length > 0) {

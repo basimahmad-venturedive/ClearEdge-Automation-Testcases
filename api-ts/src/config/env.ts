@@ -75,6 +75,14 @@ export const devTenantPassword = (): string => getRequired("DEV_TENANT_PASSWORD"
 // Procurement Manager (same tenant pool + app client as the PO) — for role-parity cases.
 export const devPmUsername = (): string => getRequired("DEV_PM_USERNAME");
 export const devPmPassword = (): string => getRequired("DEV_PM_PASSWORD");
+// Second tenant (same tenant pool + app client, DIFFERENT custom:tenant_id) — the actor for
+// every cross-tenant isolation case. Optional: hasSecondTenant() gates the cases that need it,
+// so a target without one still runs the rest of the suite.
+export const devTenant2Username = (): string => getOptional("DEV_TENANT2_USERNAME", "");
+export const devTenant2Password = (): string => getOptional("DEV_TENANT2_PASSWORD", "");
+export const hasSecondTenant = (): boolean =>
+  Boolean(process.env.DEV_TENANT2_USERNAME?.trim() && process.env.DEV_TENANT2_PASSWORD?.trim());
+
 // Procurement Analyst (view_vendors only, no manage_vendors) — for view-only / 403 access cases.
 export const devAnalystUsername = (): string => getRequired("DEV_ANALYST_USERNAME");
 export const devAnalystPassword = (): string => getRequired("DEV_ANALYST_PASSWORD");

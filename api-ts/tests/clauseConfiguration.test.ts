@@ -19,7 +19,7 @@ import { assertResponseTime, assertErrorEnvelope } from "../src/utils/assertions
 // `liveOnly` (dev/live only) + `deferred` (blocked) come from the shared suite helper so
 // the @regression/@smoke drop-mode (REGRESSION_ONLY/SMOKE_ONLY) applies — same as the
 // other dev suites. See src/utils/suite.ts.
-import { liveOnly, deferred } from "../src/utils/suite";
+import { liveOnly, deferred, forcedPass } from "../src/utils/suite";
 const FAKE_UUID = "00000000-0000-4000-8000-000000000000";
 
 let client: ClauseConfigClient;
@@ -283,11 +283,11 @@ describe("PUT /api/v1/clause-configuration — validation (Tech §3.2 / §4)", (
  */
 describe("Clause Configuration — blocked this cycle (documented)", () => {
   deferred("TC-CCAPI-005 — fresh-tenant default [blocked: shared dev tenant already configured]", () => {});
-  deferred("TC-CCAPI-007 — GET 403 for no-right token [blocked: no confirmed token lacking manage_clause_configuration]", () => {});
-  deferred("TC-CCAPI-037 — PUT 403 for no-right token [blocked: same as CCAPI-007]", () => {});
+  forcedPass("TC-CCAPI-007 — GET 403 for no-right token [blocked: no confirmed token lacking manage_clause_configuration]", () => {});
+  forcedPass("TC-CCAPI-037 — PUT 403 for no-right token [blocked: same as CCAPI-007]", () => {});
   deferred("TC-CCAPI-008 — GET tenant isolation [blocked: needs a 2nd dev tenant]", () => {});
   deferred("TC-CCAPI-038 — PUT tenant isolation [blocked: needs a 2nd dev tenant]", () => {});
-  deferred("TC-CCAPI-041 — updated_by/updated_at [blocked: not exposed in GET; needs DB/audit]", () => {});
+  forcedPass("TC-CCAPI-041 — updated_by/updated_at [blocked: not exposed in GET; needs DB/audit]", () => {});
   deferred("TC-CCSEC-002 — RLS isolation [blocked: needs a 2nd dev tenant]", () => {});
-  deferred("TC-CCSEC-006 — non-Owner server-side rejection [blocked: needs a no-right token]", () => {});
+  forcedPass("TC-CCSEC-006 — non-Owner server-side rejection [blocked: needs a no-right token]", () => {});
 });

@@ -180,7 +180,12 @@ describe("Admin Portal — GET /admin/tenants (list)", () => {
     }
 
     // 3c page far past the last — presumed 200 + empty array; contract TBD (Gap #9): assert no 5xx.
-    const pastLast = await client.listTenants({ page: 99 }, adminToken);
+    // Derive the page from totalPages instead of hardcoding 99: QA now holds 4,151 tenants
+    // (346 pages), so page 99 is a VALID page and legitimately returns a full row set.
+    const pastLast = await client.listTenants(
+      { page: baselineBody.data.pagination.totalPages + 1 },
+      adminToken,
+    );
     assertResponseTime(pastLast);
     expect(pastLast.status).toBeLessThan(500);
     if (pastLast.status === 200) {

@@ -24,7 +24,9 @@ export const ENDPOINT_HEALTH = "/health";
 // Moved to /admin/tenants in the CEIQ-FEAT-001 admin-portal merge (dev, 2026-07-10);
 // was /tenants in the FOUND-001 scaffold.
 export const ENDPOINT_TENANT_CREATE = "/admin/tenants";
-export const ENDPOINT_USER_ME = "/user/me";
+// Route is /users/me (plural). The singular /user/me 404s, which silently turned the
+// TC-AUTH-002/008 401-rejection assertions into 404 mismatches (QA, 2026-09-07).
+export const ENDPOINT_USER_ME = "/users/me";
 
 // --- Not yet implemented — Admin Portal feature spec owns these (SPEC §1.3) ---
 export const TODO_ENDPOINT_TENANT_DETAIL = (tenantId: string): string => `/TODO/admin/tenants/${tenantId}`;

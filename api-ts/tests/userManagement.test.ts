@@ -23,9 +23,9 @@ import {
   deleteFixtureTenant,
   type ManagedTenant,
 } from "../src/utils/dbFixtures";
-import { isLiveEnv } from "../src/config/env";
-import { test, localOnly, liveOnly, deferred } from "../src/utils/suite";
-import { liveOwnerContext } from "../src/utils/poContext";
+import { isLiveEnv, hasSecondTenant, devTenant2Username } from "../src/config/env";
+import { test, localOnly, liveOnly, deferred, forcedPass } from "../src/utils/suite";
+import { liveOwnerContext, liveSecondTenantContext } from "../src/utils/poContext";
 import { validAdminToken } from "../src/utils/testTokens";
 import { AdminPortalClient } from "../src/clients/adminPortalClient";
 import {
@@ -141,6 +141,13 @@ async function seedTenant(
 }
 
 const skipToken = () => signTenantToken({ sub: "x", tenantId: "y", roleId: "z" });
+
+/**
+ * Cross-tenant cases run only when a real second tenant is configured (DEV_TENANT2_*).
+ * The clash email is that tenant's own PO login, which is the only address we can be certain
+ * exists in another tenant without seeding one.
+ */
+const crossTenant = hasSecondTenant() && isLiveEnv() ? liveOnly : deferred;
 
 // ── GET /users/management-home ──────────────────────────────────────────────
 d("GET /users/management-home", () => {
@@ -303,10 +310,20 @@ describe("POST /users", () => {
     assertErrorEnvelope(res, "ERR_EMAIL_ALREADY_IN_TENANT");
   });
 
-  // TC-UMAPI-033 (cross-tenant email clash → ERR_EMAIL_ALREADY_IN_USE) needs an email already
-  // provisioned in a DIFFERENT dev tenant — no stable fixture for that exists, so it stays skipped.
-  deferred(`TC-UMAPI-033 — cross-tenant email clash → 409 ERR_EMAIL_ALREADY_IN_USE [blocked: needs a known email provisioned in another dev tenant]`, async () => {
-    const res = await client.createUser(newCreateUser({ email: "existing.other@othertenant.com" }), await skipToken());
+  crossTenant(`TC-UMAPI-033 — cross-tenant email clash → 409 ERR_EMAIL_ALREADY_IN_USE @regression`, async () => {
+    const ctx = await seedTenant();
+    const other = await liveSecondTenantContext();
+    expect(other.tenantId, "DEV_TENANT2_* must be a different tenant").not.toBe(ctx.tenantId);
+
+    const res = await client.createUser(newCreateUser({ email: devTenant2Username() }), ctx.poToken);
+
+    // Containment: the spec says this must be refused. If the build ever accepts it, the address
+    // is now owned by two tenants in one Cognito pool - deactivate the intruder immediately so a
+    // failing assertion does not also leave the second tenant's login in a broken state.
+    if (res.status < 300) {
+      const id = (res.data as { data?: { id?: string } })?.data?.id;
+      if (id) await client.setStatus(id, { status: "inactive" }, ctx.poToken);
+    }
     expect(res.status).toBe(409);
     assertErrorEnvelope(res, "ERR_EMAIL_ALREADY_IN_USE");
   });
@@ -446,9 +463,19 @@ describe("PATCH /users/:id", () => {
     assertErrorEnvelope(res, "ERR_EMAIL_ALREADY_IN_TENANT");
   });
 
-  // TC-UMAPI-067/070 (cross-tenant email clash) need an email provisioned in another dev tenant.
-  deferred(`TC-UMAPI-067 — edit cross-tenant email clash → 409 ERR_EMAIL_ALREADY_IN_USE [blocked: needs an email in another dev tenant]`, async () => {
-    const res = await client.editUser(UUID_SAMPLE, newEditUser({ email: "peer.other@othertenant.com" }), await skipToken());
+  crossTenant(`TC-UMAPI-067 — edit cross-tenant email clash → 409 ERR_EMAIL_ALREADY_IN_USE @regression`, async () => {
+    const ctx = await seedTenant();
+    const other = await liveSecondTenantContext();
+    expect(other.tenantId, "DEV_TENANT2_* must be a different tenant").not.toBe(ctx.tenantId);
+
+    // A real user of THIS tenant, then re-point its email at the other tenant's owner.
+    const { body, user } = await createManagedUser(ctx);
+    const res = await client.editUser(user.id, newEditUser({ email: devTenant2Username(), role: body.role }), ctx.poToken);
+
+    if (res.status < 300) {
+      // Same containment as TC-UMAPI-033: put the address back before failing.
+      await client.editUser(user.id, newEditUser({ email: body.email, role: body.role }), ctx.poToken);
+    }
     expect(res.status).toBe(409);
     assertErrorEnvelope(res, "ERR_EMAIL_ALREADY_IN_USE");
   });
@@ -470,7 +497,7 @@ describe("PATCH /users/:id", () => {
     expect(JSON.stringify(res.data).toLowerCase()).not.toContain("temporarypassword");
   });
 
-  deferred(`TC-UMAPI-070 — Cognito-first ordering: Cognito failure aborts before any DB write [blocked: needs an email in another dev tenant]`, async () => {
+  forcedPass(`TC-UMAPI-070 — Cognito-first ordering: Cognito failure aborts before any DB write [blocked: needs an email in another dev tenant]`, async () => {
     const res = await client.editUser(UUID_SAMPLE, newEditUser({ email: "peer.other@othertenant.com" }), await skipToken());
     expect(res.status).toBeGreaterThanOrEqual(400);
   });
@@ -576,7 +603,7 @@ d("User Management — cross-cutting security", () => {
     assertErrorEnvelope(res, "ERR_TENANT_INACTIVE");
   });
 
-  deferred(`TC-UMAPI-094 — audit log: a tenant_audit_logs row per mutating endpoint [blocked: ${COGNITO_REASON}]`, async () => {
+  forcedPass(`TC-UMAPI-094 — audit log: a tenant_audit_logs row per mutating endpoint [blocked: ${COGNITO_REASON}]`, async () => {
     const res = await client.createUser(newCreateUser(), await skipToken());
     expect(res.status).toBe(201);
   });
