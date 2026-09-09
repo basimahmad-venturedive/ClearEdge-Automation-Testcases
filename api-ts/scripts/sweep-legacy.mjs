@@ -113,15 +113,34 @@ async function fetchAll(A, apiPath, key) {
   return rows;
 }
 
+/**
+ * Mint a Cognito token, never letting the credential escape into a log.
+ *
+ * A NETWORK failure (DNS, reset) rejects with a raw AxiosError whose `config.data` is the
+ * InitiateAuth body — i.e. the plaintext password. Node then prints the whole object on an
+ * uncaught rejection. That happened once here on a transient ENOTFOUND and put a real QA
+ * password in the console, so every throw out of this function is now a plain string.
+ */
 async function mint(clientId, user, pass) {
-  const r = await axios.post(`https://cognito-idp.${REGION}.amazonaws.com/`,
-    { AuthFlow: "USER_PASSWORD_AUTH", ClientId: clientId, AuthParameters: { USERNAME: user, PASSWORD: pass } },
-    { headers: H, validateStatus: () => true });
+  let r;
+  try {
+    r = await axios.post(`https://cognito-idp.${REGION}.amazonaws.com/`,
+      { AuthFlow: "USER_PASSWORD_AUTH", ClientId: clientId, AuthParameters: { USERNAME: user, PASSWORD: pass } },
+      { headers: H, validateStatus: () => true });
+  } catch (e) {
+    throw new Error(`login ${user}: network error ${(e && e.code) || "unknown"} contacting Cognito`);
+  }
   if (r.status !== 200) throw new Error(`login ${user}: ${r.status} ${JSON.stringify(r.data).slice(0, 140)}`);
   return r.data.AuthenticationResult.IdToken;
 }
 
-const po = await mint(process.env.COGNITO_TENANT_APP_CLIENT_ID, process.env.DEV_TENANT_USERNAME, process.env.DEV_TENANT_PASSWORD);
+let po;
+try {
+  po = await mint(process.env.COGNITO_TENANT_APP_CLIENT_ID, process.env.DEV_TENANT_USERNAME, process.env.DEV_TENANT_PASSWORD);
+} catch (e) {
+  console.error(`[legacy-sweep] ${e.message}`);
+  process.exit(2);
+}
 const A = { headers: { Authorization: `Bearer ${po}` }, validateStatus: () => true, timeout: 30000 };
 const TENANT_ID = JSON.parse(Buffer.from(po.split(".")[1], "base64url").toString())["custom:tenant_id"];
 
