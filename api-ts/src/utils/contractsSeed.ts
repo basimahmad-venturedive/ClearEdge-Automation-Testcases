@@ -153,6 +153,56 @@ export interface SeededVersion {
   versionId: string;
   contractId: string;
   extractionStatus?: string;
+  /** True when this is a PRE-EXISTING QA family handed back by the reuse fallback. */
+  reused?: boolean;
+}
+
+/**
+ * Families the reuse fallback handed out. They are real QA data that this run did NOT
+ * create, so destroyFamily() must never delete them - see the guard there.
+ */
+const reusedFamilies = new Set<string>();
+
+/**
+ * Find an existing, already-extracted, SAVED family to read against.
+ *
+ * Only Endpoint #10-servable families qualify: a family is servable exactly when it has a
+ * saved representative version (spec v1.7 SS9.5), which also means Stage 1 completed on it.
+ * The newest-first default listing is useless for this during a Stage 1 outage - every recent
+ * family is a stranded `in_review` upload - so this queries by lifecycle status instead, where
+ * the healthy fixtures live (measured on QA 2026-09-09: 12 active / 20 expired / 16 terminated,
+ * all detail-200). Returns null when nothing qualifies, so callers can fail with a real reason.
+ *
+ * NOTE: everything it returns has exactly ONE version on QA today, so it cannot satisfy a
+ * multi-version need (comparisons, version lists, activate-another-version).
+ */
+export async function findReusableSavedFamily(
+  token: string,
+  statuses: string[] = ["active", "expired", "terminated", "expiring_soon"],
+): Promise<SeededVersion | null> {
+  for (const status of statuses) {
+    const list = await api.list(token, { page: 1, limit: 20, status });
+    if (list.status !== 200) continue;
+    for (const row of (list.data?.data?.contracts ?? []) as Array<Record<string, string>>) {
+      const familyId = row.familyId;
+      if (!familyId) continue;
+      const detail = await api.detail(token, familyId);
+      if (detail.status !== 200) continue;
+      const versions = await api.versions(token, familyId);
+      const v = (versions.data?.data?.versions ?? [])[0] as Record<string, string> | undefined;
+      const versionId = v?.versionId ?? v?.id ?? (detail.data?.data?.versionId as string | undefined);
+      if (!versionId) continue;
+      reusedFamilies.add(familyId);
+      return {
+        familyId,
+        versionId,
+        contractId: row.contractId ?? (detail.data?.data?.contractId as string),
+        extractionStatus: "completed",
+        reused: true,
+      };
+    }
+  }
+  return null;
 }
 
 /** Create a contract and wait for Stage 1 to finish. Does NOT save. */
@@ -182,6 +232,43 @@ export async function seedUploadedContract(
  * Stage 2 (spec US-CT-003). Returns once Save returns, not once Stage 2 finishes.
  */
 export async function seedSavedContract(
+  token: string,
+  opts: Parameters<typeof seedUploadedContract>[1] & {
+    review?: Record<string, unknown>;
+    /**
+     * READ-ONLY CALLERS ONLY. When a fresh family cannot reach the saved state because
+     * Stage 1 is unavailable (CLRE-398: `ai_provider_error` on every upload), fall back to an
+     * existing saved family instead of throwing and taking the whole describe down with it.
+     *
+     * Do NOT set this on a block that activates, terminates, deletes, versions or saves over
+     * the family - the fallback hands back real QA data shared with every other test.
+     * destroyFamily() refuses to delete anything borrowed this way.
+     */
+    reuseIfStage1Unavailable?: boolean;
+  } = {},
+): Promise<SeededVersion> {
+  if (opts.reuseIfStage1Unavailable) {
+    try {
+      return await seedSavedContractStrict(token, opts);
+    } catch (err) {
+      const msg = String((err as Error)?.message ?? err);
+      // Only Stage 1 unavailability earns the fallback. A validation or auth failure is a
+      // real defect and must still surface.
+      if (!/ERR_EXTRACTION_NOT_COMPLETED|ERR_EXTRACTION_FAILED|ai_provider_error|extraction/i.test(msg)) throw err;
+      const reused = await findReusableSavedFamily(token);
+      if (!reused) throw err;
+      console.warn(
+        `[seed] Stage 1 unavailable (${msg.slice(0, 120)}) - reusing existing saved family ` +
+          `${reused.contractId} / ${reused.familyId}. READ-ONLY: this family is shared QA data.`,
+      );
+      return reused;
+    }
+  }
+  return seedSavedContractStrict(token, opts);
+}
+
+/** The real create -> extract -> save path. Throws when any step fails. */
+async function seedSavedContractStrict(
   token: string,
   opts: Parameters<typeof seedUploadedContract>[1] & { review?: Record<string, unknown> } = {},
 ): Promise<SeededVersion> {
@@ -253,6 +340,12 @@ export async function seedFailedExtraction(token: string): Promise<SeededVersion
  */
 export async function destroyFamily(token: string, familyId?: string): Promise<void> {
   if (!familyId) return;
+  // NEVER delete a family the reuse fallback borrowed - this run did not create it, and
+  // deleting it would silently destroy the very pool the fallback depends on.
+  if (reusedFamilies.has(familyId)) {
+    console.warn(`[teardown] skipping delete of REUSED family ${familyId} (pre-existing QA data)`);
+    return;
+  }
   try {
     const r = await api.deleteFamily(token, familyId);
     if (r.status >= 400) {
