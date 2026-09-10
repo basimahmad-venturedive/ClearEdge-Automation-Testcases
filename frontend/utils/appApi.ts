@@ -30,7 +30,7 @@ export interface SeededUser {
 }
 
 /** Read the app's Cognito ID token from the persisted Redux store. */
-async function readAppIdToken(page: Page): Promise<string> {
+export async function readAppIdToken(page: Page): Promise<string> {
   const token = await page.evaluate(() => {
     try {
       const raw = window.localStorage.getItem('persist:ceiq-auth');
