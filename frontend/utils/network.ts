@@ -93,7 +93,11 @@ export async function delayApiResponse(
 ): Promise<() => Promise<void>> {
   const urlMatcher = (url: URL): boolean => url.pathname.includes(urlFragment);
   const handler = async (route: Route): Promise<void> => {
-    if (route.request().method() !== method) {
+    // Only delay the XHR/fetch API call — NOT the page-document navigation (which shares the
+    // /portal/ path); delaying the document would just slow the whole load, not surface the
+    // in-app loading skeleton.
+    const type = route.request().resourceType();
+    if (route.request().method() !== method || (type !== 'xhr' && type !== 'fetch')) {
       await route.fallback();
       return;
     }
