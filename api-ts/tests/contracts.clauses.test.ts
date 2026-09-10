@@ -152,7 +152,7 @@ afterAll(async () => {
 });
 
 describe("Endpoint #18 - GET /:familyId/clause-comparison", () => {
-  test("TC-CTAPI-127 clause comparison happy path returns the completed envelope", async () => {
+  test("TC-CTAPI-127 clause comparison happy path returns the completed envelope @regression", async () => {
     if (!stage2Ready("TC-CTAPI-127")) return;
     const r = await api.clauseComparison(poToken, familyId!);
     expect(r.status).toBe(200);
@@ -188,7 +188,7 @@ describe("Endpoint #18 - GET /:familyId/clause-comparison", () => {
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-128-1 row count equals the upload-time selected-clause snapshot", async () => {
+  test("TC-CTAPI-128-1 row count equals the upload-time selected-clause snapshot @regression", async () => {
     if (!stage2Ready("TC-CTAPI-128-1")) return;
     const r = await api.clauseComparison(poToken, familyId!);
     expect(r.status).toBe(200);
@@ -212,7 +212,7 @@ describe("Endpoint #18 - GET /:familyId/clause-comparison", () => {
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-128-2 clause rows are ordered by frozen sort_order ascending and stably", async () => {
+  test("TC-CTAPI-128-2 clause rows are ordered by frozen sort_order ascending and stably @regression", async () => {
     if (!stage2Ready("TC-CTAPI-128-2")) return;
     const r1 = await api.clauseComparison(poToken, familyId!);
     const r2 = await api.clauseComparison(poToken, familyId!);
@@ -282,7 +282,7 @@ function assertDerivationInvariants(rows: Array<Record<string, unknown>>): void 
 }
 
 describe("Endpoint #18 - alignment badge derivation (spec 9.6 / 9.6a)", () => {
-  test("TC-CTAPI-129-1 position distance 0 derives alignment aligned", async () => {
+  test("TC-CTAPI-129-1 position distance 0 derives alignment aligned @regression", async () => {
     if (!stage2Ready("TC-CTAPI-129-1")) return;
     const rows = await clauseRows();
     if (rows.length === 0) {
@@ -308,7 +308,7 @@ describe("Endpoint #18 - alignment badge derivation (spec 9.6 / 9.6a)", () => {
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-129-2 position distance 1 derives alignment minor_deviation", async () => {
+  test("TC-CTAPI-129-2 position distance 1 derives alignment minor_deviation @regression", async () => {
     if (!stage2Ready("TC-CTAPI-129-2")) return;
     const rows = await clauseRows();
     if (rows.length === 0) {
@@ -331,7 +331,7 @@ describe("Endpoint #18 - alignment badge derivation (spec 9.6 / 9.6a)", () => {
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-129-3 position distance 2 derives alignment material_deviation", async () => {
+  test("TC-CTAPI-129-3 position distance 2 derives alignment material_deviation @regression", async () => {
     if (!stage2Ready("TC-CTAPI-129-3")) return;
     const rows = await clauseRows();
     if (rows.length === 0) {
@@ -355,7 +355,7 @@ describe("Endpoint #18 - alignment badge derivation (spec 9.6 / 9.6a)", () => {
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-129-4 position distance 3 also derives material_deviation with no extra gradation", async () => {
+  test("TC-CTAPI-129-4 position distance 3 also derives material_deviation with no extra gradation @regression", async () => {
     if (!stage2Ready("TC-CTAPI-129-4")) return;
     const rows = await clauseRows();
     if (rows.length === 0) {
@@ -384,7 +384,7 @@ describe("Endpoint #18 - alignment badge derivation (spec 9.6 / 9.6a)", () => {
 });
 
 describe("Endpoint #18 - Not Found and Not Specified handling (spec 9.6a)", () => {
-  test("TC-CTAPI-130-1 Not Found badge when no relevant text was extracted", async () => {
+  test("TC-CTAPI-130-1 Not Found badge when no relevant text was extracted @regression", async () => {
     if (!stage2Ready("TC-CTAPI-130-1")) return;
     const rows = await clauseRows();
     if (rows.length === 0) {
@@ -414,7 +414,7 @@ describe("Endpoint #18 - Not Found and Not Specified handling (spec 9.6a)", () =
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-130-2 Not Found badge when extracted text matches none of the configured positions", async () => {
+  test("TC-CTAPI-130-2 Not Found badge when extracted text matches none of the configured positions @regression", async () => {
     if (!stage2Ready("TC-CTAPI-130-2")) return;
     const rows = await clauseRows();
     if (rows.length === 0) {
@@ -440,7 +440,7 @@ describe("Endpoint #18 - Not Found and Not Specified handling (spec 9.6a)", () =
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-131-1 Not Specified standard yields no badge while In contract text is still returned", async () => {
+  test("TC-CTAPI-131-1 Not Specified standard yields no badge while In contract text is still returned @regression", async () => {
     if (!stage2Ready("TC-CTAPI-131-1")) return;
     const rows = await clauseRows();
     if (rows.length === 0) {
@@ -468,7 +468,7 @@ describe("Endpoint #18 - Not Found and Not Specified handling (spec 9.6a)", () =
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-131-2 no badge is not a fifth alignment state; the enum stays at four values", async () => {
+  test("TC-CTAPI-131-2 no badge is not a fifth alignment state; the enum stays at four values @regression", async () => {
     if (!stage2Ready("TC-CTAPI-131-2")) return;
     const rows = await clauseRows();
     if (rows.length === 0) {
@@ -506,7 +506,7 @@ const CC_EMPTY_MESSAGE =
   "Visit Clause Configuration to set up clause standards for future uploads.";
 
 describe("Endpoint #18 - non-completed states (spec 9.7)", () => {
-  test("TC-CTAPI-132-1 Stage 2 pending returns the pending state with the verbatim message", async () => {
+  test("TC-CTAPI-132-1 Stage 2 pending returns the pending state with the verbatim message @regression", async () => {
     const r = pendingCc;
     if (!r) {
       console.log("[INCONCLUSIVE] TC-CTAPI-132-1: no post-Save response captured (seeding failed).");
@@ -532,7 +532,7 @@ describe("Endpoint #18 - non-completed states (spec 9.7)", () => {
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-132-2 empty snapshot returns the empty state with the verbatim message", async () => {
+  test("TC-CTAPI-132-2 empty snapshot returns the empty state with the verbatim message @regression", async () => {
     if (!stage2Ready("TC-CTAPI-132-2")) return;
     const r = await api.clauseComparison(poToken, familyId!);
     expect(r.status).toBe(200);
@@ -554,7 +554,7 @@ describe("Endpoint #18 - non-completed states (spec 9.7)", () => {
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-132-3 failed Stage 2 returns the failed state", async () => {
+  test("TC-CTAPI-132-3 failed Stage 2 returns the failed state @regression", async () => {
     if (!familyId) {
       console.log("[INCONCLUSIVE] TC-CTAPI-132-3: no seeded family.");
       return;
@@ -578,7 +578,7 @@ describe("Endpoint #18 - non-completed states (spec 9.7)", () => {
 });
 
 describe("Endpoint #18 - security and immutability", () => {
-  test("TC-CTAPI-133-1 the snapshot is stable across repeated reads", async () => {
+  test("TC-CTAPI-133-1 the snapshot is stable across repeated reads @regression", async () => {
     if (!stage2Ready("TC-CTAPI-133-1")) return;
     // Full immutability against a live Clause Configuration edit would require mutating the
     // tenant's shared config, which this suite must not do (other agents run against the
@@ -594,7 +594,7 @@ describe("Endpoint #18 - security and immutability", () => {
     assertResponseTime(b);
   });
 
-  test("TC-CTAPI-133-2 an unauthenticated clause-comparison request is rejected", async () => {
+  test("TC-CTAPI-133-2 an unauthenticated clause-comparison request is rejected @regression", async () => {
     if (!familyId) return;
     const r = await api.clauseComparison("", familyId);
     expect(r.status).toBe(401);
@@ -603,7 +603,7 @@ describe("Endpoint #18 - security and immutability", () => {
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-133-3 an Analyst can read clause comparison", async () => {
+  test("TC-CTAPI-133-3 an Analyst can read clause comparison @regression", async () => {
     if (!familyId) return;
     // SPEC 4.1 row 18 puts Endpoint #18 behind view_contracts, which the Analyst holds.
     const r = await api.clauseComparison(analystToken, familyId);
@@ -615,14 +615,14 @@ describe("Endpoint #18 - security and immutability", () => {
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-133-4 an unknown familyId returns 404 for clause comparison", async () => {
+  test("TC-CTAPI-133-4 an unknown familyId returns 404 for clause comparison @regression", async () => {
     const r = await api.clauseComparison(poToken, MISSING_UUID);
     expect(r.status).toBe(404);
     assertErrorEnvelope(r, "ERR_CONTRACT_NOT_FOUND");
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-133-5 a cross-tenant familyId returns 404 not 403 for clause comparison", async () => {
+  test("TC-CTAPI-133-5 a cross-tenant familyId returns 404 not 403 for clause comparison @regression", async () => {
     // A well-formed uuid the caller's tenant does not own must be indistinguishable from a
     // missing one, so RLS never discloses existence.
     const r = await api.clauseComparison(poToken, MISSING_UUID);
@@ -651,7 +651,7 @@ async function riskGroups(): Promise<RiskGroup[]> {
 }
 
 describe("Endpoint #19 - GET /:familyId/risks", () => {
-  test("TC-CTAPI-134 risks happy path returns the completed grouped envelope", async () => {
+  test("TC-CTAPI-134 risks happy path returns the completed grouped envelope @regression", async () => {
     if (!stage2Ready("TC-CTAPI-134")) return;
     const r = await api.risks(poToken, familyId!);
     expect(r.status).toBe(200);
@@ -711,7 +711,7 @@ describe("Endpoint #19 - GET /:familyId/risks", () => {
     assertResponseTime(analyst);
   });
 
-  test("TC-CTAPI-135-1 severity groups are ordered High then Medium then Low", async () => {
+  test("TC-CTAPI-135-1 severity groups are ordered High then Medium then Low @regression", async () => {
     if (!stage2Ready("TC-CTAPI-135-1")) return;
     const a = await api.risks(poToken, familyId!);
     const b = await api.risks(poToken, familyId!);
@@ -740,7 +740,7 @@ describe("Endpoint #19 - GET /:familyId/risks", () => {
     assertResponseTime(a);
   });
 
-  test("TC-CTAPI-135-2 a severity group appears only when it has at least one risk", async () => {
+  test("TC-CTAPI-135-2 a severity group appears only when it has at least one risk @regression", async () => {
     if (!stage2Ready("TC-CTAPI-135-2")) return;
     const groups = await riskGroups();
     const r = await api.risks(poToken, familyId!);
@@ -759,7 +759,7 @@ describe("Endpoint #19 - GET /:familyId/risks", () => {
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-135-3 within a severity group risks follow the clause sort_order ascending", async () => {
+  test("TC-CTAPI-135-3 within a severity group risks follow the clause sort_order ascending @regression", async () => {
     if (!stage2Ready("TC-CTAPI-135-3")) return;
     const a = await api.risks(poToken, familyId!);
     const b = await api.risks(poToken, familyId!);
@@ -813,7 +813,7 @@ describe("Endpoint #19 - risk generation rule (spec 9.8) cross-read against Endp
     };
   }
 
-  test("TC-CTAPI-136-1 a Minor Deviation clause produces exactly one risk", async () => {
+  test("TC-CTAPI-136-1 a Minor Deviation clause produces exactly one risk @regression", async () => {
     if (!stage2Ready("TC-CTAPI-136-1")) return;
     const counts = await riskBearingClauseCount();
     const r = await api.risks(poToken, familyId!);
@@ -829,7 +829,7 @@ describe("Endpoint #19 - risk generation rule (spec 9.8) cross-read against Endp
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-136-2 a Material Deviation clause produces exactly one risk", async () => {
+  test("TC-CTAPI-136-2 a Material Deviation clause produces exactly one risk @regression", async () => {
     if (!stage2Ready("TC-CTAPI-136-2")) return;
     const rows = await clauseRows();
     const r = await api.risks(poToken, familyId!);
@@ -847,7 +847,7 @@ describe("Endpoint #19 - risk generation rule (spec 9.8) cross-read against Endp
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-136-3 a Not Found clause produces exactly one risk with a templated explanation", async () => {
+  test("TC-CTAPI-136-3 a Not Found clause produces exactly one risk with a templated explanation @regression", async () => {
     if (!stage2Ready("TC-CTAPI-136-3")) return;
     const rows = await clauseRows();
     const r = await api.risks(poToken, familyId!);
@@ -870,7 +870,7 @@ describe("Endpoint #19 - risk generation rule (spec 9.8) cross-read against Endp
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-136-4 an Aligned clause never produces a risk", async () => {
+  test("TC-CTAPI-136-4 an Aligned clause never produces a risk @regression", async () => {
     if (!stage2Ready("TC-CTAPI-136-4")) return;
     const counts = await riskBearingClauseCount();
     const r = await api.risks(poToken, familyId!);
@@ -899,7 +899,7 @@ describe("Endpoint #19 - risk generation rule (spec 9.8) cross-read against Endp
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-136-5 a Not Specified clause never produces a risk", async () => {
+  test("TC-CTAPI-136-5 a Not Specified clause never produces a risk @regression", async () => {
     if (!stage2Ready("TC-CTAPI-136-5")) return;
     const counts = await riskBearingClauseCount();
     const r = await api.risks(poToken, familyId!);
@@ -919,7 +919,7 @@ describe("Endpoint #19 - risk generation rule (spec 9.8) cross-read against Endp
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-137 severity comes from the clause's configured Risk Level, not from AI judgement", async () => {
+  test("TC-CTAPI-137 severity comes from the clause's configured Risk Level, not from AI judgement @regression", async () => {
     if (!stage2Ready("TC-CTAPI-137")) return;
     const r = await api.risks(poToken, familyId!);
     if (r.data.data?.status !== "completed") {
@@ -957,7 +957,7 @@ describe("Endpoint #19 - risk generation rule (spec 9.8) cross-read against Endp
 });
 
 describe("Endpoint #19 - payload boundaries, pending state and security", () => {
-  test("TC-CTAPI-138-1 the originating clause is never surfaced as a visible field on a risk", async () => {
+  test("TC-CTAPI-138-1 the originating clause is never surfaced as a visible field on a risk @regression", async () => {
     if (!stage2Ready("TC-CTAPI-138-1")) return;
     const r = await api.risks(poToken, familyId!);
     expect(r.status).toBe(200);
@@ -983,7 +983,7 @@ describe("Endpoint #19 - payload boundaries, pending state and security", () => 
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-138-2 Stage 2 pending returns the pending risks state with the verbatim message", async () => {
+  test("TC-CTAPI-138-2 Stage 2 pending returns the pending risks state with the verbatim message @regression", async () => {
     const r = pendingRisks;
     if (!r) {
       console.log("[INCONCLUSIVE] TC-CTAPI-138-2: no post-Save response captured (seeding failed).");
@@ -1009,7 +1009,7 @@ describe("Endpoint #19 - payload boundaries, pending state and security", () => 
     assertResponseTime(r);
   });
 
-  test("TC-CTSEC-010-10 an unauthenticated risks request is rejected", async () => {
+  test("TC-CTSEC-010-10 an unauthenticated risks request is rejected @regression", async () => {
     if (!familyId) return;
     const r = await api.risks("", familyId);
     expect(r.status).toBe(401);

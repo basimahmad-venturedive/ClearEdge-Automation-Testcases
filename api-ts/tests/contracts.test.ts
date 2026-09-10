@@ -57,7 +57,7 @@ beforeAll(async () => {
 }, 120_000);
 
 describe("Endpoint #1 - GET /contracts (list contract families)", () => {
-  test("TC-CTAPI-001 list happy path returns 200 with contracts, counts and pagination", async () => {
+  test("TC-CTAPI-001 list happy path returns 200 with contracts, counts and pagination @regression", async () => {
     const r = await api.list(poToken);
     expect(r.status).toBe(200);
     expect(r.data.success).toBe(true);
@@ -98,7 +98,7 @@ describe("Endpoint #1 - GET /contracts (list contract families)", () => {
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-002-1 pagination defaults to page 1 limit 10", async () => {
+  test("TC-CTAPI-002-1 pagination defaults to page 1 limit 10 @regression", async () => {
     const r = await api.list(poToken);
     expect(r.status).toBe(200);
     expect(r.data.data.pagination.page).toBe(1);
@@ -109,7 +109,7 @@ describe("Endpoint #1 - GET /contracts (list contract families)", () => {
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-002-2 page=0 is rejected with 400 ERR_VALIDATION_FAILED", async () => {
+  test("TC-CTAPI-002-2 page=0 is rejected with 400 ERR_VALIDATION_FAILED @regression", async () => {
     const r = await api.list(poToken, { page: 0 });
     expect(r.status).toBe(400);
     // CLRE-281 ACCEPTED (won't-fix, 2026-08-28): the platform-wide validation code is
@@ -124,21 +124,21 @@ describe("Endpoint #1 - GET /contracts (list contract families)", () => {
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-002-3 limit above the documented max of 50 is rejected", async () => {
+  test("TC-CTAPI-002-3 limit above the documented max of 50 is rejected @regression", async () => {
     const r = await api.list(poToken, { limit: 51 });
     expect(r.status).toBe(400);
     expect(r.data.success).toBe(false);
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-002-4 limit=50 is accepted at the documented boundary", async () => {
+  test("TC-CTAPI-002-4 limit=50 is accepted at the documented boundary @regression", async () => {
     const r = await api.list(poToken, { limit: 50 });
     expect(r.status).toBe(200);
     expect(r.data.data.pagination.limit).toBe(50);
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-002-5 limit=1 is accepted at the documented minimum", async () => {
+  test("TC-CTAPI-002-5 limit=1 is accepted at the documented minimum @regression", async () => {
     const r = await api.list(poToken, { limit: 1 });
     expect(r.status).toBe(200);
     expect(r.data.data.pagination.limit).toBe(1);
@@ -146,7 +146,7 @@ describe("Endpoint #1 - GET /contracts (list contract families)", () => {
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-002-6 page beyond the last page returns an empty array, not an error", async () => {
+  test("TC-CTAPI-002-6 page beyond the last page returns an empty array, not an error @regression", async () => {
     const first = await api.list(poToken, { limit: 1 });
     const total = first.data.data.pagination.total;
     const r = await api.list(poToken, { page: total + 50, limit: 1 });
@@ -156,14 +156,14 @@ describe("Endpoint #1 - GET /contracts (list contract families)", () => {
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-002-7 non-numeric page is rejected rather than coerced", async () => {
+  test("TC-CTAPI-002-7 non-numeric page is rejected rather than coerced @regression", async () => {
     const r = await api.listRaw(poToken, "page=abc");
     expect(r.status).toBe(400);
     expect(r.data.success).toBe(false);
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-005-1 each status filter returns only rows of that status", async () => {
+  test("TC-CTAPI-005-1 each status filter returns only rows of that status @regression", async () => {
     for (const s of CONTRACT_STATUSES) {
       const r = await api.list(poToken, { status: s, limit: 50 });
       expect(r.status, `status=${s}`).toBe(200);
@@ -172,7 +172,7 @@ describe("Endpoint #1 - GET /contracts (list contract families)", () => {
     }
   });
 
-  test("TC-CTAPI-005-2 expiring_soon is a filter that still returns active rows", async () => {
+  test("TC-CTAPI-005-2 expiring_soon is a filter that still returns active rows @regression", async () => {
     const r = await api.list(poToken, { status: "expiring_soon", limit: 50 });
     expect(r.status).toBe(200);
     // spec 9.4: a filter only. Rows keep their stored status, which is `active`.
@@ -180,14 +180,14 @@ describe("Endpoint #1 - GET /contracts (list contract families)", () => {
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-005-3 an unrecognised status filter value is rejected", async () => {
+  test("TC-CTAPI-005-3 an unrecognised status filter value is rejected @regression", async () => {
     const r = await api.list(poToken, { status: "archived" });
     expect(r.status).toBe(400);
     expect(r.data.success).toBe(false);
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-004 counts are consistent with the unfiltered total", async () => {
+  test("TC-CTAPI-004 counts are consistent with the unfiltered total @regression", async () => {
     const r = await api.list(poToken, { limit: 50 });
     expect(r.status).toBe(200);
     const { counts, pagination } = r.data.data;
@@ -199,7 +199,7 @@ describe("Endpoint #1 - GET /contracts (list contract families)", () => {
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-006 search narrows the list and is tenant-scoped", async () => {
+  test("TC-CTAPI-006 search narrows the list and is tenant-scoped @regression", async () => {
     const all = await api.list(poToken, { limit: 50 });
     expect(all.status).toBe(200);
     const rows = all.data.data.contracts;
@@ -214,28 +214,28 @@ describe("Endpoint #1 - GET /contracts (list contract families)", () => {
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-007-1 a search matching nothing returns an empty array with 200", async () => {
+  test("TC-CTAPI-007-1 a search matching nothing returns an empty array with 200 @regression", async () => {
     const r = await api.list(poToken, { search: "zzz-no-such-contract-zzz", limit: 50 });
     expect(r.status).toBe(200);
     expect(r.data.data.contracts).toEqual([]);
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-009 an Analyst can read the contract list", async () => {
+  test("TC-CTAPI-009 an Analyst can read the contract list @regression", async () => {
     const r = await api.list(analystToken);
     expect(r.status).toBe(200);
     expect(r.data.success).toBe(true);
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-010 a Procurement Manager can read the contract list", async () => {
+  test("TC-CTAPI-010 a Procurement Manager can read the contract list @regression", async () => {
     const r = await api.list(managerToken);
     expect(r.status).toBe(200);
     expect(r.data.success).toBe(true);
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-012 list without a bearer token returns 401", async () => {
+  test("TC-CTAPI-012 list without a bearer token returns 401 @regression", async () => {
     const r = await api.list("");
     expect(r.status).toBe(401);
     expect(r.data.success).toBe(false);
@@ -245,7 +245,7 @@ describe("Endpoint #1 - GET /contracts (list contract families)", () => {
 });
 
 describe("Endpoint #10 - GET /contracts/:familyId (detail)", () => {
-  test("TC-CTAPI-075 detail returns the documented shape including the five term groups", async () => {
+  test("TC-CTAPI-075 detail returns the documented shape including the five term groups @regression", async () => {
     if (!anyFamilyId) return;
     const r = await api.detail(poToken, anyFamilyId);
     expect(r.status).toBe(200);
@@ -263,14 +263,14 @@ describe("Endpoint #10 - GET /contracts/:familyId (detail)", () => {
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-076-1 detail for an unknown familyId returns 404 ERR_CONTRACT_NOT_FOUND", async () => {
+  test("TC-CTAPI-076-1 detail for an unknown familyId returns 404 ERR_CONTRACT_NOT_FOUND @regression", async () => {
     const r = await api.detail(poToken, MISSING_UUID);
     expect(r.status).toBe(404);
     assertErrorEnvelope(r, "ERR_CONTRACT_NOT_FOUND");
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-077-1 an Analyst can read contract detail", async () => {
+  test("TC-CTAPI-077-1 an Analyst can read contract detail @regression", async () => {
     if (!anyFamilyId) return;
     const r = await api.detail(analystToken, anyFamilyId);
     expect(r.status).toBe(200);
@@ -279,7 +279,7 @@ describe("Endpoint #10 - GET /contracts/:familyId (detail)", () => {
 });
 
 describe("Endpoint #13 - GET /:familyId/versions (Documents tab)", () => {
-  test("TC-CTAPI-093-1 versions list returns versions, hasActiveVersion and pagination", async () => {
+  test("TC-CTAPI-093-1 versions list returns versions, hasActiveVersion and pagination @regression", async () => {
     if (!anyFamilyId) return;
     const r = await api.versions(poToken, anyFamilyId);
     expect(r.status).toBe(200);
@@ -290,7 +290,7 @@ describe("Endpoint #13 - GET /:familyId/versions (Documents tab)", () => {
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-097-3 versions list for an unknown family returns 404", async () => {
+  test("TC-CTAPI-097-3 versions list for an unknown family returns 404 @regression", async () => {
     const r = await api.versions(poToken, MISSING_UUID);
     expect(r.status).toBe(404);
     assertErrorEnvelope(r, "ERR_CONTRACT_NOT_FOUND");
@@ -299,7 +299,7 @@ describe("Endpoint #13 - GET /:familyId/versions (Documents tab)", () => {
 });
 
 describe("Security - RBAC on write endpoints", () => {
-  test("TC-CTSEC-008 an Analyst cannot terminate a contract family", async () => {
+  test("TC-CTSEC-008 an Analyst cannot terminate a contract family @regression", async () => {
     if (!anyFamilyId) return;
     const r = await api.terminate(analystToken, anyFamilyId);
     expect(r.status).toBe(403);
@@ -309,7 +309,7 @@ describe("Security - RBAC on write endpoints", () => {
     assertResponseTime(r);
   });
 
-  test("TC-CTSEC-007 an Analyst cannot delete a contract family", async () => {
+  test("TC-CTSEC-007 an Analyst cannot delete a contract family @regression", async () => {
     if (!anyFamilyId) return;
     const r = await api.deleteFamily(analystToken, anyFamilyId);
     expect(r.status).toBe(403);
@@ -317,7 +317,7 @@ describe("Security - RBAC on write endpoints", () => {
     assertResponseTime(r);
   });
 
-  test("TC-CTSEC-001 an Analyst cannot create a contract", async () => {
+  test("TC-CTSEC-001 an Analyst cannot create a contract @regression", async () => {
     const r = await api.create(analystToken, {
       contractType: "msa_services",
       file: { buffer: Buffer.from("%PDF-1.4 minimal"), filename: "probe.pdf", contentType: "application/pdf" },
@@ -327,7 +327,7 @@ describe("Security - RBAC on write endpoints", () => {
     assertResponseTime(r);
   });
 
-  test("TC-CTSEC-017 cross-tenant familyId returns 404 rather than 403", async () => {
+  test("TC-CTSEC-017 cross-tenant familyId returns 404 rather than 403 @regression", async () => {
     // A well-formed uuid the caller's tenant does not own must be indistinguishable
     // from a missing one, so existence is never disclosed.
     const r = await api.detail(poToken, MISSING_UUID);
@@ -339,7 +339,7 @@ describe("Security - RBAC on write endpoints", () => {
 });
 
 describe("Envelope conventions", () => {
-  test("TC-CTAPI-013-1 every error response carries the documented error envelope", async () => {
+  test("TC-CTAPI-013-1 every error response carries the documented error envelope @regression", async () => {
     const r = await api.detail(poToken, MISSING_UUID);
     expect(r.data.success).toBe(false);
     expect(r.data.error).toBeDefined();
@@ -350,7 +350,7 @@ describe("Envelope conventions", () => {
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-013-2 date fields are returned in the format the spec documents", async () => {
+  test("TC-CTAPI-013-2 date fields are returned in the format the spec documents @regression", async () => {
     const r = await api.list(poToken, { limit: 50 });
     expect(r.status).toBe(200);
     const withDate = r.data.data.contracts.find((c: Record<string, unknown>) => c.expiration);

@@ -209,7 +209,7 @@ describe("Endpoint #1 - GET /contracts (status filters and counts)", () => {
   }, SEED_MS);
 
   test(
-    "TC-CTAPI-003-1 status=all returns every family regardless of status",
+    "TC-CTAPI-003-1 status=all returns every family regardless of status @regression",
     async () => {
       const r = await api.list(poToken, { status: "all", limit: 50 });
       expect(r.status).toBe(200);
@@ -233,7 +233,7 @@ describe("Endpoint #1 - GET /contracts (status filters and counts)", () => {
   );
 
   test(
-    "TC-CTAPI-003-2 status=in_review returns only in_review families",
+    "TC-CTAPI-003-2 status=in_review returns only in_review families @regression",
     async () => {
       const r = await api.list(poToken, { status: "in_review", limit: 50 });
       expect(r.status).toBe(200);
@@ -250,7 +250,7 @@ describe("Endpoint #1 - GET /contracts (status filters and counts)", () => {
   );
 
   test(
-    "TC-CTAPI-003-3 status=active returns only active families",
+    "TC-CTAPI-003-3 status=active returns only active families @regression",
     async () => {
       const r = await api.list(poToken, { status: "active", limit: 50 });
       expect(r.status).toBe(200);
@@ -265,7 +265,7 @@ describe("Endpoint #1 - GET /contracts (status filters and counts)", () => {
   );
 
   test(
-    "TC-CTAPI-003-4 status=expiring_soon is a filter, not a stored status",
+    "TC-CTAPI-003-4 status=expiring_soon is a filter, not a stored status @regression",
     async () => {
       const r = await api.list(poToken, { status: "expiring_soon", limit: 50 });
       expect(r.status).toBe(200);
@@ -286,7 +286,7 @@ describe("Endpoint #1 - GET /contracts (status filters and counts)", () => {
   );
 
   test(
-    "TC-CTAPI-003-5 status=expired returns only expired families",
+    "TC-CTAPI-003-5 status=expired returns only expired families @regression",
     async () => {
       const r = await api.list(poToken, { status: "expired", limit: 50 });
       expect(r.status).toBe(200);
@@ -302,7 +302,7 @@ describe("Endpoint #1 - GET /contracts (status filters and counts)", () => {
   );
 
   test(
-    "TC-CTAPI-003-6 status=terminated returns only terminated families",
+    "TC-CTAPI-003-6 status=terminated returns only terminated families @regression",
     async () => {
       const r = await api.list(poToken, { status: "terminated", limit: 50 });
       expect(r.status).toBe(200);
@@ -316,7 +316,7 @@ describe("Endpoint #1 - GET /contracts (status filters and counts)", () => {
   );
 
   test(
-    "TC-CTAPI-007-2 contractType filter with two comma-separated slugs returns the union",
+    "TC-CTAPI-007-2 contractType filter with two comma-separated slugs returns the union @regression",
     async () => {
       const r = await api.list(poToken, {
         contractType: "msa_services,partnership_agreement",
@@ -336,7 +336,7 @@ describe("Endpoint #1 - GET /contracts (status filters and counts)", () => {
   );
 
   test(
-    "TC-CTAPI-007-3 unknown contractType slug does not return 500",
+    "TC-CTAPI-007-3 unknown contractType slug does not return 500 @regression",
     async () => {
       const r = await api.list(poToken, { contractType: "nda_agreement", limit: 50 });
       // 1. 200 or 400 - never 500, never 404
@@ -361,7 +361,7 @@ describe("Endpoint #1 - GET /contracts (status filters and counts)", () => {
   );
 
   test(
-    "TC-CTAPI-008-1 sortBy=expiration with sortOrder=asc orders by expiration ascending",
+    "TC-CTAPI-008-1 sortBy=expiration with sortOrder=asc orders by expiration ascending @regression",
     async () => {
       const r = await api.list(poToken, { sortBy: "expiration", sortOrder: "asc", limit: 50 });
       expect(r.status).toBe(200);
@@ -384,7 +384,7 @@ describe("Endpoint #1 - GET /contracts (status filters and counts)", () => {
   );
 
   test(
-    "TC-CTAPI-008-2 sortBy=expiration with sortOrder=desc reverses the order",
+    "TC-CTAPI-008-2 sortBy=expiration with sortOrder=desc reverses the order @regression",
     async () => {
       const asc = await api.list(poToken, { sortBy: "expiration", sortOrder: "asc", limit: 50 });
       const r = await api.list(poToken, { sortBy: "expiration", sortOrder: "desc", limit: 50 });
@@ -417,7 +417,7 @@ describe("Endpoint #1 - GET /contracts (status filters and counts)", () => {
   );
 
   test(
-    "TC-CTAPI-008-3 invalid sortBy value does not return 500",
+    "TC-CTAPI-008-3 invalid sortBy value does not return 500 @regression",
     async () => {
       const r = await api.list(poToken, { sortBy: "vendor" });
       expect(r.status).toBe(400);
@@ -433,7 +433,7 @@ describe("Endpoint #1 - GET /contracts (status filters and counts)", () => {
   );
 
   test(
-    "TC-CTAPI-011-1 family with no linked vendor returns vendor null",
+    "TC-CTAPI-011-1 family with no linked vendor returns vendor null @regression",
     async () => {
       const r = await api.list(poToken, { limit: 50, search: "" });
       expect(r.status).toBe(200);
@@ -455,7 +455,7 @@ describe("Endpoint #1 - GET /contracts (status filters and counts)", () => {
   // in_review/active, after which the vendor deletes cleanly over HTTP.
 
   test(
-    "TC-CTAPI-013-3 cross-tenant isolation: a principal outside tenant A never sees its families",
+    "TC-CTAPI-013-3 cross-tenant isolation: a principal outside tenant A never sees its families @regression",
     async () => {
       // PARTIAL BY ENVIRONMENT, but RUN rather than skipped. A true tenant-B owner
       // token does not exist: tokenProvider mints owner/manager/analyst all inside
@@ -546,19 +546,19 @@ describe("Endpoint #2 - POST /contracts (contractType round-trip)", () => {
     assertResponseTime(detail);
   }
 
-  test("TC-CTAPI-018-2 create accepts contractType purchase_agreement_goods", async () => {
+  test("TC-CTAPI-018-2 create accepts contractType purchase_agreement_goods @regression", async () => {
     await createAndReadBack("purchase_agreement_goods");
   }, CASE_MS);
 
-  test("TC-CTAPI-018-3 create accepts contractType subscription_agreement_saas", async () => {
+  test("TC-CTAPI-018-3 create accepts contractType subscription_agreement_saas @regression", async () => {
     await createAndReadBack("subscription_agreement_saas");
   }, CASE_MS);
 
-  test("TC-CTAPI-018-4 create accepts contractType vendor_agreement_general", async () => {
+  test("TC-CTAPI-018-4 create accepts contractType vendor_agreement_general @regression", async () => {
     await createAndReadBack("vendor_agreement_general");
   }, CASE_MS);
 
-  test("TC-CTAPI-018-5 create accepts contractType partnership_agreement", async () => {
+  test("TC-CTAPI-018-5 create accepts contractType partnership_agreement @regression", async () => {
     await createAndReadBack("partnership_agreement");
   }, CASE_MS);
 });
@@ -627,7 +627,7 @@ describe("Endpoint #3 - POST /:familyId/versions (upload new version)", () => {
   }, SEED_MS);
 
   test(
-    "TC-CTAPI-028 upload new version returns 201 and advances NNN by exactly 1",
+    "TC-CTAPI-028 upload new version returns 201 and advances NNN by exactly 1 @regression",
     async () => {
       const before = await api.detail(poToken, famSaved.familyId);
       const baseId = String(before.data.data.contractId);
@@ -670,7 +670,7 @@ describe("Endpoint #3 - POST /:familyId/versions (upload new version)", () => {
   );
 
   test(
-    "TC-CTAPI-029 upload new version starts In Review and does not steal Active",
+    "TC-CTAPI-029 upload new version starts In Review and does not steal Active @regression",
     async () => {
       const r = await api.uploadVersion(poToken, famActive.familyId, {
         file: { buffer: v1.buffer, filename: v1.filename, contentType: v1.contentType },
@@ -716,7 +716,7 @@ describe("Endpoint #3 - POST /:familyId/versions (upload new version)", () => {
   );
 
   test(
-    "TC-CTAPI-030-1 upload new version sets vendorId when the family link is currently null",
+    "TC-CTAPI-030-1 upload new version sets vendorId when the family link is currently null @regression",
     async () => {
       expect(vendorA, "QA tenant must have at least one vendor to link").not.toBe("");
       const r = await api.uploadVersion(poToken, famVendor, {
@@ -746,7 +746,7 @@ describe("Endpoint #3 - POST /:familyId/versions (upload new version)", () => {
   );
 
   test(
-    "TC-CTAPI-030-2 upload new version with a different vendorId returns 409 ERR_VENDOR_LOCKED",
+    "TC-CTAPI-030-2 upload new version with a different vendorId returns 409 ERR_VENDOR_LOCKED @regression",
     async () => {
       expect(vendorC, "QA tenant must have a second vendor for the locked-link case").not.toBe("");
       const before = await api.versions(poToken, famVendor);
@@ -775,7 +775,7 @@ describe("Endpoint #3 - POST /:familyId/versions (upload new version)", () => {
   );
 
   test(
-    "TC-CTAPI-030-3 upload new version resending the SAME vendorId is still 409 ERR_VENDOR_LOCKED",
+    "TC-CTAPI-030-3 upload new version resending the SAME vendorId is still 409 ERR_VENDOR_LOCKED @regression",
     async () => {
       const before = await api.versions(poToken, famVendor);
       const r = await api.uploadVersion(poToken, famVendor, {
@@ -796,7 +796,7 @@ describe("Endpoint #3 - POST /:familyId/versions (upload new version)", () => {
   );
 
   test(
-    "TC-CTAPI-031-1 upload new version sets sourcingEventId when the family link is currently null",
+    "TC-CTAPI-031-1 upload new version sets sourcingEventId when the family link is currently null @regression",
     async () => {
       expect(eventA, "QA tenant must have at least one sourcing event to link").not.toBe("");
       const r = await api.uploadVersion(poToken, famEvent, {
@@ -825,7 +825,7 @@ describe("Endpoint #3 - POST /:familyId/versions (upload new version)", () => {
   );
 
   test(
-    "TC-CTAPI-031-2 upload new version with a different sourcingEventId returns 409 ERR_SOURCING_EVENT_LOCKED",
+    "TC-CTAPI-031-2 upload new version with a different sourcingEventId returns 409 ERR_SOURCING_EVENT_LOCKED @regression",
     async () => {
       expect(eventB, "QA tenant must have a second sourcing event for the locked-link case").not.toBe("");
       const before = await api.versions(poToken, famEvent);
@@ -846,7 +846,7 @@ describe("Endpoint #3 - POST /:familyId/versions (upload new version)", () => {
   );
 
   test(
-    "TC-CTAPI-031-3 upload new version resending the SAME sourcingEventId is still 409 ERR_SOURCING_EVENT_LOCKED",
+    "TC-CTAPI-031-3 upload new version resending the SAME sourcingEventId is still 409 ERR_SOURCING_EVENT_LOCKED @regression",
     async () => {
       // v1.7 endpoint #3 step 4 states the vendor rule then "Same logic for
       // sourcing_event_id" - so the resend-the-same-value direction is mandated here too,
@@ -869,7 +869,7 @@ describe("Endpoint #3 - POST /:familyId/versions (upload new version)", () => {
   );
 
   test(
-    "TC-CTAPI-030-4 upload new version to a LINKED family with the locked fields omitted returns 201",
+    "TC-CTAPI-030-4 upload new version to a LINKED family with the locked fields omitted returns 201 @regression",
     async () => {
       // This is the payload spec v1.7 mandates for the normal UI flow. Endpoint #3 step 4:
       // "The frontend must omit these fields from the request payload entirely when locked
@@ -901,7 +901,7 @@ describe("Endpoint #3 - POST /:familyId/versions (upload new version)", () => {
   );
 
   test(
-    "TC-CTAPI-030-5 a family linked BY endpoint #3 still accepts a further version with the locked fields omitted",
+    "TC-CTAPI-030-5 a family linked BY endpoint #3 still accepts a further version with the locked fields omitted @regression",
     async () => {
       // The other half of TC-CTAPI-030-4. Endpoint #3 step 4 has two branches: reject when
       // the link is already set, and "If vendor_id is null and vendorId is provided, update
@@ -938,7 +938,7 @@ describe("Endpoint #3 - POST /:familyId/versions (upload new version)", () => {
   );
 
   test(
-    "TC-CTAPI-032 upload new version to a terminated contract returns 409 ERR_CONTRACT_TERMINATED",
+    "TC-CTAPI-032 upload new version to a terminated contract returns 409 ERR_CONTRACT_TERMINATED @regression",
     async () => {
       const before = await api.versions(poToken, famTerminated.familyId);
       const r = await api.uploadVersion(poToken, famTerminated.familyId, {
@@ -958,7 +958,7 @@ describe("Endpoint #3 - POST /:familyId/versions (upload new version)", () => {
   // TC-CTAPI-033-1 is implemented in contracts.final.test.ts.
 
   test(
-    "TC-CTAPI-033-2 upload new version to a family in another tenant returns 404",
+    "TC-CTAPI-033-2 upload new version to a family in another tenant returns 404 @regression",
     async () => {
       // No second QA tenant exists, so the foreign id is substituted by a
       // well-formed uuid this tenant does not own - which is exactly the state a
@@ -1075,7 +1075,7 @@ describe("Endpoint #4 - update-contract (staged replacement)", () => {
   }, SEED_MS);
 
   test(
-    "TC-CTAPI-034 update-contract returns 200, reuses the version ID and consumes no NNN",
+    "TC-CTAPI-034 update-contract returns 200, reuses the version ID and consumes no NNN @regression",
     async () => {
       const before = await api.versions(poToken, fam034.familyId);
       const countBefore = before.data.data.pagination.total;
@@ -1106,7 +1106,7 @@ describe("Endpoint #4 - update-contract (staged replacement)", () => {
   );
 
   test(
-    "TC-CTAPI-035 update-contract leaves the live version saved data untouched until Save",
+    "TC-CTAPI-035 update-contract leaves the live version saved data untouched until Save @regression",
     async () => {
       // Settle Stage 2 before the baseline — same race that broke TC-CTAPI-043/054-2: the
       // summary job can land between this snapshot and the later re-reads, showing up as
@@ -1153,7 +1153,7 @@ describe("Endpoint #4 - update-contract (staged replacement)", () => {
   );
 
   test(
-    "TC-CTAPI-036 update-contract on a non-active version returns 409 ERR_NOT_ACTIVE_VERSION",
+    "TC-CTAPI-036 update-contract on a non-active version returns 409 ERR_NOT_ACTIVE_VERSION @regression",
     async () => {
       expect(fam036Other, "the second, non-Active version must have been seeded").not.toBe("");
       const r = await api.updateContract(poToken, fam036.familyId, fam036Other, {
@@ -1173,7 +1173,7 @@ describe("Endpoint #4 - update-contract (staged replacement)", () => {
   );
 
   test(
-    "TC-CTAPI-037 update-contract on an expired contract returns 409 ERR_CONTRACT_EXPIRED",
+    "TC-CTAPI-037 update-contract on an expired contract returns 409 ERR_CONTRACT_EXPIRED @regression",
     async () => {
       // 1. confirm the lazy-write transition has already moved the family to expired
       const detail = await api.detail(poToken, fam037.familyId);
@@ -1200,7 +1200,7 @@ describe("Endpoint #4 - update-contract (staged replacement)", () => {
   );
 
   test(
-    "TC-CTAPI-038 update-contract on a terminated contract is rejected",
+    "TC-CTAPI-038 update-contract on a terminated contract is rejected @regression",
     async () => {
       const r = await api.updateContract(poToken, fam038.familyId, fam038.versionId, {
         buffer: replacement.buffer,
@@ -1224,7 +1224,7 @@ describe("Endpoint #4 - update-contract (staged replacement)", () => {
   );
 
   test(
-    "TC-CTAPI-039 update-contract stages a new S3 object without replacing the old one",
+    "TC-CTAPI-039 update-contract stages a new S3 object without replacing the old one @regression",
     async () => {
       const before = await api.fileUrl(poToken, fam039.familyId, fam039.versionId);
       expect(before.status).toBe(200);
@@ -1281,7 +1281,7 @@ describe("Endpoints #5 and #7 during an update-contract", () => {
   }, SEED_MS);
 
   test(
-    "TC-CTAPI-043 extraction-status reports the re-extraction on the same versionId",
+    "TC-CTAPI-043 extraction-status reports the re-extraction on the same versionId @regression",
     async () => {
       // 1. baseline is completed
       const s0 = await api.extractionStatus(poToken, fam043.familyId, fam043.versionId);
@@ -1318,7 +1318,7 @@ describe("Endpoints #5 and #7 during an update-contract", () => {
   );
 
   test(
-    "TC-CTAPI-054-2 review serves the staged pending record with an identical shape",
+    "TC-CTAPI-054-2 review serves the staged pending record with an identical shape @regression",
     async () => {
       const liveBaseline = await detailAfterSummarySettles(fam054.familyId);
       expect(liveBaseline.status).toBe(200);
@@ -1464,7 +1464,7 @@ describe("Endpoint #8 - save (boundaries, notice deadline, staged promotion)", (
   }, SEED_MS);
 
   test(
-    "TC-CTAPI-058-2 save on an Upload New Version fires Stage 2 for that version only",
+    "TC-CTAPI-058-2 save on an Upload New Version fires Stage 2 for that version only @regression",
     async () => {
       expect(fam058Second, "the second, unsaved version must have been seeded").not.toBe("");
       const baseClauses = await api.clauseComparison(poToken, fam058.familyId);
@@ -1496,7 +1496,7 @@ describe("Endpoint #8 - save (boundaries, notice deadline, staged promotion)", (
   );
 
   test(
-    "TC-CTAPI-059-1 update-contract save promotes the staged record and keeps the version Active",
+    "TC-CTAPI-059-1 update-contract save promotes the staged record and keeps the version Active @regression",
     async () => {
       const f = fam059[0] as SeededVersion;
       const before = await api.detail(poToken, f.familyId);
@@ -1536,7 +1536,7 @@ describe("Endpoint #8 - save (boundaries, notice deadline, staged promotion)", (
   );
 
   test(
-    "TC-CTAPI-059-2 update-contract save re-runs Stage 2 and discards the previous results",
+    "TC-CTAPI-059-2 update-contract save re-runs Stage 2 and discards the previous results @regression",
     async () => {
       const f = fam059[1] as SeededVersion;
       const baseRisks = await api.risks(poToken, f.familyId);
@@ -1582,7 +1582,7 @@ describe("Endpoint #8 - save (boundaries, notice deadline, staged promotion)", (
   );
 
   test(
-    "TC-CTAPI-059-3 update-contract save repoints the version at the staged file",
+    "TC-CTAPI-059-3 update-contract save repoints the version at the staged file @regression",
     async () => {
       const f = fam059[2] as SeededVersion;
       const before = await api.fileUrl(poToken, f.familyId, f.versionId);
@@ -1609,7 +1609,7 @@ describe("Endpoint #8 - save (boundaries, notice deadline, staged promotion)", (
   );
 
   test(
-    "TC-CTAPI-059-4 update-contract save removes the pending record and restores the entry point",
+    "TC-CTAPI-059-4 update-contract save removes the pending record and restores the entry point @regression",
     async () => {
       const f = fam059[3] as SeededVersion;
       const staged = await api.review(poToken, f.familyId, f.versionId);
@@ -1639,7 +1639,7 @@ describe("Endpoint #8 - save (boundaries, notice deadline, staged promotion)", (
   // the clause-configuration mutation and the multi-comparison fixture they need.
 
   test(
-    "TC-CTAPI-060-1 save before extraction completes returns 409 ERR_EXTRACTION_NOT_COMPLETED",
+    "TC-CTAPI-060-1 save before extraction completes returns 409 ERR_EXTRACTION_NOT_COMPLETED @regression",
     async () => {
       // A brand-new upload is 'pending' for ~14 s, which is the window this case needs.
       const fx = CONTRACT_V1();
@@ -1690,7 +1690,7 @@ describe("Endpoint #8 - save (boundaries, notice deadline, staged promotion)", (
   // version row and then fails Stage 1 does exist - seedFailedExtraction() uses it.
 
   test(
-    "TC-CTAPI-061 a failed save triggers no Stage 2 and overwrites nothing on an update",
+    "TC-CTAPI-061 a failed save triggers no Stage 2 and overwrites nothing on an update @regression",
     async () => {
       const f = fam061;
       const baseDetail = await api.detail(poToken, f.familyId);
@@ -1728,7 +1728,7 @@ describe("Endpoint #8 - save (boundaries, notice deadline, staged promotion)", (
   );
 
   test(
-    "TC-CTAPI-062-1 save accepts totalContractValue at the lower boundary 0",
+    "TC-CTAPI-062-1 save accepts totalContractValue at the lower boundary 0 @regression",
     async () => {
       const f = fresh[0] as SeededVersion;
       const r = await api.save(poToken, f.familyId, f.versionId, baseSaveBody({ totalContractValue: 0 }));
@@ -1744,7 +1744,7 @@ describe("Endpoint #8 - save (boundaries, notice deadline, staged promotion)", (
   );
 
   test(
-    "TC-CTAPI-062-2 save accepts totalContractValue at the upper boundary 999999999",
+    "TC-CTAPI-062-2 save accepts totalContractValue at the upper boundary 999999999 @regression",
     async () => {
       const f = fresh[1] as SeededVersion;
       const r = await api.save(poToken, f.familyId, f.versionId, baseSaveBody({ totalContractValue: 999999999 }));
@@ -1760,7 +1760,7 @@ describe("Endpoint #8 - save (boundaries, notice deadline, staged promotion)", (
   );
 
   test(
-    "TC-CTAPI-063-1 save accepts noticePeriodDays at the lower boundary 0",
+    "TC-CTAPI-063-1 save accepts noticePeriodDays at the lower boundary 0 @regression",
     async () => {
       const f = fresh[2] as SeededVersion;
       const r = await api.save(
@@ -1783,7 +1783,7 @@ describe("Endpoint #8 - save (boundaries, notice deadline, staged promotion)", (
   );
 
   test(
-    "TC-CTAPI-063-2 save accepts noticePeriodDays at the upper boundary 365",
+    "TC-CTAPI-063-2 save accepts noticePeriodDays at the upper boundary 365 @regression",
     async () => {
       const f = fresh[3] as SeededVersion;
       const r = await api.save(
@@ -1804,7 +1804,7 @@ describe("Endpoint #8 - save (boundaries, notice deadline, staged promotion)", (
   );
 
   test(
-    "TC-CTAPI-066-1 notice deadline is computed at save as expiration minus notice period",
+    "TC-CTAPI-066-1 notice deadline is computed at save as expiration minus notice period @regression",
     async () => {
       const f = fresh[4] as SeededVersion;
       const r = await api.save(
@@ -1829,7 +1829,7 @@ describe("Endpoint #8 - save (boundaries, notice deadline, staged promotion)", (
   );
 
   test(
-    "TC-CTAPI-066-2 notice deadline is null when the expiration date is missing",
+    "TC-CTAPI-066-2 notice deadline is null when the expiration date is missing @regression",
     async () => {
       const f = fresh[5] as SeededVersion;
       const body = baseSaveBody({ noticePeriodDays: 30 });
@@ -1854,7 +1854,7 @@ describe("Endpoint #8 - save (boundaries, notice deadline, staged promotion)", (
   );
 
   test(
-    "TC-CTAPI-066-3 notice deadline is null when the notice period is missing",
+    "TC-CTAPI-066-3 notice deadline is null when the notice period is missing @regression",
     async () => {
       const f = fresh[6] as SeededVersion;
       const body = baseSaveBody({ expirationDate: "2027-07-27" });
@@ -1959,7 +1959,7 @@ describe("Endpoint #13 - versions list (tags, pagination, visibility)", () => {
   }, SEED_MS);
 
   test(
-    "TC-CTAPI-093-2 Latest and Active tags are derived from the family, not stored per version",
+    "TC-CTAPI-093-2 Latest and Active tags are derived from the family, not stored per version @regression",
     async () => {
       const newest = f093.versionIds[f093.versionIds.length - 1] as string;
       const oldest = f093.versionIds[0] as string;
@@ -2000,7 +2000,7 @@ describe("Endpoint #13 - versions list (tags, pagination, visibility)", () => {
   );
 
   test(
-    "TC-CTAPI-094-1 versions list pagination defaults to page 1 limit 10 and reports correct totals",
+    "TC-CTAPI-094-1 versions list pagination defaults to page 1 limit 10 and reports correct totals @regression",
     async () => {
       const p1 = await api.versions(poToken, f094.familyId);
       expect(p1.status).toBe(200);
@@ -2034,7 +2034,7 @@ describe("Endpoint #13 - versions list (tags, pagination, visibility)", () => {
   );
 
   test(
-    "TC-CTAPI-094-2 versions list enforces the documented page and limit bounds",
+    "TC-CTAPI-094-2 versions list enforces the documented page and limit bounds @regression",
     async () => {
       const one = await api.versions(poToken, f094.familyId, { limit: 1 });
       expect(one.status).toBe(200);
@@ -2060,7 +2060,7 @@ describe("Endpoint #13 - versions list (tags, pagination, visibility)", () => {
   );
 
   test(
-    "TC-CTAPI-095 versions list excludes unsaved and deleted versions",
+    "TC-CTAPI-095 versions list excludes unsaved and deleted versions @regression",
     async () => {
       // Read 1 - the in-flight upload is invisible
       const r1 = await api.versions(poToken, f095.familyId, { limit: 50 });
@@ -2100,7 +2100,7 @@ describe("Endpoint #13 - versions list (tags, pagination, visibility)", () => {
   );
 
   test(
-    "TC-CTAPI-096-1 isTerminated is true on every row once the family is terminated",
+    "TC-CTAPI-096-1 isTerminated is true on every row once the family is terminated @regression",
     async () => {
       const r1 = await api.versions(poToken, f096a.familyId, { limit: 50 });
       expect(r1.status).toBe(200);
@@ -2127,7 +2127,7 @@ describe("Endpoint #13 - versions list (tags, pagination, visibility)", () => {
   );
 
   test(
-    "TC-CTAPI-096-2 update-contract changes the listed filename while the row identity stays the same",
+    "TC-CTAPI-096-2 update-contract changes the listed filename while the row identity stays the same @regression",
     async () => {
       const before = await api.versions(poToken, f096b.familyId, { limit: 50 });
       const rowBefore = (before.data.data.versions as Array<Record<string, unknown>>).find(
@@ -2169,7 +2169,7 @@ describe("Endpoint #13 - versions list (tags, pagination, visibility)", () => {
   );
 
   test(
-    "TC-CTAPI-097-1 a Procurement Analyst can read the versions list",
+    "TC-CTAPI-097-1 a Procurement Analyst can read the versions list @regression",
     async () => {
       for (const familyId of [f094.familyId, f097Terminated.familyId]) {
         const asAnalyst = await api.versions(analystToken, familyId, { limit: 50 });
@@ -2185,7 +2185,7 @@ describe("Endpoint #13 - versions list (tags, pagination, visibility)", () => {
   );
 
   test(
-    "TC-CTAPI-097-2 versions list requires authentication",
+    "TC-CTAPI-097-2 versions list requires authentication @regression",
     async () => {
       const noToken = await api.versions("", f094.familyId);
       const badToken = await api.versions("not-a-real-jwt", f094.familyId);
@@ -2257,7 +2257,7 @@ describe("Endpoint #14 - activate (mark version as Active)", () => {
   }, SEED_MS);
 
   test(
-    "TC-CTAPI-098 activate with no execution date returns 200 and flips the family to active",
+    "TC-CTAPI-098 activate with no execution date returns 200 and flips the family to active @regression",
     async () => {
       const [vA, vB, vC] = f098.versionIds as [string, string, string];
       const countsBefore = (await api.list(poToken, { limit: 1 })).data.data.counts;
@@ -2295,7 +2295,7 @@ describe("Endpoint #14 - activate (mark version as Active)", () => {
   );
 
   test(
-    "TC-CTAPI-099 activate with a past execution date stores and returns that date",
+    "TC-CTAPI-099 activate with a past execution date stores and returns that date @regression",
     async () => {
       const [vA, vB] = f099.versionIds as [string, string];
       const r = await api.activate(poToken, f099.familyId, vA, "2026-01-15");
@@ -2319,7 +2319,7 @@ describe("Endpoint #14 - activate (mark version as Active)", () => {
   );
 
   test(
-    "TC-CTAPI-100-1 execution date of today is accepted",
+    "TC-CTAPI-100-1 execution date of today is accepted @regression",
     async () => {
       const v = f100a.versionIds[0] as string;
       // Computed in America/Chicago inside the test, so a runner ahead of Chicago
@@ -2339,7 +2339,7 @@ describe("Endpoint #14 - activate (mark version as Active)", () => {
   );
 
   test(
-    "TC-CTAPI-100-2 execution date of tomorrow is rejected with 422 ERR_FUTURE_EXECUTION_DATE",
+    "TC-CTAPI-100-2 execution date of tomorrow is rejected with 422 ERR_FUTURE_EXECUTION_DATE @regression",
     async () => {
       const v = f100b.versionIds[0] as string;
       for (const days of [1, 365]) {
@@ -2364,7 +2364,7 @@ describe("Endpoint #14 - activate (mark version as Active)", () => {
   );
 
   test(
-    "TC-CTAPI-100-3 malformed execution date values are rejected",
+    "TC-CTAPI-100-3 malformed execution date values are rejected @regression",
     async () => {
       const v = f100c.versionIds[0] as string;
       // The case calls for a fresh family per attempt. One family is used here with
@@ -2393,7 +2393,7 @@ describe("Endpoint #14 - activate (mark version as Active)", () => {
   );
 
   test(
-    "TC-CTAPI-101 activating a second version returns 409 ERR_ALREADY_HAS_ACTIVE",
+    "TC-CTAPI-101 activating a second version returns 409 ERR_ALREADY_HAS_ACTIVE @regression",
     async () => {
       const [vA, vB] = f101.versionIds as [string, string];
       const first = await api.activate(poToken, f101.familyId, vA);
@@ -2422,7 +2422,7 @@ describe("Endpoint #14 - activate (mark version as Active)", () => {
   );
 
   test(
-    "TC-CTAPI-102 concurrent activation of two versions leaves exactly one active version",
+    "TC-CTAPI-102 concurrent activation of two versions leaves exactly one active version @regression",
     async () => {
       for (const [i, fam] of f102.entries()) {
         const [vA, vB] = fam.versionIds as [string, string];
@@ -2455,7 +2455,7 @@ describe("Endpoint #14 - activate (mark version as Active)", () => {
   );
 
   test(
-    "TC-CTAPI-103 activate rejects a version that is not in the family or is not saved",
+    "TC-CTAPI-103 activate rejects a version that is not in the family or is not saved @regression",
     async () => {
       const mine = f103.versionIds[0] as string;
       const other = f103Other.versionIds[0] as string;

@@ -210,7 +210,7 @@ describe("Endpoint #9 - discard scope by entry point", () => {
     await destroyFamily(poToken, famCreate?.familyId);
   }, SEED_MS);
 
-  test("TC-CTAPI-070-1 discarding an unsaved first upload deletes the entire family", async () => {
+  test("TC-CTAPI-070-1 discarding an unsaved first upload deletes the entire family @regression", async () => {
     const before = await api.list(poToken, { limit: 1 });
     expect(before.status).toBe(200);
     const totalBefore = before.data.data.pagination.total;
@@ -233,7 +233,7 @@ describe("Endpoint #9 - discard scope by entry point", () => {
     assertResponseTime(r);
   }, CASE_MS);
 
-  test("TC-CTAPI-070-2 discarding an unsaved Upload New Version deletes only that version", async () => {
+  test("TC-CTAPI-070-2 discarding an unsaved Upload New Version deletes only that version @regression", async () => {
     const before = await api.list(poToken, { limit: 1 });
     const totalBefore = before.data.data.pagination.total;
     const detailBefore = await api.detail(poToken, famNewVer.familyId);
@@ -273,7 +273,7 @@ describe("Endpoint #9 - discard scope by entry point", () => {
     assertResponseTime(r);
   }, CASE_MS);
 
-  test("TC-CTAPI-071 discarding an unsaved version releases the provisional NNN for reuse", async () => {
+  test("TC-CTAPI-071 discarding an unsaved version releases the provisional NNN for reuse @regression", async () => {
     // TC-CTAPI-070-2 already discarded the -002 draft above, so the counter should
     // hand -002 back on every subsequent upload/discard cycle (spec 9.2).
     expect(nnn(newVerContractId)).toBe("002");
@@ -298,7 +298,7 @@ describe("Endpoint #9 - discard scope by entry point", () => {
     assertResponseTime(versions);
   }, CASE_MS);
 
-  test("TC-CTAPI-072 discarding the only version of a first upload releases the provisional XXXX", async () => {
+  test("TC-CTAPI-072 discarding the only version of a first upload releases the provisional XXXX @regression", async () => {
     // Isolation risk noted in the TC: family_sequence_counter is tenant-wide, so a
     // concurrent create in the same tenant will legitimately break this assertion.
     const fx = CONTRACT_V1();
@@ -356,7 +356,7 @@ describe("Endpoint #9 - Update Contract discard leaves the live version intact",
     await destroyFamily(poToken, famUpd?.familyId);
   }, SEED_MS);
 
-  test("TC-CTAPI-070-3 discarding an in-progress Update Contract abandons only the staged replacement", async () => {
+  test("TC-CTAPI-070-3 discarding an in-progress Update Contract abandons only the staged replacement @regression", async () => {
     // Endpoint #4 must have staged a replacement for this branch to exist at all.
     expect(stagedOk, "Endpoint #4 did not stage a replacement - Processing 2 unreachable").toBe(true);
 
@@ -421,7 +421,7 @@ describe("Endpoint #9 - delete guards and auth", () => {
     await destroyFamily(poToken, fam?.familyId);
   }, SEED_MS);
 
-  test("TC-CTAPI-073-1 deleting the Active version returns 409 ERR_DELETE_BLOCKED", async () => {
+  test("TC-CTAPI-073-1 deleting the Active version returns 409 ERR_DELETE_BLOCKED @regression", async () => {
     const r = await api.deleteVersion(poToken, fam.familyId, fam.versionId);
     expect(r.status).toBe(409);
     assertErrorEnvelope(r, "ERR_DELETE_BLOCKED");
@@ -437,7 +437,7 @@ describe("Endpoint #9 - delete guards and auth", () => {
     assertResponseTime(r);
   }, CASE_MS);
 
-  test("TC-CTAPI-073-2 deleting the Latest version returns 409 ERR_DELETE_BLOCKED", async () => {
+  test("TC-CTAPI-073-2 deleting the Latest version returns 409 ERR_DELETE_BLOCKED @regression", async () => {
     const r = await api.deleteVersion(poToken, fam.familyId, versionLatest);
     expect(r.status).toBe(409);
     assertErrorEnvelope(r, "ERR_DELETE_BLOCKED");
@@ -451,7 +451,7 @@ describe("Endpoint #9 - delete guards and auth", () => {
     assertResponseTime(r);
   }, CASE_MS);
 
-  test("TC-CTAPI-074-1 an Analyst deleting a genuinely deletable version returns 403", async () => {
+  test("TC-CTAPI-074-1 an Analyst deleting a genuinely deletable version returns 403 @regression", async () => {
     const r = await api.deleteVersion(analystToken, fam.familyId, versionMiddle);
     expect(r.status).toBe(403);
     expect(r.status).not.toBe(401);
@@ -465,7 +465,7 @@ describe("Endpoint #9 - delete guards and auth", () => {
     assertResponseTime(r);
   }, CASE_MS);
 
-  test("TC-CTAPI-074-2 deleting a version without an Authorization header returns 401", async () => {
+  test("TC-CTAPI-074-2 deleting a version without an Authorization header returns 401 @regression", async () => {
     const r = await api.deleteVersion("", fam.familyId, versionMiddle);
     expect(r.status).toBe(401);
     expect(r.data.success).toBe(false);
@@ -477,7 +477,7 @@ describe("Endpoint #9 - delete guards and auth", () => {
     assertResponseTime(r);
   }, CASE_MS);
 
-  test("TC-CTAPI-074-3 deleting a version under an unknown familyId returns 404", async () => {
+  test("TC-CTAPI-074-3 deleting a version under an unknown familyId returns 404 @regression", async () => {
     const r = await api.deleteVersion(poToken, MISSING_FAMILY, versionMiddle);
     expect(r.status).toBe(404);
     expect(r.status).not.toBe(500);
@@ -488,7 +488,7 @@ describe("Endpoint #9 - delete guards and auth", () => {
     assertResponseTime(r);
   }, CASE_MS);
 
-  test("TC-CTAPI-074-4 deleting an unknown versionId under a real family returns 404", async () => {
+  test("TC-CTAPI-074-4 deleting an unknown versionId under a real family returns 404 @regression", async () => {
     const before = await api.versions(poToken, fam.familyId);
     const countBefore = before.data.data.versions.length;
 
@@ -502,7 +502,7 @@ describe("Endpoint #9 - delete guards and auth", () => {
     assertResponseTime(r);
   }, CASE_MS);
 
-  test("TC-CTAPI-074-5 deleting another tenant's version returns 404, not 403", async () => {
+  test("TC-CTAPI-074-5 deleting another tenant's version returns 404, not 403 @regression", async () => {
     // No second seeded tenant exists on QA, so this runs against a well-formed id the
     // caller's tenant does not own - which is precisely the indistinguishability
     // property the case exists to prove.
@@ -514,7 +514,7 @@ describe("Endpoint #9 - delete guards and auth", () => {
   }, CASE_MS);
 
   // Declared last in this describe: it consumes versionMiddle.
-  test("TC-CTAPI-073-3 deleting a version that is neither Active nor Latest succeeds", async () => {
+  test("TC-CTAPI-073-3 deleting a version that is neither Active nor Latest succeeds @regression", async () => {
     const before = await api.versions(poToken, fam.familyId);
     const countBefore = before.data.data.versions.length;
     const detailBefore = await api.detail(poToken, fam.familyId);
@@ -559,7 +559,7 @@ describe("Endpoint #10 - contract detail payload and access", () => {
     await destroyFamily(poToken, famBlank?.familyId);
   }, SEED_MS);
 
-  test("TC-CTAPI-076-2 blank Summary fields are returned as null with their keys present", async () => {
+  test("TC-CTAPI-076-2 blank Summary fields are returned as null with their keys present @regression", async () => {
     const saved = await api.save(poToken, famBlank.familyId, famBlank.versionId, {});
     // a fully blank contract is a valid, viewable contract - every field is optional
     expect(saved.status, `blank save: ${JSON.stringify(saved.data).slice(0, 300)}`).toBeLessThan(400);
@@ -582,7 +582,7 @@ describe("Endpoint #10 - contract detail payload and access", () => {
     assertResponseTime(r);
   }, CASE_MS);
 
-  test("TC-CTAPI-077-2 the representative version is the most recent upload when none is Active", async () => {
+  test("TC-CTAPI-077-2 the representative version is the most recent upload when none is Active @regression", async () => {
     const r = await api.detail(poToken, famNoActive.familyId);
     expect(r.status).toBe(200);
     const d = r.data.data;
@@ -594,7 +594,7 @@ describe("Endpoint #10 - contract detail payload and access", () => {
     assertResponseTime(r);
   }, CASE_MS);
 
-  test("TC-CTAPI-079-9 an Analyst reads contract detail but receives all action buttons false", async () => {
+  test("TC-CTAPI-079-9 an Analyst reads contract detail but receives all action buttons false @regression", async () => {
     const owner = await api.detail(poToken, famNoActive.familyId);
     expect(owner.status).toBe(200);
     const ownerButtons = owner.data.data.actionButtons;
@@ -619,7 +619,7 @@ describe("Endpoint #10 - contract detail payload and access", () => {
     assertResponseTime(r);
   }, CASE_MS);
 
-  test("TC-CTAPI-079-10 contract detail without an Authorization header returns 401", async () => {
+  test("TC-CTAPI-079-10 contract detail without an Authorization header returns 401 @regression", async () => {
     const r = await api.detail("", famNoActive.familyId);
     expect(r.status).toBe(401);
     expect(r.status).not.toBe(403);
@@ -632,7 +632,7 @@ describe("Endpoint #10 - contract detail payload and access", () => {
     assertResponseTime(r);
   }, CASE_MS);
 
-  test("TC-CTAPI-079-12 contract detail for another tenant's family returns 404, not 403", async () => {
+  test("TC-CTAPI-079-12 contract detail for another tenant's family returns 404, not 403 @regression", async () => {
     // No second seeded tenant on QA - asserted against an id this tenant does not own.
     const r = await api.detail(poToken, MISSING_FAMILY);
     expect(r.status).toBe(404);
@@ -645,7 +645,7 @@ describe("Endpoint #10 - contract detail payload and access", () => {
   }, CASE_MS);
 
   // Declared last in this describe: it deletes famBlank.
-  test("TC-CTAPI-079-11 detail for an unknown or deleted familyId returns 404", async () => {
+  test("TC-CTAPI-079-11 detail for an unknown or deleted familyId returns 404 @regression", async () => {
     const unknown = await api.detail(poToken, MISSING_FAMILY);
     expect(unknown.status).toBe(404);
     assertErrorEnvelope(unknown, "ERR_CONTRACT_NOT_FOUND");
@@ -698,7 +698,7 @@ describe("Endpoint #10 - lazy-write Expired transition and notice deadline", () 
     }
   }, SEED_MS);
 
-  test("TC-CTAPI-078-1 the lazy-write Expired transition fires at read time on the detail endpoint", async () => {
+  test("TC-CTAPI-078-1 the lazy-write Expired transition fires at read time on the detail endpoint @regression", async () => {
     // First read of this family since activation - the transition must happen here,
     // with no scheduled job involved (spec 9.1).
     const r = await api.detail(poToken, famYesterday.familyId);
@@ -722,7 +722,7 @@ describe("Endpoint #10 - lazy-write Expired transition and notice deadline", () 
     assertResponseTime(r);
   }, CASE_MS);
 
-  test("TC-CTAPI-078-2 a contract expiring today is still Active, not Expired", async () => {
+  test("TC-CTAPI-078-2 a contract expiring today is still Active, not Expired @regression", async () => {
     const onDate = await api.detail(poToken, famToday.familyId);
     expect(onDate.status).toBe(200);
     // the comparison is strictly less-than, evaluated in America/Chicago
@@ -734,7 +734,7 @@ describe("Endpoint #10 - lazy-write Expired transition and notice deadline", () 
     assertResponseTime(onDate);
   }, CASE_MS);
 
-  test("TC-CTAPI-078-3 a contract with no expiration date never transitions to Expired", async () => {
+  test("TC-CTAPI-078-3 a contract with no expiration date never transitions to Expired @regression", async () => {
     const r = await api.detail(poToken, famNoExpiry.familyId);
     expect(r.status).toBe(200);
     expect(r.data.data.status).toBe("active");
@@ -754,7 +754,7 @@ describe("Endpoint #10 - lazy-write Expired transition and notice deadline", () 
     assertResponseTime(r);
   }, CASE_MS);
 
-  test("TC-CTAPI-079-8 noticeDeadlineOverdue is true only once the notice deadline has passed", async () => {
+  test("TC-CTAPI-079-8 noticeDeadlineOverdue is true only once the notice deadline has passed @regression", async () => {
     const overdue = await api.detail(poToken, famYesterday.familyId);
     expect(overdue.status).toBe(200);
     expect(typeof overdue.data.data.keyDates.noticeDeadlineOverdue).toBe("boolean");
@@ -846,7 +846,7 @@ describe("Endpoint #10 - Stage 2 progressive disclosure", () => {
     await destroyFamily(poToken, famStage2?.familyId);
   }, SEED_MS);
 
-  test("TC-CTAPI-079-1 Executive Overview is withheld as null until the Stage 2 summary completes", async () => {
+  test("TC-CTAPI-079-1 Executive Overview is withheld as null until the Stage 2 summary completes @regression", async () => {
     expect(polls.length).toBeGreaterThan(0);
     for (const p of polls) {
       expect(p.hasOverviewKey, "executiveOverview key must always be present").toBe(true);
@@ -865,7 +865,7 @@ describe("Endpoint #10 - Stage 2 progressive disclosure", () => {
     assertResponseTime(r);
   }, CASE_MS);
 
-  test("TC-CTAPI-079-2 riskCount is null while the Stage 2 clause/risk job is pending", async () => {
+  test("TC-CTAPI-079-2 riskCount is null while the Stage 2 clause/risk job is pending @regression", async () => {
     expect(polls.length).toBeGreaterThan(0);
     let seen = -1;
     for (const p of polls) {
@@ -886,7 +886,7 @@ describe("Endpoint #10 - Stage 2 progressive disclosure", () => {
     assertResponseTime(r);
   }, CASE_MS);
 
-  test("TC-CTAPI-079-4 riskCount equals the total risk entries returned by the Risks endpoint", async () => {
+  test("TC-CTAPI-079-4 riskCount equals the total risk entries returned by the Risks endpoint @regression", async () => {
     const detail = await api.detail(poToken, famStage2.familyId);
     expect(detail.status).toBe(200);
     expect(detail.data.data.clauseRiskStatus).toBe("completed");
@@ -956,7 +956,7 @@ describe("Endpoint #11 - delete contract family", () => {
     }
   }, SEED_MS);
 
-  test("TC-CTAPI-080 delete contract family returns 200 with the permanent-delete message", async () => {
+  test("TC-CTAPI-080 delete contract family returns 200 with the permanent-delete message @regression", async () => {
     const before = await api.list(poToken, { limit: 1 });
     expect(before.status).toBe(200);
     const totalBefore = before.data.data.pagination.total;
@@ -977,7 +977,7 @@ describe("Endpoint #11 - delete contract family", () => {
     assertResponseTime(r);
   }, CASE_MS);
 
-  test("TC-CTAPI-081 family delete makes every version and all child data unreachable", async () => {
+  test("TC-CTAPI-081 family delete makes every version and all child data unreachable @regression", async () => {
     const baselineDetail = await api.detail(poToken, gFam2.familyId);
     expect(baselineDetail.status).toBe(200);
     const baselineVersions = await api.versions(poToken, gFam2.familyId);
@@ -1013,7 +1013,7 @@ describe("Endpoint #11 - delete contract family", () => {
     assertResponseTime(r);
   }, CASE_MS);
 
-  test("TC-CTAPI-082 family delete hard-deletes every cached comparison for that family", async () => {
+  test("TC-CTAPI-082 family delete hard-deletes every cached comparison for that family @regression", async () => {
     // gFam1 was deleted by TC-CTAPI-080 above; this case owns the comparison-cache
     // half of that delete, so no second family is seeded for it.
     // Endpoint #15 must have produced a cached comparison for this case to have a
@@ -1026,7 +1026,7 @@ describe("Endpoint #11 - delete contract family", () => {
     assertResponseTime(r);
   }, CASE_MS);
 
-  test("TC-CTAPI-083-1 delete is available when the family status is in_review", async () => {
+  test("TC-CTAPI-083-1 delete is available when the family status is in_review @regression", async () => {
     const before = await api.detail(poToken, gInReview.familyId);
     expect(before.data.data.status).toBe("in_review");
     const listBefore = await api.list(poToken, { limit: 1 });
@@ -1042,7 +1042,7 @@ describe("Endpoint #11 - delete contract family", () => {
     assertResponseTime(r);
   }, CASE_MS);
 
-  test("TC-CTAPI-083-2 delete is available when the family status is active", async () => {
+  test("TC-CTAPI-083-2 delete is available when the family status is active @regression", async () => {
     const before = await api.detail(poToken, gActive.familyId);
     expect(before.data.data.status).toBe("active");
 
@@ -1054,7 +1054,7 @@ describe("Endpoint #11 - delete contract family", () => {
     assertResponseTime(r);
   }, CASE_MS);
 
-  test("TC-CTAPI-083-3 delete is available when the family status is expired", async () => {
+  test("TC-CTAPI-083-3 delete is available when the family status is expired @regression", async () => {
     const before = await api.detail(poToken, gExpired.familyId);
     expect(before.data.data.status).toBe("expired");
 
@@ -1065,7 +1065,7 @@ describe("Endpoint #11 - delete contract family", () => {
     assertResponseTime(r);
   }, CASE_MS);
 
-  test("TC-CTAPI-083-4 delete is available when the family status is terminated", async () => {
+  test("TC-CTAPI-083-4 delete is available when the family status is terminated @regression", async () => {
     const before = await api.detail(poToken, gTerminated.familyId);
     expect(before.data.data.status).toBe("terminated");
     expect(before.data.data.terminatedBanner).not.toBeNull();
@@ -1086,7 +1086,7 @@ describe("Endpoint #11 - delete contract family", () => {
   // TC-CTAPI-084 is implemented in contracts.final.test.ts, which drives the FEAT-005
   // vendors API alongside the Contracts client.
 
-  test("TC-CTAPI-085 family delete without a bearer token returns 401", async () => {
+  test("TC-CTAPI-085 family delete without a bearer token returns 401 @regression", async () => {
     for (const token of ["", "not-a-token"]) {
       const r = await api.deleteFamily(token, gAuth.familyId);
       expect(r.status, `token "${token}"`).toBe(401);
@@ -1100,7 +1100,7 @@ describe("Endpoint #11 - delete contract family", () => {
     expect((await api.detail(poToken, gAuth.familyId)).status).toBe(200);
   }, CASE_MS);
 
-  test("TC-CTAPI-086-1 family delete is forbidden for a Procurement Analyst", async () => {
+  test("TC-CTAPI-086-1 family delete is forbidden for a Procurement Analyst @regression", async () => {
     const asAnalyst = await api.detail(analystToken, gAuth.familyId);
     expect(asAnalyst.status).toBe(200);
     expect(asAnalyst.data.data.actionButtons.showDelete).toBe(false);
@@ -1113,7 +1113,7 @@ describe("Endpoint #11 - delete contract family", () => {
     assertResponseTime(r);
   }, CASE_MS);
 
-  test("TC-CTAPI-086-2 family delete is forbidden for a Platform Admin", async () => {
+  test("TC-CTAPI-086-2 family delete is forbidden for a Platform Admin @regression", async () => {
     expect(adminToken, "no platform-admin token available").toBeTruthy();
     const r = await api.deleteFamily(adminToken, gAuth.familyId);
     // contract TBD: the spec pins neither 403 nor 404 for a tenant-less admin token
@@ -1123,7 +1123,7 @@ describe("Endpoint #11 - delete contract family", () => {
     assertResponseTime(r);
   }, CASE_MS);
 
-  test("TC-CTAPI-087-2 family delete across tenants returns 404, not 403", async () => {
+  test("TC-CTAPI-087-2 family delete across tenants returns 404, not 403 @regression", async () => {
     // No second seeded tenant on QA - run against an id this tenant does not own.
     const r = await api.deleteFamily(poToken, MISSING_FAMILY);
     expect(r.status).toBe(404);
@@ -1133,7 +1133,7 @@ describe("Endpoint #11 - delete contract family", () => {
   }, CASE_MS);
 
   // Declared last in this describe: it deletes gAuth.
-  test("TC-CTAPI-087-1 family delete with an unknown familyId returns 404", async () => {
+  test("TC-CTAPI-087-1 family delete with an unknown familyId returns 404 @regression", async () => {
     const unknown = await api.deleteFamily(poToken, MISSING_FAMILY);
     expect(unknown.status).toBe(404);
 
@@ -1191,7 +1191,7 @@ describe("Endpoint #12 - terminate contract", () => {
   }, SEED_MS);
 
   // Declared before TC-CTAPI-088 because it needs hActive1 while it is still active.
-  test("TC-CTAPI-091 terminate rejects the unauthenticated caller with 401 and the Analyst with 403", async () => {
+  test("TC-CTAPI-091 terminate rejects the unauthenticated caller with 401 and the Analyst with 403 @regression", async () => {
     const anon = await api.terminate("", hActive1.familyId);
     expect(anon.status).toBe(401);
     expect(anon.data.success).toBe(false);
@@ -1211,7 +1211,7 @@ describe("Endpoint #12 - terminate contract", () => {
     expect(owner.data.data.status).toBe("active");
   }, CASE_MS);
 
-  test("TC-CTAPI-088 terminate an active contract returns 200 with the termination message", async () => {
+  test("TC-CTAPI-088 terminate an active contract returns 200 with the termination message @regression", async () => {
     const before = await api.detail(poToken, hActive1.familyId);
     expect(before.data.data.status).toBe("active");
     expect(before.data.data.terminatedBanner).toBeNull();
@@ -1242,7 +1242,7 @@ describe("Endpoint #12 - terminate contract", () => {
   }, CASE_MS);
 
   // Endpoint #10 case, declared here because it consumes the family TC-CTAPI-088 terminated.
-  test("TC-CTAPI-079-7 a terminated contract returns the banner, terminatedAt and no write buttons", async () => {
+  test("TC-CTAPI-079-7 a terminated contract returns the banner, terminatedAt and no write buttons @regression", async () => {
     const r = await api.detail(poToken, hActive1.familyId);
     expect(r.status).toBe(200);
     const d = r.data.data;
@@ -1268,7 +1268,7 @@ describe("Endpoint #12 - terminate contract", () => {
     assertResponseTime(r);
   }, CASE_MS);
 
-  test("TC-CTAPI-089 terminate makes every write action read-only while Compare still works", async () => {
+  test("TC-CTAPI-089 terminate makes every write action read-only while Compare still works @regression", async () => {
     const detail = await api.detail(poToken, hMulti.familyId);
     expect(detail.status).toBe(200);
     expect(detail.data.data.actionButtons).toEqual({
@@ -1313,7 +1313,7 @@ describe("Endpoint #12 - terminate contract", () => {
     assertResponseTime(detail);
   }, CASE_MS);
 
-  test("TC-CTAPI-090 terminating an already-terminated contract returns 409 ERR_ALREADY_TERMINATED", async () => {
+  test("TC-CTAPI-090 terminating an already-terminated contract returns 409 ERR_ALREADY_TERMINATED @regression", async () => {
     const first = await api.terminate(poToken, hActive2.familyId);
     // DRIFT (live QA 2026-08-25): 201 instead of the documented 200 - see TC-CTAPI-088.
     expect(first.status).toBe(200);
@@ -1334,7 +1334,7 @@ describe("Endpoint #12 - terminate contract", () => {
     expect(after.data.data.terminatedBanner).toBe(banner);
   }, CASE_MS);
 
-  test("TC-CTAPI-092-1 terminate with an unknown or deleted familyId returns 404, not 409", async () => {
+  test("TC-CTAPI-092-1 terminate with an unknown or deleted familyId returns 404, not 409 @regression", async () => {
     const unknown = await api.terminate(poToken, MISSING_FAMILY);
     expect(unknown.status).toBe(404);
     expect(unknown.data.success).toBe(false);
@@ -1350,7 +1350,7 @@ describe("Endpoint #12 - terminate contract", () => {
     assertResponseTime(r);
   }, CASE_MS);
 
-  test("TC-CTAPI-092-2 terminate across tenants returns 404, not 403", async () => {
+  test("TC-CTAPI-092-2 terminate across tenants returns 404, not 403 @regression", async () => {
     // No second seeded tenant on QA - run against an id this tenant does not own.
     const r = await api.terminate(poToken, MISSING_FAMILY);
     expect(r.status).toBe(404);
@@ -1359,7 +1359,7 @@ describe("Endpoint #12 - terminate contract", () => {
     assertResponseTime(r);
   }, CASE_MS);
 
-  test("TC-CTAPI-151 terminate an in_review contract returns 200 and moves the family to terminated", async () => {
+  test("TC-CTAPI-151 terminate an in_review contract returns 200 and moves the family to terminated @regression", async () => {
     const before = await api.detail(poToken, hInReview.familyId);
     expect(before.status).toBe(200);
     expect(before.data.data.status).toBe("in_review");
@@ -1394,7 +1394,7 @@ describe("Endpoint #12 - terminate contract", () => {
     assertResponseTime(r);
   }, CASE_MS);
 
-  test("TC-CTAPI-152 terminate an expired contract returns 200 and moves the family to terminated", async () => {
+  test("TC-CTAPI-152 terminate an expired contract returns 200 and moves the family to terminated @regression", async () => {
     // first read fires the spec 9.1 lazy-write, so the stored status becomes expired
     const before = await api.detail(poToken, hExpired.familyId);
     expect(before.status).toBe(200);

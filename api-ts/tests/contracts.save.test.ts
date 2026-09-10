@@ -234,7 +234,7 @@ describe("Endpoint #8 - save happy path, persistence and the Stage 2 trigger", (
     };
   }, SEED_MS);
 
-  test("TC-CTAPI-056 save returns 200 with exactly familyId, versionId and contractId @smoke", async () => {
+  test("TC-CTAPI-056 save returns 200 with exactly familyId, versionId and contractId @smoke @regression", async () => {
     const r = await api.save(poToken, sAnchor.familyId, sAnchor.versionId, body56());
     expect(r.status).toBe(200);
     expect(r.data.success).toBe(true);
@@ -254,7 +254,7 @@ describe("Endpoint #8 - save happy path, persistence and the Stage 2 trigger", (
     assertResponseTime(r);
   }, CASE_MS);
 
-  test("TC-CTAPI-057 save persists all 20 fields, verified read-after-write", async () => {
+  test("TC-CTAPI-057 save persists all 20 fields, verified read-after-write @regression", async () => {
     // 16 unique markers so a field-to-column swap is unmistakable; a copy of the
     // extracted values could not distinguish a swap from a correct write.
     const markers: Record<string, unknown> = {};
@@ -290,7 +290,7 @@ describe("Endpoint #8 - save happy path, persistence and the Stage 2 trigger", (
     }
   }, CASE_MS);
 
-  test("TC-CTAPI-058-1 save on a first upload fires Stage 2, each status transitioning once", async () => {
+  test("TC-CTAPI-058-1 save on a first upload fires Stage 2, each status transitioning once @regression", async () => {
     // 1. Pre-save: Stage 2 has produced nothing (US-CT-003 "Nothing before that
     // first successful Save has any ... data at all"). Captured in beforeAll.
     expect(stage2PreSave, "pre-save detail was not captured").toBeDefined();
@@ -328,7 +328,7 @@ describe("Endpoint #8 - save happy path, persistence and the Stage 2 trigger", (
     }
   }, CASE_MS);
 
-  test("TC-CTAPI-058-3 a second save of an already-saved version does not re-trigger Stage 2", async () => {
+  test("TC-CTAPI-058-3 a second save of an already-saved version does not re-trigger Stage 2 @regression", async () => {
     // Runs after TC-CTAPI-058-1, which saved this version and polled Stage 2 to
     // terminal (vitest executes a file's tests in declaration order).
     const before = await api.detail(poToken, sStage2.familyId);
@@ -374,7 +374,7 @@ describe("Endpoint #8 - save happy path, persistence and the Stage 2 trigger", (
     expect(after.data.data.status).toBe(baseline.status);
   }, CASE_MS);
 
-  test("TC-CTAPI-065 save with every field omitted succeeds and blanks the extracted values", async () => {
+  test("TC-CTAPI-065 save with every field omitted succeeds and blanks the extracted values @regression", async () => {
     // Spec: every one of the 20 fields is Required: No. US-CT-003: "Every field,
     // if left blank, saves as empty and displays '-' wherever shown".
     //
@@ -511,7 +511,7 @@ describe("Endpoint #8 - validation rejections (one shared seed, every save expec
     expect(d.data.data.clauseRiskStatus, `${label}: Stage 2 was enqueued by a rejected save`).not.toBe("pending");
   }
 
-  test("TC-CTAPI-062-3 save rejects totalContractValue at 1000000000 with 422 ERR_VALIDATION_FAILED", async () => {
+  test("TC-CTAPI-062-3 save rejects totalContractValue at 1000000000 with 422 ERR_VALIDATION_FAILED @regression", async () => {
     const r = await api.save(poToken, sReject.familyId, sReject.versionId, body56({ totalContractValue: 1000000000 }));
     // The ONE per-field message the spec spells out, asserted verbatim including
     // the comma group separators (spec 4.2 Endpoint #8 Error 422 example).
@@ -519,7 +519,7 @@ describe("Endpoint #8 - validation rejections (one shared seed, every save expec
     await assertNothingPersisted("TC-CTAPI-062-3");
   }, CASE_MS);
 
-  test("TC-CTAPI-062-4 save rejects a negative totalContractValue of -1", async () => {
+  test("TC-CTAPI-062-4 save rejects a negative totalContractValue of -1 @regression", async () => {
     const r = await api.save(poToken, sReject.familyId, sReject.versionId, body56({ totalContractValue: -1 }));
     // Same documented range message - it covers both bounds ("No negatives.").
     assertValidationRejected(r, "totalContractValue", "Must be between 0 and 999,999,999");
@@ -529,14 +529,14 @@ describe("Endpoint #8 - validation rejections (one shared seed, every save expec
     // 200 and the assertion above would already have failed.
   }, CASE_MS);
 
-  test("TC-CTAPI-063-3 save rejects noticePeriodDays at 366 with 422 ERR_VALIDATION_FAILED", async () => {
+  test("TC-CTAPI-063-3 save rejects noticePeriodDays at 366 with 422 ERR_VALIDATION_FAILED @regression", async () => {
     const r = await api.save(poToken, sReject.familyId, sReject.versionId, body56({ noticePeriodDays: 366 }));
     // contract TBD on the per-field message - only totalContractValue's is pinned.
     assertValidationRejected(r, "noticePeriodDays");
     await assertNothingPersisted("TC-CTAPI-063-3");
   }, CASE_MS);
 
-  test("TC-CTAPI-063-4 save rejects a negative noticePeriodDays of -1", async () => {
+  test("TC-CTAPI-063-4 save rejects a negative noticePeriodDays of -1 @regression", async () => {
     const r = await api.save(
       poToken,
       sReject.familyId,
@@ -563,7 +563,7 @@ describe("Endpoint #8 - validation rejections (one shared seed, every save expec
     }
   }, CASE_MS);
 
-  test("TC-CTAPI-064-2 save rejects a free-text field at 501 characters", async () => {
+  test("TC-CTAPI-064-2 save rejects a free-text field at 501 characters @regression", async () => {
     const r = await api.save(
       poToken,
       sReject.familyId,
@@ -579,7 +579,7 @@ describe("Endpoint #8 - validation rejections (one shared seed, every save expec
     // invalidate it for every other rejection case in this block.
   }, CASE_MS);
 
-  test("TC-CTAPI-068-1 an Analyst attempting to save returns 403 and persists nothing", async () => {
+  test("TC-CTAPI-068-1 an Analyst attempting to save returns 403 and persists nothing @regression", async () => {
     const r = await api.save(poToken === "" ? "" : analystToken, sReject.familyId, sReject.versionId, body56());
     expect(r.status, "403, not 401 - the token is valid, only manage_contracts is missing").toBe(403);
     assertErrorEnvelope(r, "ERR_RBAC_FORBIDDEN");
@@ -596,7 +596,7 @@ describe("Endpoint #8 - validation rejections (one shared seed, every save expec
     assertResponseTime(rv);
   }, CASE_MS);
 
-  test("TC-CTAPI-068-2 save without an Authorization header returns 401", async () => {
+  test("TC-CTAPI-068-2 save without an Authorization header returns 401 @regression", async () => {
     const r = await api.save("", sReject.familyId, sReject.versionId, body56());
     expect(r.status).toBe(401);
     assertErrorEnvelope(r, "ERR_AUTH_INVALID_TOKEN");
@@ -609,7 +609,7 @@ describe("Endpoint #8 - validation rejections (one shared seed, every save expec
     await assertNothingPersisted("TC-CTAPI-068-2");
   }, CASE_MS);
 
-  test("TC-CTAPI-069-1 save with an unknown familyId returns 404, not a validation error", async () => {
+  test("TC-CTAPI-069-1 save with an unknown familyId returns 404, not a validation error @regression", async () => {
     const r = await api.save(poToken, MISSING_FAMILY, sReject.versionId, body56());
     // 404 not 422: the family check precedes field validation, so a bad family id
     // with a valid body must not surface as a validation error.
@@ -620,7 +620,7 @@ describe("Endpoint #8 - validation rejections (one shared seed, every save expec
     await assertNothingPersisted("TC-CTAPI-069-1");
   }, CASE_MS);
 
-  test("TC-CTAPI-069-2 save with an unknown versionId under a real family returns 404", async () => {
+  test("TC-CTAPI-069-2 save with an unknown versionId under a real family returns 404 @regression", async () => {
     const r = await api.save(poToken, sReject.familyId, MISSING_VERSION, body56());
     // contract TBD on the code - the spec never names a version-not-found code -
     // so only the status and the absence of a 500 are asserted.
@@ -631,7 +631,7 @@ describe("Endpoint #8 - validation rejections (one shared seed, every save expec
     await assertNothingPersisted("TC-CTAPI-069-2");
   }, CASE_MS);
 
-  test("TC-CTAPI-067 save accepts an ISO date and round-trips it without transposition", async () => {
+  test("TC-CTAPI-067 save accepts an ISO date and round-trips it without transposition @regression", async () => {
     // RESOLVED by CLRE-331. This case previously hedged across a genuine spec
     // contradiction - Endpoint #8's request table said MM/DD/YYYY while the
     // Endpoint #7 and #10 response examples returned YYYY-MM-DD - and asserted only

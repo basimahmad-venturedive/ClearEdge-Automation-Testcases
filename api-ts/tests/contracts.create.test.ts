@@ -319,7 +319,7 @@ describe("Endpoint #2 - POST /contracts (create contract)", () => {
     }
   }, HOOK_MS);
 
-  test("TC-CTAPI-014 create with a PDF returns 201 with familyId, versionId and CON-XXXX-001", async () => {
+  test("TC-CTAPI-014 create with a PDF returns 201 with familyId, versionId and CON-XXXX-001 @regression", async () => {
     const a = seeded.msa_services;
     const b = seeded.purchase_agreement_goods;
     expect(a.status).toBe(201);
@@ -335,7 +335,7 @@ describe("Endpoint #2 - POST /contracts (create contract)", () => {
   });
 
   test(
-    "TC-CTAPI-015 create with a DOCX returns 201 and the DOCX parse path runs",
+    "TC-CTAPI-015 create with a DOCX returns 201 and the DOCX parse path runs @regression",
     async () => {
       const fx = docxFixture();
       const r = await create({ contractType: "subscription_agreement_saas", file: fx });
@@ -353,7 +353,7 @@ describe("Endpoint #2 - POST /contracts (create contract)", () => {
     UPLOAD_TEST_MS,
   );
 
-  test("TC-CTAPI-016-1 create with a .txt file returns 400 ERR_INVALID_FILE_TYPE", async () => {
+  test("TC-CTAPI-016-1 create with a .txt file returns 400 ERR_INVALID_FILE_TYPE @regression", async () => {
     const before = await api.list(poToken, { limit: 1 });
     const r = await create({ contractType: "msa_services", file: BAD_TYPE_FILE() });
     expect(r.status).toBe(400);
@@ -366,7 +366,7 @@ describe("Endpoint #2 - POST /contracts (create contract)", () => {
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-016-2 create with a .pdf extension but a text/plain MIME returns 400 ERR_INVALID_FILE_TYPE", async () => {
+  test("TC-CTAPI-016-2 create with a .pdf extension but a text/plain MIME returns 400 ERR_INVALID_FILE_TYPE @regression", async () => {
     // Spec Processing 1 validates "by MIME type and extension" - the extension alone
     // must not admit the file.
     const r = await create({
@@ -384,7 +384,7 @@ describe("Endpoint #2 - POST /contracts (create contract)", () => {
   });
 
   test(
-    "TC-CTAPI-017-1 create with a file of exactly 25 MB returns 201 (inclusive upper boundary)",
+    "TC-CTAPI-017-1 create with a file of exactly 25 MB returns 201 (inclusive upper boundary) @regression",
     async () => {
       // Exactly maxSizeBytes from the spec's own error details, so the boundary is the
       // documented maximum rather than the first rejected size.
@@ -406,7 +406,7 @@ describe("Endpoint #2 - POST /contracts (create contract)", () => {
   );
 
   test(
-    "TC-CTAPI-017-2 create with a file over 25 MB returns 400 ERR_FILE_TOO_LARGE",
+    "TC-CTAPI-017-2 create with a file over 25 MB returns 400 ERR_FILE_TOO_LARGE @regression",
     async () => {
       const over = OVERSIZE_FILE();
       expect(over.buffer.length).toBeGreaterThan(MAX_SIZE_BYTES);
@@ -424,7 +424,7 @@ describe("Endpoint #2 - POST /contracts (create contract)", () => {
   // each proving the sent value is persisted rather than defaulted (read-after-write).
   for (const t of TYPES) {
     const idx = TYPES.indexOf(t) + 1;
-    test(`TC-CTAPI-018-${idx} create accepts contractType ${t}`, async () => {
+    test(`TC-CTAPI-018-${idx} create accepts contractType ${t} @regression`, async () => {
       const s = seeded[t];
       expect(s.status).toBe(201);
       const d = await api.detail(poToken, s.familyId);
@@ -434,7 +434,7 @@ describe("Endpoint #2 - POST /contracts (create contract)", () => {
     });
   }
 
-  test("TC-CTAPI-018-6 create with an unrecognised contractType is rejected", async () => {
+  test("TC-CTAPI-018-6 create with an unrecognised contractType is rejected @regression", async () => {
     const before = await api.list(poToken, { limit: 1 });
     const r = await create({ contractType: "nda_agreement", file: filePart(CONTRACT_V1()) });
     // `contract TBD` in the case: the spec pins the enum but not the error code for an
@@ -447,7 +447,7 @@ describe("Endpoint #2 - POST /contracts (create contract)", () => {
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-019 create without contractType is rejected", async () => {
+  test("TC-CTAPI-019 create without contractType is rejected @regression", async () => {
     const before = await api.list(poToken, { limit: 1 });
     const r = await create({ file: filePart(CONTRACT_V1()) });
     // `contract TBD`: required-field code not pinned for this endpoint.
@@ -464,7 +464,7 @@ describe("Endpoint #2 - POST /contracts (create contract)", () => {
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-020 create without a file is rejected", async () => {
+  test("TC-CTAPI-020 create without a file is rejected @regression", async () => {
     const before = await api.list(poToken, { limit: 1 });
     const r = await create({ contractType: "msa_services" });
     // `contract TBD`: required-field code not pinned for this endpoint.
@@ -475,7 +475,7 @@ describe("Endpoint #2 - POST /contracts (create contract)", () => {
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-021 create with a valid vendorId links the vendor and prefixes the contract name", async () => {
+  test("TC-CTAPI-021 create with a valid vendorId links the vendor and prefixes the contract name @regression", async () => {
     if (!vendorA || !vendorLinked) return; // tenant has no vendor to link
     expect(vendorLinked.status).toBe(201);
     const d = await api.detail(poToken, vendorLinked.familyId);
@@ -491,7 +491,7 @@ describe("Endpoint #2 - POST /contracts (create contract)", () => {
     assertResponseTime(d);
   });
 
-  test("TC-CTAPI-022-1 create with a non-existent vendorId returns 404 ERR_VENDOR_NOT_FOUND", async () => {
+  test("TC-CTAPI-022-1 create with a non-existent vendorId returns 404 ERR_VENDOR_NOT_FOUND @regression", async () => {
     const r = await create({
       contractType: "msa_services",
       vendorId: MISSING_UUID,
@@ -507,7 +507,7 @@ describe("Endpoint #2 - POST /contracts (create contract)", () => {
   // not own) are implemented in contracts.final.test.ts, which builds the
   // cross-feature vendor fixture this file deliberately does not.
 
-  test("TC-CTAPI-023-1 create with a valid non-Draft sourcingEventId links the event", async () => {
+  test("TC-CTAPI-023-1 create with a valid non-Draft sourcingEventId links the event @regression", async () => {
     if (!eventPublished || !eventLinked) return; // tenant has no non-Draft event
     expect(eventLinked.status).toBe(201);
     const d = await api.detail(poToken, eventLinked.familyId);
@@ -516,7 +516,7 @@ describe("Endpoint #2 - POST /contracts (create contract)", () => {
     assertResponseTime(d);
   });
 
-  test("TC-CTAPI-023-2 create with a Draft sourcingEventId returns 404 ERR_SOURCING_EVENT_NOT_FOUND", async () => {
+  test("TC-CTAPI-023-2 create with a Draft sourcingEventId returns 404 ERR_SOURCING_EVENT_NOT_FOUND @regression", async () => {
     if (!eventDraft) return; // tenant has no Draft event to reference
     const r = await create({
       contractType: "msa_services",
@@ -532,7 +532,7 @@ describe("Endpoint #2 - POST /contracts (create contract)", () => {
   // TC-CTAPI-023-3 (soft-deleted sourcing event), TC-CTAPI-024 (family-sequence cap)
   // and TC-CTAPI-025-1 (clause-row freeze) are implemented in contracts.final.test.ts.
 
-  test("TC-CTAPI-025-2 create enqueues exactly one Stage 1 extraction job", async () => {
+  test("TC-CTAPI-025-2 create enqueues exactly one Stage 1 extraction job @regression", async () => {
     const s = seeded.msa_services;
     const r = await api.extractionStatus(poToken, s.familyId, s.versionId);
     expect(r.status).toBe(200);
@@ -548,7 +548,7 @@ describe("Endpoint #2 - POST /contracts (create contract)", () => {
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-026 create without an Authorization header returns 401", async () => {
+  test("TC-CTAPI-026 create without an Authorization header returns 401 @regression", async () => {
     const r = await api.create("", { contractType: "msa_services", file: filePart(CONTRACT_V1()) });
     // Authentication is evaluated before any payload validation.
     expect(r.status).toBe(401);
@@ -557,7 +557,7 @@ describe("Endpoint #2 - POST /contracts (create contract)", () => {
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-027 an Analyst creating a contract returns 403", async () => {
+  test("TC-CTAPI-027 an Analyst creating a contract returns 403 @regression", async () => {
     const r = await api.create(analystToken, { contractType: "msa_services", file: filePart(CONTRACT_V1()) });
     // 403 not 401 - the token is valid, only manage_contracts is missing.
     expect(r.status).toBe(403);

@@ -122,7 +122,7 @@ afterAll(async () => {
 }, 240_000);
 
 describe("Endpoint #5 - GET extraction-status", () => {
-  test("TC-CTAPI-041-1 extraction-status returns 200 with extractionStatus completed and exactly 3 keys", async () => {
+  test("TC-CTAPI-041-1 extraction-status returns 200 with extractionStatus completed and exactly 3 keys @regression", async () => {
     const r = await api.extractionStatus(poToken, famA!.familyId, famA!.versionId);
     expect(r.status).toBe(200);
     expect(r.data.success).toBe(true);
@@ -138,7 +138,7 @@ describe("Endpoint #5 - GET extraction-status", () => {
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-041-2 extraction-status reports pending while Stage 1 runs, with the same 3-key shape", async () => {
+  test("TC-CTAPI-041-2 extraction-status reports pending while Stage 1 runs, with the same 3-key shape @regression", async () => {
     // Fresh upload, probed with no wait. Per the case's automation note the
     // `pending` window cannot be forced, so the shape is asserted unconditionally
     // and `pending` only when the first poll actually observes it.
@@ -160,7 +160,7 @@ describe("Endpoint #5 - GET extraction-status", () => {
   // TC-CTAPI-041-3 is implemented in contracts.final.test.ts, which forces a real
   // Stage 1 failure with an unparseable fixture via seedFailedExtraction().
 
-  test("TC-CTAPI-042 extraction_status only ever reports the three documented values and completed is terminal", async () => {
+  test("TC-CTAPI-042 extraction_status only ever reports the three documented values and completed is terminal @regression", async () => {
     const fresh = await createNow();
     const observed: string[] = [];
     const deadline = Date.now() + 120_000;
@@ -202,7 +202,7 @@ describe("Endpoint #5 - GET extraction-status", () => {
     expect(observed.slice(-5)).toEqual([terminal, terminal, terminal, terminal, terminal]);
   }, 240_000);
 
-  test("TC-CTAPI-044 an Analyst can read extraction-status and gets an identical payload", async () => {
+  test("TC-CTAPI-044 an Analyst can read extraction-status and gets an identical payload @regression", async () => {
     const asAnalyst = await api.extractionStatus(analystToken, famA!.familyId, famA!.versionId);
     expect(asAnalyst.status).toBe(200);
     expect(asAnalyst.status).not.toBe(403);
@@ -213,7 +213,7 @@ describe("Endpoint #5 - GET extraction-status", () => {
     assertResponseTime(asAnalyst);
   });
 
-  test("TC-CTAPI-045-1 extraction-status without an Authorization header returns 401", async () => {
+  test("TC-CTAPI-045-1 extraction-status without an Authorization header returns 401 @regression", async () => {
     const r = await api.extractionStatus("", famA!.familyId, famA!.versionId);
     expect(r.status).toBe(401);
     expect(r.status).not.toBe(403);
@@ -231,7 +231,7 @@ describe("Endpoint #5 - GET extraction-status", () => {
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-045-2 extraction-status with an unknown familyId returns 404 ERR_CONTRACT_NOT_FOUND", async () => {
+  test("TC-CTAPI-045-2 extraction-status with an unknown familyId returns 404 ERR_CONTRACT_NOT_FOUND @regression", async () => {
     // A REAL version id under a NON-EXISTENT family: the family check must run first.
     const r = await api.extractionStatus(poToken, MISSING_FAMILY, famA!.versionId);
     expect(r.status).toBe(404);
@@ -240,7 +240,7 @@ describe("Endpoint #5 - GET extraction-status", () => {
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-045-3 extraction-status with an unknown versionId under a real family returns 404", async () => {
+  test("TC-CTAPI-045-3 extraction-status with an unknown versionId under a real family returns 404 @regression", async () => {
     const r = await api.extractionStatus(poToken, famA!.familyId, MISSING_VERSION);
     // 404, not 400 - the id is a well-formed UUID, it simply does not exist
     expect(r.status).toBe(404);
@@ -250,7 +250,7 @@ describe("Endpoint #5 - GET extraction-status", () => {
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-045-4 extraction-status with a versionId from a different family returns 404", async () => {
+  test("TC-CTAPI-045-4 extraction-status with a versionId from a different family returns 404 @regression", async () => {
     const mismatched = await api.extractionStatus(poToken, famA!.familyId, famB!.versionId);
     expect(mismatched.status).toBe(404);
     // does not disclose that the version exists elsewhere
@@ -266,7 +266,7 @@ describe("Endpoint #5 - GET extraction-status", () => {
     expect(okB.status).toBe(200);
   });
 
-  test("TC-CTAPI-045-5 extraction-status for a family the tenant does not own returns 404, not 403", async () => {
+  test("TC-CTAPI-045-5 extraction-status for a family the tenant does not own returns 404, not 403 @regression", async () => {
     // PROXY: no second tenant is provisioned in QA, so a well-formed family/version
     // pair the caller's tenant does not own stands in for tenant B's pair. The
     // assertion under test - 404 rather than 403, and no state disclosure - is the
@@ -286,7 +286,7 @@ describe("Endpoint #6 - POST extraction/retry", () => {
   // contracts.final.test.ts, which reaches the `failed` state through the API using
   // seedFailedExtraction(). This file keeps the two rejection cases below.
 
-  test("TC-CTAPI-047-1 retry while extraction is pending returns 409 ERR_EXTRACTION_NOT_FAILED", async () => {
+  test("TC-CTAPI-047-1 retry while extraction is pending returns 409 ERR_EXTRACTION_NOT_FAILED @regression", async () => {
     const fresh = await createNow();
     const before = await api.extractionStatus(poToken, fresh.familyId, fresh.versionId);
     expect(before.status).toBe(200);
@@ -311,7 +311,7 @@ describe("Endpoint #6 - POST extraction/retry", () => {
     }
   }, 120_000);
 
-  test("TC-CTAPI-047-2 retry after extraction completed returns 409 with details.currentStatus completed", async () => {
+  test("TC-CTAPI-047-2 retry after extraction completed returns 409 with details.currentStatus completed @regression", async () => {
     const reviewBefore = await api.review(poToken, famA!.familyId, famA!.versionId);
 
     const r = await api.retryExtraction(poToken, famA!.familyId, famA!.versionId);
@@ -329,7 +329,7 @@ describe("Endpoint #6 - POST extraction/retry", () => {
     expect(bodyWithoutMeta(reviewAfter.data)).toEqual(bodyWithoutMeta(reviewBefore.data));
   });
 
-  test("TC-CTAPI-050-1 an Analyst attempting retry returns 403, and can still read extraction-status", async () => {
+  test("TC-CTAPI-050-1 an Analyst attempting retry returns 403, and can still read extraction-status @regression", async () => {
     const r = await api.retryExtraction(analystToken, famA!.familyId, famA!.versionId);
     // 403, not 401 - the token is valid, only manage_contracts is missing. Also not
     // 409: the rights guard must run before the extraction-state check.
@@ -346,7 +346,7 @@ describe("Endpoint #6 - POST extraction/retry", () => {
     expect(analystRead.status).toBe(200);
   });
 
-  test("TC-CTAPI-050-2 retry without an Authorization header returns 401", async () => {
+  test("TC-CTAPI-050-2 retry without an Authorization header returns 401 @regression", async () => {
     const r = await api.retryExtraction("", famA!.familyId, famA!.versionId);
     expect(r.status).toBe(401);
     expect(r.data.success).toBe(false);
@@ -359,7 +359,7 @@ describe("Endpoint #6 - POST extraction/retry", () => {
     expect(after.data.data.extractionStatus).toBe("completed");
   });
 
-  test("TC-CTAPI-050-3 retry with an unknown familyId returns 404, not 409", async () => {
+  test("TC-CTAPI-050-3 retry with an unknown familyId returns 404, not 409 @regression", async () => {
     const r = await api.retryExtraction(poToken, MISSING_FAMILY, famA!.versionId);
     // the family check precedes the extraction_status check, so a nonexistent family
     // must never surface ERR_EXTRACTION_NOT_FAILED (that would disclose state)
@@ -372,7 +372,7 @@ describe("Endpoint #6 - POST extraction/retry", () => {
     expect(after.data.data.extractionStatus).toBe("completed");
   });
 
-  test("TC-CTAPI-050-4 retry with an unknown versionId under a real family returns 404, not 409", async () => {
+  test("TC-CTAPI-050-4 retry with an unknown versionId under a real family returns 404, not 409 @regression", async () => {
     const r = await api.retryExtraction(poToken, famA!.familyId, MISSING_VERSION);
     expect(r.status).toBe(404);
     expect(r.status).not.toBe(409);
@@ -383,7 +383,7 @@ describe("Endpoint #6 - POST extraction/retry", () => {
     expect(after.data.data.extractionStatus).toBe("completed");
   });
 
-  test("TC-CTAPI-050-5 retry against a version the tenant does not own returns 404, not 403 or 409", async () => {
+  test("TC-CTAPI-050-5 retry against a version the tenant does not own returns 404, not 403 or 409 @regression", async () => {
     // PROXY: no second tenant in QA - see TC-CTAPI-045-5. The double-leak assertion
     // (existence plus extraction state) is what this exercises.
     const r = await api.retryExtraction(poToken, MISSING_FAMILY, MISSING_VERSION);
@@ -398,7 +398,7 @@ describe("Endpoint #6 - POST extraction/retry", () => {
 });
 
 describe("Endpoint #7 - GET review", () => {
-  test("TC-CTAPI-051 review returns the documented envelope, header data and entry point", async () => {
+  test("TC-CTAPI-051 review returns the documented envelope, header data and entry point @regression", async () => {
     const r = await api.review(poToken, famA!.familyId, famA!.versionId);
     expect(r.status).toBe(200);
     expect(r.data.success).toBe(true);
@@ -429,7 +429,7 @@ describe("Endpoint #7 - GET review", () => {
     expect(Object.keys(d).sort()).toEqual([...REVIEW_KEYS].sort());
   });
 
-  test("TC-CTAPI-052 review returns all 20 Stage 1 fields with documented types and null, not absent", async () => {
+  test("TC-CTAPI-052 review returns all 20 Stage 1 fields with documented types and null, not absent @regression", async () => {
     const r = await api.review(poToken, famA!.familyId, famA!.versionId);
     expect(r.status).toBe(200);
     const fields = r.data.data.fields as Record<string, unknown>;
@@ -468,7 +468,7 @@ describe("Endpoint #7 - GET review", () => {
     expect(String(fields.terminationForConvenience)).toContain(`${truth.terminationForConvenienceDays} days`);
   });
 
-  test("TC-CTAPI-053-1 review before extraction completes is rejected with ERR_EXTRACTION_PENDING", async () => {
+  test("TC-CTAPI-053-1 review before extraction completes is rejected with ERR_EXTRACTION_PENDING @regression", async () => {
     const fresh = await createNow();
     const status = await api.extractionStatus(poToken, fresh.familyId, fresh.versionId);
     expect(status.status).toBe(200);
@@ -501,7 +501,7 @@ describe("Endpoint #7 - GET review", () => {
   // TC-CTAPI-053-2 is implemented in contracts.final.test.ts, on a real failed
   // extraction produced through the API by seedFailedExtraction().
 
-  test("TC-CTAPI-054-1 review with no pending update round-trips all 20 fields through save into detail", async () => {
+  test("TC-CTAPI-054-1 review with no pending update round-trips all 20 fields through save into detail @regression", async () => {
     // A second version under family B gives entry_point='new_version' with no
     // pending-update row - the branch this case targets.
     const fx = CONTRACT_V2();
@@ -545,7 +545,7 @@ describe("Endpoint #7 - GET review", () => {
     expect(groups.terminationAndContinuity).toContain(String(truth.noticePeriodDays));
   }, 240_000);
 
-  test("TC-CTAPI-055-1 review returns the link keys present and consistent when nothing is linked", async () => {
+  test("TC-CTAPI-055-1 review returns the link keys present and consistent when nothing is linked @regression", async () => {
     const r = await api.review(poToken, famA!.familyId, famA!.versionId);
     expect(r.status).toBe(200);
     const d = r.data.data;
@@ -571,7 +571,7 @@ describe("Endpoint #7 - GET review", () => {
   // cross-feature fixture (seed a vendor, terminate the family past the §9.11
   // deletion gate, then delete the vendor).
 
-  test("TC-CTAPI-055-3 an Analyst can read the review payload and gets an identical body", async () => {
+  test("TC-CTAPI-055-3 an Analyst can read the review payload and gets an identical body @regression", async () => {
     const asAnalyst = await api.review(analystToken, famA!.familyId, famA!.versionId);
     expect(asAnalyst.status).toBe(200);
     expect(asAnalyst.status).not.toBe(403);
@@ -583,7 +583,7 @@ describe("Endpoint #7 - GET review", () => {
     assertResponseTime(asAnalyst);
   });
 
-  test("TC-CTAPI-055-4 review without an Authorization header returns 401", async () => {
+  test("TC-CTAPI-055-4 review without an Authorization header returns 401 @regression", async () => {
     const r = await api.review("", famA!.familyId, famA!.versionId);
     expect(r.status).toBe(401);
     expect(r.data.success).toBe(false);
@@ -594,7 +594,7 @@ describe("Endpoint #7 - GET review", () => {
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-055-5 review with an unknown familyId returns 404 ERR_CONTRACT_NOT_FOUND", async () => {
+  test("TC-CTAPI-055-5 review with an unknown familyId returns 404 ERR_CONTRACT_NOT_FOUND @regression", async () => {
     const r = await api.review(poToken, MISSING_FAMILY, famA!.versionId);
     // the family check precedes the extraction-state check
     expect(r.status).toBe(404);
@@ -603,7 +603,7 @@ describe("Endpoint #7 - GET review", () => {
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-055-6 review with an unknown versionId under a real family returns 404", async () => {
+  test("TC-CTAPI-055-6 review with an unknown versionId under a real family returns 404 @regression", async () => {
     const r = await api.review(poToken, famA!.familyId, MISSING_VERSION);
     expect(r.status).toBe(404);
     expect(r.status).not.toBe(400);
@@ -615,7 +615,7 @@ describe("Endpoint #7 - GET review", () => {
     expect(ok.status).toBe(200);
   });
 
-  test("TC-CTAPI-055-7 review for a version the tenant does not own returns 404, not 403", async () => {
+  test("TC-CTAPI-055-7 review for a version the tenant does not own returns 404, not 403 @regression", async () => {
     // PROXY: no second tenant in QA - see TC-CTAPI-045-5.
     const r = await api.review(poToken, MISSING_FAMILY, MISSING_VERSION);
     expect(r.status).toBe(404);

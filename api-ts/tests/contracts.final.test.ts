@@ -290,7 +290,7 @@ describe("References to vendors and sourcing events", () => {
     await destroyFamily(poToken, famActive);
   }, 120_000);
 
-  test("TC-CTAPI-011-2 family whose linked vendor was soft-deleted returns an id with a dash name", async () => {
+  test("TC-CTAPI-011-2 family whose linked vendor was soft-deleted returns an id with a dash name @regression", async () => {
     expect(seedError, `fixtures could not be seeded: ${seedError}`).toBe("");
     expect(vendorDeleteStatus, "the vendor fixture must actually have been deleted").toBeLessThan(400);
     expect(baseListRow, "the seeded family must appear in the pre-delete list").toBeTruthy();
@@ -313,7 +313,7 @@ describe("References to vendors and sourcing events", () => {
     assertResponseTime(r);
   }, CASE_MS);
 
-  test("TC-CTAPI-022-2 create with a soft-deleted vendorId returns 404 ERR_VENDOR_NOT_FOUND", async () => {
+  test("TC-CTAPI-022-2 create with a soft-deleted vendorId returns 404 ERR_VENDOR_NOT_FOUND @regression", async () => {
     expect(seedError, `fixtures could not be seeded: ${seedError}`).toBe("");
     expect(vendorDeleteStatus).toBeLessThan(400);
 
@@ -334,7 +334,7 @@ describe("References to vendors and sourcing events", () => {
     expect(created, "a rejected create must not have written a family").toEqual([]);
   }, CASE_MS);
 
-  test("TC-CTAPI-022-3 create with a vendorId the tenant does not own returns 404 ERR_VENDOR_NOT_FOUND", async () => {
+  test("TC-CTAPI-022-3 create with a vendorId the tenant does not own returns 404 ERR_VENDOR_NOT_FOUND @regression", async () => {
     // PRECONDITION PROXY: no second tenant exists in this environment, so a
     // well-formed UUID this tenant does not own stands in for tenant B's vendor.
     // This proves existence NON-DISCLOSURE (404, never 403, body carries no tenant
@@ -357,7 +357,7 @@ describe("References to vendors and sourcing events", () => {
     );
   }, CASE_MS);
 
-  test("TC-CTAPI-023-3 create with a soft-deleted sourcingEventId returns 404 ERR_SOURCING_EVENT_NOT_FOUND", async () => {
+  test("TC-CTAPI-023-3 create with a soft-deleted sourcingEventId returns 404 ERR_SOURCING_EVENT_NOT_FOUND @regression", async () => {
     expect(seedError, `fixtures could not be seeded: ${seedError}`).toBe("");
     expect(deadEventId, "a deleted sourcing event fixture is required").not.toBe("");
 
@@ -373,7 +373,7 @@ describe("References to vendors and sourcing events", () => {
     assertResponseTime(r);
   }, CASE_MS);
 
-  test("TC-CTAPI-055-2 review after the linked vendor is deleted still returns 200 and does not corrupt fields", async () => {
+  test("TC-CTAPI-055-2 review after the linked vendor is deleted still returns 200 and does not corrupt fields @regression", async () => {
     expect(seedError, `fixtures could not be seeded: ${seedError}`).toBe("");
     expect(vendorDeleteStatus).toBeLessThan(400);
     expect(baseReviewVG, "the pre-delete review baseline must exist").toBeTruthy();
@@ -414,7 +414,7 @@ describe("References to vendors and sourcing events", () => {
     assertResponseTime(r);
   }, CASE_MS);
 
-  test("TC-CTAPI-079-5 a reference to a deleted vendor is returned as deleted rather than as live data", async () => {
+  test("TC-CTAPI-079-5 a reference to a deleted vendor is returned as deleted rather than as live data @regression", async () => {
     expect(seedError, `fixtures could not be seeded: ${seedError}`).toBe("");
     expect(vendorDeleteStatus).toBeLessThan(400);
 
@@ -432,7 +432,7 @@ describe("References to vendors and sourcing events", () => {
     assertResponseTime(r);
   }, CASE_MS);
 
-  test("TC-CTAPI-079-6 a reference to a deleted sourcing event is returned as deleted rather than as live data", async () => {
+  test("TC-CTAPI-079-6 a reference to a deleted sourcing event is returned as deleted rather than as live data @regression", async () => {
     expect(seedError, `fixtures could not be seeded: ${seedError}`).toBe("");
     expect(eventDeleteStatus, "the sourcing event fixture must actually have been deleted").toBeLessThan(400);
 
@@ -454,7 +454,7 @@ describe("References to vendors and sourcing events", () => {
     assertResponseTime(r);
   }, CASE_MS);
 
-  test("TC-CTAPI-084 family delete clears the FEAT-005 vendor deletion gate immediately", async () => {
+  test("TC-CTAPI-084 family delete clears the FEAT-005 vendor deletion gate immediately @regression", async () => {
     expect(seedError, `fixtures could not be seeded: ${seedError}`).toBe("");
 
     // 1. The gate blocks while the linked family is active (spec 9.11).
@@ -575,7 +575,7 @@ describe("Stage 1 failure, retry and the gates that depend on it", () => {
     await destroyFamily(poToken, failed?.familyId);
   }, 120_000);
 
-  test("TC-CTAPI-041-3 extraction status returns 200 with extractionStatus failed after a Stage 1 failure", async () => {
+  test("TC-CTAPI-041-3 extraction status returns 200 with extractionStatus failed after a Stage 1 failure @regression", async () => {
     expect(seedError, `failed-extraction fixture could not be seeded: ${seedError}`).toBe("");
     const r = await api.extractionStatus(poToken, failed!.familyId, failed!.versionId);
     // A failed extraction is still a successful READ - the failure lives in the payload.
@@ -589,7 +589,7 @@ describe("Stage 1 failure, retry and the gates that depend on it", () => {
     assertResponseTime(r);
   }, CASE_MS);
 
-  test("TC-CTAPI-053-2 review after a failed extraction is rejected with ERR_EXTRACTION_FAILED", async () => {
+  test("TC-CTAPI-053-2 review after a failed extraction is rejected with ERR_EXTRACTION_FAILED @regression", async () => {
     expect(seedError, `failed-extraction fixture could not be seeded: ${seedError}`).toBe("");
     const r = await api.review(poToken, failed!.familyId, failed!.versionId);
     // Spec Endpoint #7 Processing 1. The exact status is `contract TBD` in the case,
@@ -602,7 +602,7 @@ describe("Stage 1 failure, retry and the gates that depend on it", () => {
     assertResponseTime(r);
   }, CASE_MS);
 
-  test("TC-CTAPI-060-2 save after a failed extraction returns 409 ERR_EXTRACTION_NOT_COMPLETED echoing failed", async () => {
+  test("TC-CTAPI-060-2 save after a failed extraction returns 409 ERR_EXTRACTION_NOT_COMPLETED echoing failed @regression", async () => {
     expect(seedError, `failed-extraction fixture could not be seeded: ${seedError}`).toBe("");
     const pre = await api.extractionStatus(poToken, failed!.familyId, failed!.versionId);
     expect(pre.data.data.extractionStatus).toBe("failed");
@@ -643,7 +643,7 @@ describe("Endpoint #6 - retry extraction", () => {
     await destroyFamily(poToken, failed?.familyId);
   }, 120_000);
 
-  test("TC-CTAPI-048 retry creates no new version, consumes no NNN and leaves the family unchanged", async () => {
+  test("TC-CTAPI-048 retry creates no new version, consumes no NNN and leaves the family unchanged @regression", async () => {
     expect(seedError, `failed-extraction fixture could not be seeded: ${seedError}`).toBe("");
 
     // Baseline BEFORE the retry.
@@ -692,7 +692,7 @@ describe("Endpoint #6 - retry extraction", () => {
     );
   }, CASE_MS);
 
-  test("TC-CTAPI-046 retry from a failed extraction returns 200 and moves the status back to pending", async () => {
+  test("TC-CTAPI-046 retry from a failed extraction returns 200 and moves the status back to pending @regression", async () => {
     expect(seedError, `failed-extraction fixture could not be seeded: ${seedError}`).toBe("");
     const pre = await api.extractionStatus(poToken, failed!.familyId, failed!.versionId);
     expect(pre.data.data.extractionStatus).toBe("failed");
@@ -724,7 +724,7 @@ describe("Endpoint #6 - retry extraction", () => {
     }
   }, CASE_MS);
 
-  test("TC-CTAPI-049-1 retry re-runs on the same record and the review payload rebinds to the same versionId", async () => {
+  test("TC-CTAPI-049-1 retry re-runs on the same record and the review payload rebinds to the same versionId @regression", async () => {
     expect(seedError, `failed-extraction fixture could not be seeded: ${seedError}`).toBe("");
 
     const r = await api.retryExtraction(poToken, failed!.familyId, failed!.versionId);
@@ -819,7 +819,7 @@ describe("Endpoint #6 - retry during an Update Contract", () => {
     await destroyFamily(poToken, upd?.familyId);
   }, 120_000);
 
-  test("TC-CTAPI-049-2 retry during an Update Contract re-stages into the pending record, leaving live data untouched", async () => {
+  test("TC-CTAPI-049-2 retry during an Update Contract re-stages into the pending record, leaving live data untouched @regression", async () => {
     expect(seedError, `update-contract fixture could not be seeded: ${seedError}`).toBe("");
     expect(stagedStatus, "the staged update must have reached a failed extraction").toBe("failed");
 
@@ -892,7 +892,7 @@ describe("Endpoints #2, #3, #4, #8, #10 - create, version, save and riskCount", 
     await destroyFamily(poToken, createdFamilyId);
   }, 180_000);
 
-  test("TC-CTAPI-018-1 create accepts contractType msa_services and persists it", async () => {
+  test("TC-CTAPI-018-1 create accepts contractType msa_services and persists it @regression", async () => {
     const fx = CONTRACT_V1();
     const r = await api.create(poToken, {
       contractType: "msa_services",
@@ -928,7 +928,7 @@ describe("Endpoints #2, #3, #4, #8, #10 - create, version, save and riskCount", 
     assertResponseTime(d);
   }, CASE_MS);
 
-  test("TC-CTAPI-024 create when the tenant family sequence would exceed 9999 returns 409 ERR_CAPACITY_REACHED", async () => {
+  test("TC-CTAPI-024 create when the tenant family sequence would exceed 9999 returns 409 ERR_CAPACITY_REACHED @regression", async () => {
     // PRECONDITION UNREACHABLE: the 409 needs tenants.family_sequence_counter at
     // 9999. Reaching it means 9999 real creates or a direct DB write, and this
     // harness has neither DB access nor a seeding hook. This case therefore
@@ -960,7 +960,7 @@ describe("Endpoints #2, #3, #4, #8, #10 - create, version, save and riskCount", 
     );
   }, CASE_MS);
 
-  test("TC-CTAPI-033-1 upload new version when NNN would exceed 999 returns 409 ERR_VERSION_LIMIT", async () => {
+  test("TC-CTAPI-033-1 upload new version when NNN would exceed 999 returns 409 ERR_VERSION_LIMIT @regression", async () => {
     // PRECONDITION UNREACHABLE for the same reason as TC-CTAPI-024:
     // contract_families.version_sequence_counter would have to be at 999.
     // Asserted here: the upload-version path below the cap works and increments
@@ -992,7 +992,7 @@ describe("Endpoints #2, #3, #4, #8, #10 - create, version, save and riskCount", 
     );
   }, CASE_MS);
 
-  test("TC-CTAPI-025-1 create freezes the clause rows for the new version", async () => {
+  test("TC-CTAPI-025-1 create freezes the clause rows for the new version @regression", async () => {
     expect(seedError, `fixtures could not be seeded: ${seedError}`).toBe("");
     const r = await api.clauseComparison(poToken, saved!.familyId);
     expect(r.status).toBe(200);
@@ -1032,7 +1032,7 @@ describe("Endpoints #2, #3, #4, #8, #10 - create, version, save and riskCount", 
     assertResponseTime(r);
   }, CASE_MS);
 
-  test("TC-CTAPI-040 an Analyst attempting Update Contract is refused with 403", async () => {
+  test("TC-CTAPI-040 an Analyst attempting Update Contract is refused with 403 @regression", async () => {
     expect(seedError, `fixtures could not be seeded: ${seedError}`).toBe("");
     const fx = CONTRACT_V2();
     const r = await api.updateContract(analystToken, saved!.familyId, saved!.versionId, {
@@ -1054,7 +1054,7 @@ describe("Endpoints #2, #3, #4, #8, #10 - create, version, save and riskCount", 
     assertResponseTime(d);
   }, CASE_MS);
 
-  test("TC-CTAPI-064-1 save accepts a free-text field at exactly 500 characters", async () => {
+  test("TC-CTAPI-064-1 save accepts a free-text field at exactly 500 characters @regression", async () => {
     expect(seedError, `fixtures could not be seeded: ${seedError}`).toBe("");
     // 16 distinct 500-character values: a 3-character marker plus 497 filler, so a
     // silent truncation, a cross-field bleed and a column-width clamp are all visible.
@@ -1089,7 +1089,7 @@ describe("Endpoints #2, #3, #4, #8, #10 - create, version, save and riskCount", 
     expect(r.status).toBe(200);
   }, CASE_MS);
 
-  test("TC-CTAPI-069-3 save against a version the tenant does not own returns 404, not 403", async () => {
+  test("TC-CTAPI-069-3 save against a version the tenant does not own returns 404, not 403 @regression", async () => {
     // PRECONDITION PROXY: no second tenant exists, so a well-formed UUID pair this
     // tenant does not own stands in for tenant B's family/version. This proves
     // existence NON-DISCLOSURE and that no write-through occurs, but it is NOT a
@@ -1120,7 +1120,7 @@ describe("Endpoints #2, #3, #4, #8, #10 - create, version, save and riskCount", 
     );
   }, CASE_MS);
 
-  test("TC-CTAPI-079-3 riskCount is 0, not null, when Stage 2 completes with no risks", async () => {
+  test("TC-CTAPI-079-3 riskCount is 0, not null, when Stage 2 completes with no risks @regression", async () => {
     expect(seedError, `fixtures could not be seeded: ${seedError}`).toBe("");
     const r = await api.detail(poToken, saved!.familyId);
     expect(r.status).toBe(200);
@@ -1201,7 +1201,7 @@ describe("Endpoint #17 - presigned file URL", () => {
     await destroyFamily(poToken, fam?.familyId);
   }, 120_000);
 
-  test("TC-CTAPI-118 presigned URL object key follows the documented convention", async () => {
+  test("TC-CTAPI-118 presigned URL object key follows the documented convention @regression", async () => {
     expect(seedError, `file-url fixture could not be seeded: ${seedError}`).toBe("");
     const r = await api.fileUrl(poToken, fam!.familyId, fam!.versionId);
     expect(r.status).toBe(200);
@@ -1242,7 +1242,7 @@ describe("Endpoint #17 - presigned file URL", () => {
     );
   }, CASE_MS);
 
-  test("TC-CTAPI-119 presigned URL key is scoped to the caller's tenant prefix", async () => {
+  test("TC-CTAPI-119 presigned URL key is scoped to the caller's tenant prefix @regression", async () => {
     expect(seedError, `file-url fixture could not be seeded: ${seedError}`).toBe("");
     const r = await api.fileUrl(poToken, fam!.familyId, fam!.versionId);
     expect(r.status).toBe(200);
@@ -1266,7 +1266,7 @@ describe("Endpoint #17 - presigned file URL", () => {
     );
   }, CASE_MS);
 
-  test("TC-CTAPI-121 cross-tenant versionId returns 404 and never 403", async () => {
+  test("TC-CTAPI-121 cross-tenant versionId returns 404 and never 403 @regression", async () => {
     // PRECONDITION PROXY: no second tenant exists, so well-formed UUIDs this tenant
     // does not own stand in for tenant B's family/version. This proves existence
     // NON-DISCLOSURE, but it is NOT a true cross-tenant test.
@@ -1303,7 +1303,7 @@ describe("Endpoint #17 - presigned file URL", () => {
     );
   }, CASE_MS);
 
-  test("TC-CTAPI-124 presigned URL is not guessable and rejects signature tampering", async () => {
+  test("TC-CTAPI-124 presigned URL is not guessable and rejects signature tampering @regression", async () => {
     expect(seedError, `file-url fixture could not be seeded: ${seedError}`).toBe("");
     const r = await api.fileUrl(poToken, fam!.familyId, fam!.versionId);
     expect(r.status).toBe(200);
@@ -1482,7 +1482,7 @@ describe("Comparison queueing and invalidation", () => {
     await destroyFamily(poToken, family2);
   }, 120_000);
 
-  test("TC-CTAPI-110 only one comparison job runs at a time and the rest queue in submission order", async () => {
+  test("TC-CTAPI-110 only one comparison job runs at a time and the rest queue in submission order @regression", async () => {
     expect(seedError, `four-version family could not be seeded: ${seedError}`).toBe("");
 
     // Three distinct, uncached pairs submitted back to back.
@@ -1524,7 +1524,7 @@ describe("Comparison queueing and invalidation", () => {
     );
   }, CASE_MS);
 
-  test("TC-CTAPI-109 Update Contract invalidates every cached comparison containing the replaced version", async () => {
+  test("TC-CTAPI-109 Update Contract invalidates every cached comparison containing the replaced version @regression", async () => {
     expect(seedError, `four-version family could not be seeded: ${seedError}`).toBe("");
 
     // 1. Build and complete the four pairs, recording id and result for each.
@@ -1571,7 +1571,7 @@ describe("Comparison queueing and invalidation", () => {
     expect(rowC, "version C must still exist under the same versionId").toBeTruthy();
   }, CASE_MS);
 
-  test("TC-CTAPI-059-6 Update Contract save invalidates every cached comparison involving the version", async () => {
+  test("TC-CTAPI-059-6 Update Contract save invalidates every cached comparison involving the version @regression", async () => {
     expect(seedError, `four-version family could not be seeded: ${seedError}`).toBe("");
 
     // versionUpd = B. Spec 9.10 normalizes on uploaded_at, so (A,B) puts B in the
@@ -1707,7 +1707,7 @@ describe("Endpoint #8 - Update Contract save re-freezes the clause snapshot", ()
     await destroyFamily(poToken, seed?.familyId);
   }, 180_000);
 
-  test("TC-CTAPI-059-5 Update Contract save re-freezes the clause rows against the CURRENT configuration", async () => {
+  test("TC-CTAPI-059-5 Update Contract save re-freezes the clause rows against the CURRENT configuration @regression", async () => {
     expect(seedError, `clause re-freeze fixture could not be seeded: ${seedError}`).toBe("");
     expect(configBApplied, `configuration B could not be applied: ${configNote}`).toBe(true);
 

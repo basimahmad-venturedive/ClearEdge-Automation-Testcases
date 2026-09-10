@@ -145,7 +145,7 @@ beforeAll(async () => {
 }, 600_000);
 
 describe("Endpoint #15 - POST /contracts/:familyId/comparisons (start or retrieve)", () => {
-  test("TC-CTAPI-105-1 a first-time comparison returns 202 pending and echoes both versions", async (ctx: any) => {
+  test("TC-CTAPI-105-1 a first-time comparison returns 202 pending and echoes both versions @regression", async (ctx: any) => {
     if (seedError) inconclusive(ctx, `two-version family could not be seeded: ${seedError}`);
     const r = await api.startComparison(poToken, familyId, versionA, versionB);
 
@@ -176,7 +176,7 @@ describe("Endpoint #15 - POST /contracts/:familyId/comparisons (start or retriev
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-106 the comparison cache key is an unordered pair - (A,B) and (B,A) resolve to one comparison", async (ctx: any) => {
+  test("TC-CTAPI-106 the comparison cache key is an unordered pair - (A,B) and (B,A) resolve to one comparison @regression", async (ctx: any) => {
     if (seedError || !primaryComparisonId) {
       inconclusive(ctx, `no comparison established for the pair (seed: ${seedError || "ok"})`);
     }
@@ -201,7 +201,7 @@ describe("Endpoint #15 - POST /contracts/:familyId/comparisons (start or retriev
     assertResponseTime(natural);
   });
 
-  test("TC-CTAPI-113 polling walks pending to completed and only ever reports the three documented statuses", async (ctx: any) => {
+  test("TC-CTAPI-113 polling walks pending to completed and only ever reports the three documented statuses @regression", async (ctx: any) => {
     if (seedError || !primaryComparisonId) {
       inconclusive(ctx, `no comparison to poll (seed: ${seedError || "ok"})`);
     }
@@ -243,7 +243,7 @@ describe("Endpoint #15 - POST /contracts/:familyId/comparisons (start or retriev
     assertResponseTime(r);
   }, 300_000);
 
-  test("TC-CTAPI-105-2 a completed comparison returns 200 with the materialChanges structure", async (ctx: any) => {
+  test("TC-CTAPI-105-2 a completed comparison returns 200 with the materialChanges structure @regression", async (ctx: any) => {
     if (primaryStatus !== "completed") {
       inconclusive(
         ctx,
@@ -275,7 +275,7 @@ describe("Endpoint #15 - POST /contracts/:familyId/comparisons (start or retriev
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-107-1 a cache hit returns the stored result and starts no new job", async (ctx: any) => {
+  test("TC-CTAPI-107-1 a cache hit returns the stored result and starts no new job @regression", async (ctx: any) => {
     if (primaryStatus !== "completed") {
       inconclusive(ctx, `comparison not completed (status="${primaryStatus || "unknown"}")`);
     }
@@ -294,7 +294,7 @@ describe("Endpoint #15 - POST /contracts/:familyId/comparisons (start or retriev
     expect(bodies[2]).toEqual(bodies[0]);
   });
 
-  test("TC-CTAPI-107-2 a cached comparison is visible to a different user in the same tenant", async (ctx: any) => {
+  test("TC-CTAPI-107-2 a cached comparison is visible to a different user in the same tenant @regression", async (ctx: any) => {
     if (primaryStatus !== "completed") {
       inconclusive(ctx, `comparison not completed (status="${primaryStatus || "unknown"}")`);
     }
@@ -313,7 +313,7 @@ describe("Endpoint #15 - POST /contracts/:familyId/comparisons (start or retriev
     assertResponseTime(analyst);
   });
 
-  test("TC-CTAPI-111-1 comparison requires exactly two distinct version ids", async (ctx: any) => {
+  test("TC-CTAPI-111-1 comparison requires exactly two distinct version ids @regression", async (ctx: any) => {
     if (seedError) inconclusive(ctx, `two-version family could not be seeded: ${seedError}`);
     const malformed: Array<[string, Record<string, unknown>]> = [
       ["neither id", {}],
@@ -345,7 +345,7 @@ describe("Endpoint #15 - POST /contracts/:familyId/comparisons (start or retriev
     expect(legit.data.data.comparisonId).toBe(primaryComparisonId);
   });
 
-  test("TC-CTAPI-111-2 comparison rejects versions that are not saved members of this family", async (ctx: any) => {
+  test("TC-CTAPI-111-2 comparison rejects versions that are not saved members of this family @regression", async (ctx: any) => {
     if (seedError) inconclusive(ctx, `families could not be seeded: ${seedError}`);
 
     // One operand from another family in the same tenant.
@@ -372,7 +372,7 @@ describe("Endpoint #15 - POST /contracts/:familyId/comparisons (start or retriev
     expect(legit.data.data.comparisonId).toBe(primaryComparisonId);
   });
 
-  test("TC-CTAPI-112-1 a Procurement Analyst can start and retrieve a comparison", async (ctx: any) => {
+  test("TC-CTAPI-112-1 a Procurement Analyst can start and retrieve a comparison @regression", async (ctx: any) => {
     if (seedError) inconclusive(ctx, `two-version family could not be seeded: ${seedError}`);
     // Compare is the one POST an Analyst is permitted to make in this feature
     // (US-CT-005), so a blanket "Analyst cannot POST" rule must fail here.
@@ -389,7 +389,7 @@ describe("Endpoint #15 - POST /contracts/:familyId/comparisons (start or retriev
     assertResponseTime(poll);
   });
 
-  test("TC-CTAPI-112-2 comparison requires authentication", async (ctx: any) => {
+  test("TC-CTAPI-112-2 comparison requires authentication @regression", async (ctx: any) => {
     if (seedError) inconclusive(ctx, `two-version family could not be seeded: ${seedError}`);
     const noToken = await api.startComparison("", familyId, versionA, versionB);
     expect(noToken.status).toBe(401);
@@ -415,7 +415,7 @@ describe("Endpoint #15 - POST /contracts/:familyId/comparisons (start or retriev
     expect(legit.data.data.comparisonId).toBe(primaryComparisonId);
   });
 
-  test("TC-CTAPI-112-3 comparison against an unknown family returns 404, not 403", async (ctx: any) => {
+  test("TC-CTAPI-112-3 comparison against an unknown family returns 404, not 403 @regression", async (ctx: any) => {
     if (seedError) inconclusive(ctx, `two-version family could not be seeded: ${seedError}`);
     // UNRUNNABLE leg: the true cross-tenant variant needs a tenant B owner token, and
     // tokenProvider exposes only one tenant (PO / Manager / Analyst all in tenant A).
@@ -429,7 +429,7 @@ describe("Endpoint #15 - POST /contracts/:familyId/comparisons (start or retriev
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-108 a failed comparison is never cached - retry always starts a fresh job", async () => {
+  test("TC-CTAPI-108 a failed comparison is never cached - retry always starts a fresh job @regression", async () => {
     // Forcing a comparison to FAIL needs a BullMQ fault-injection hook that has no
     // HTTP surface (case notes, Q13), so the `failed` branch runs opportunistically.
     // The case still asserts on every run: caching behaviour is pinned for whichever
@@ -472,7 +472,7 @@ describe("Endpoint #15 - POST /contracts/:familyId/comparisons (start or retriev
 });
 
 describe("Endpoint #16 - GET /contracts/:familyId/comparisons/:comparisonId (poll status)", () => {
-  test("TC-CTAPI-114 a failed comparison reports status failed with a null result", async () => {
+  test("TC-CTAPI-114 a failed comparison reports status failed with a null result @regression", async () => {
     // Same limitation as TC-CTAPI-108: a failure cannot be forced over HTTP. The
     // invariant this case exists to protect is the (status, result) PAIRING, and that
     // is assertable on either terminal state - `failed` must carry a null result, and
@@ -501,7 +501,7 @@ describe("Endpoint #16 - GET /contracts/:familyId/comparisons/:comparisonId (pol
     }
   });
 
-  test("TC-CTAPI-115-1 comparison polling is readable by an Analyst and rejects the unauthenticated caller", async (ctx: any) => {
+  test("TC-CTAPI-115-1 comparison polling is readable by an Analyst and rejects the unauthenticated caller @regression", async (ctx: any) => {
     if (seedError || !primaryComparisonId) {
       inconclusive(ctx, `no comparison to poll (seed: ${seedError || "ok"})`);
     }
@@ -521,7 +521,7 @@ describe("Endpoint #16 - GET /contracts/:familyId/comparisons/:comparisonId (pol
     assertResponseTime(anon);
   });
 
-  test("TC-CTAPI-115-2 comparison polling returns 404 for unknown and mismatched-family ids", async (ctx: any) => {
+  test("TC-CTAPI-115-2 comparison polling returns 404 for unknown and mismatched-family ids @regression", async (ctx: any) => {
     if (seedError || !primaryComparisonId) {
       inconclusive(ctx, `no comparison to poll (seed: ${seedError || "ok"})`);
     }
@@ -545,7 +545,7 @@ describe("Endpoint #16 - GET /contracts/:familyId/comparisons/:comparisonId (pol
 });
 
 describe("Endpoint #17 - GET /contracts/:familyId/versions/:versionId/file-url", () => {
-  test("TC-CTAPI-116-1 presigned file URL returns url, 900 s expiry and contentType for a saved version", async (ctx: any) => {
+  test("TC-CTAPI-116-1 presigned file URL returns url, 900 s expiry and contentType for a saved version @regression", async (ctx: any) => {
     if (seedError) inconclusive(ctx, `family could not be seeded: ${seedError}`);
     const r = await api.fileUrl(poToken, familyId, versionA);
     expect(r.status).toBe(200);
@@ -563,7 +563,7 @@ describe("Endpoint #17 - GET /contracts/:familyId/versions/:versionId/file-url",
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-116-2 the presigned URL resolves to the tenant-scoped object key and opens inline", async (ctx: any) => {
+  test("TC-CTAPI-116-2 the presigned URL resolves to the tenant-scoped object key and opens inline @regression", async (ctx: any) => {
     if (seedError) inconclusive(ctx, `family could not be seeded: ${seedError}`);
     const r = await api.fileUrl(poToken, familyId, versionA);
     expect(r.status).toBe(200);
@@ -620,7 +620,7 @@ describe("Endpoint #17 - GET /contracts/:familyId/versions/:versionId/file-url",
     expect(segments, "versionId is not part of the accepted key layout").not.toContain(versionA);
   });
 
-  test("TC-CTAPI-116-3 repeated calls issue fresh short-lived URLs and the signature is time-bound", async (ctx: any) => {
+  test("TC-CTAPI-116-3 repeated calls issue fresh short-lived URLs and the signature is time-bound @regression", async (ctx: any) => {
     if (seedError) inconclusive(ctx, `family could not be seeded: ${seedError}`);
     const first = await api.fileUrl(poToken, familyId, versionA);
     // SigV4's X-Amz-Date has one-second granularity, so two calls inside the same second
@@ -660,7 +660,7 @@ describe("Endpoint #17 - GET /contracts/:familyId/versions/:versionId/file-url",
     // no clock control exists - left to a manual or nightly long-running check.
   });
 
-  test("TC-CTAPI-117 contentType reflects the stored file type of the requested version", async (ctx: any) => {
+  test("TC-CTAPI-117 contentType reflects the stored file type of the requested version @regression", async (ctx: any) => {
     if (seedError) inconclusive(ctx, `family could not be seeded: ${seedError}`);
     // UNRUNNABLE leg: the DOCX half needs a DOCX fixture with a machine-readable text
     // layer, and tests/fixtures/contracts holds only the two PDFs. The per-version
@@ -688,7 +688,7 @@ describe("Endpoint #17 - GET /contracts/:familyId/versions/:versionId/file-url",
     assertResponseTime(b);
   });
 
-  test("TC-CTAPI-120 a versionId belonging to a different family in the same tenant yields no URL", async (ctx: any) => {
+  test("TC-CTAPI-120 a versionId belonging to a different family in the same tenant yields no URL @regression", async (ctx: any) => {
     if (seedError) inconclusive(ctx, `families could not be seeded: ${seedError}`);
     // Real versionId, real familyId, wrong pairing - the path segment is enforced.
     const crossed = await api.fileUrl(poToken, familyId, otherVersionId);
@@ -704,7 +704,7 @@ describe("Endpoint #17 - GET /contracts/:familyId/versions/:versionId/file-url",
     assertResponseTime(control);
   });
 
-  test("TC-CTAPI-122 an unknown familyId yields no presigned URL", async (ctx: any) => {
+  test("TC-CTAPI-122 an unknown familyId yields no presigned URL @regression", async (ctx: any) => {
     if (seedError) inconclusive(ctx, `family could not be seeded: ${seedError}`);
     const r = await api.fileUrl(poToken, MISSING_UUID, versionA);
     expect(r.status).toBe(404);
@@ -713,7 +713,7 @@ describe("Endpoint #17 - GET /contracts/:familyId/versions/:versionId/file-url",
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-123 an unknown versionId within a real family yields no presigned URL", async (ctx: any) => {
+  test("TC-CTAPI-123 an unknown versionId within a real family yields no presigned URL @regression", async (ctx: any) => {
     if (seedError) inconclusive(ctx, `family could not be seeded: ${seedError}`);
     const r = await api.fileUrl(poToken, familyId, MISSING_UUID);
     expect(r.status).toBe(404);
@@ -727,7 +727,7 @@ describe("Endpoint #17 - GET /contracts/:familyId/versions/:versionId/file-url",
     assertResponseTime(control);
   });
 
-  test("TC-CTAPI-125 an unauthenticated request for a presigned URL is rejected", async (ctx: any) => {
+  test("TC-CTAPI-125 an unauthenticated request for a presigned URL is rejected @regression", async (ctx: any) => {
     if (seedError) inconclusive(ctx, `family could not be seeded: ${seedError}`);
     const anon = await api.fileUrl("", familyId, versionA);
     expect(anon.status).toBe(401);
@@ -742,7 +742,7 @@ describe("Endpoint #17 - GET /contracts/:familyId/versions/:versionId/file-url",
     assertResponseTime(bad);
   });
 
-  test("TC-CTAPI-126 an Analyst can presign a file URL", async (ctx: any) => {
+  test("TC-CTAPI-126 an Analyst can presign a file URL @regression", async (ctx: any) => {
     if (seedError) inconclusive(ctx, `family could not be seeded: ${seedError}`);
     // #17 carries `view_contracts`, which the Analyst holds.
     const r = await api.fileUrl(analystToken, familyId, versionA);
@@ -831,7 +831,7 @@ describe("Section 11 - cross-module interfaces observed through Vendor Directory
     }
   }, 600_000);
 
-  test("TC-CTAPI-146 getVendorContracts returns the pinned shape with correct field types", async (ctx: any) => {
+  test("TC-CTAPI-146 getVendorContracts returns the pinned shape with correct field types @regression", async (ctx: any) => {
     if (xmError) inconclusive(ctx, `cross-module fixtures could not be seeded: ${xmError}`);
     // Observed through GET /vendors/:id/contracts, the FEAT-005 route that consumes
     // the section 11.2 method. The envelope belongs to FEAT-005; the ROWS are the
@@ -862,7 +862,7 @@ describe("Section 11 - cross-module interfaces observed through Vendor Directory
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-149 getVendorContractCounts asymmetry - contractCount counts all statuses, upcomingActionsCount counts active only", async (ctx: any) => {
+  test("TC-CTAPI-149 getVendorContractCounts asymmetry - contractCount counts all statuses, upcomingActionsCount counts active only @regression", async (ctx: any) => {
     if (xmError) inconclusive(ctx, `cross-module fixtures could not be seeded: ${xmError}`);
     // Observed through GET /vendors, the FEAT-005 list route that consumes 11.3.
     // vendorGate currently has exactly one family, in `in_review`.
@@ -884,7 +884,7 @@ describe("Section 11 - cross-module interfaces observed through Vendor Directory
     // seeds at about 30 s of AI extraction each and is not seeded here.
   });
 
-  test("TC-CTAPI-150 getVendorContractCounts returns a zero shape for a vendor with no contracts", async (ctx: any) => {
+  test("TC-CTAPI-150 getVendorContractCounts returns a zero shape for a vendor with no contracts @regression", async (ctx: any) => {
     if (xmError) inconclusive(ctx, `cross-module fixtures could not be seeded: ${xmError}`);
     const r = await vd.listVendors<any>({ search: vendorNoContractsName }, poToken);
     expect(r.status).toBe(200);
@@ -900,7 +900,7 @@ describe("Section 11 - cross-module interfaces observed through Vendor Directory
     // instrumentation - neither is observable over HTTP from this suite.
   });
 
-  test("TC-CTAPI-143 hasActiveContracts is false for a vendor with no contracts - deletion is allowed", async (ctx: any) => {
+  test("TC-CTAPI-143 hasActiveContracts is false for a vendor with no contracts - deletion is allowed @regression", async (ctx: any) => {
     if (xmError) inconclusive(ctx, `cross-module fixtures could not be seeded: ${xmError}`);
     const r = await vd.deleteVendor<any>(vendorNoContracts, poToken);
     // Observable proxy for `false`: nothing blocks the delete.
@@ -908,7 +908,7 @@ describe("Section 11 - cross-module interfaces observed through Vendor Directory
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-140 hasActiveContracts is true for a vendor whose only contract is in_review - deletion is blocked", async (ctx: any) => {
+  test("TC-CTAPI-140 hasActiveContracts is true for a vendor whose only contract is in_review - deletion is blocked @regression", async (ctx: any) => {
     if (xmError) inconclusive(ctx, `cross-module fixtures could not be seeded: ${xmError}`);
     const detail = await api.detail(poToken, gateFamilyId);
     expect(detail.status).toBe(200);
@@ -924,7 +924,7 @@ describe("Section 11 - cross-module interfaces observed through Vendor Directory
     expect(still.status).toBe(200);
   });
 
-  test("TC-CTAPI-139 hasActiveContracts is true for a vendor with an active contract - deletion is blocked", async (ctx: any) => {
+  test("TC-CTAPI-139 hasActiveContracts is true for a vendor with an active contract - deletion is blocked @regression", async (ctx: any) => {
     if (xmError) inconclusive(ctx, `cross-module fixtures could not be seeded: ${xmError}`);
     // Activate returns 201 on live QA though the spec says 200 - known bug CLRE-280.
     const act = await api.activate(poToken, gateFamilyId, gateVersionId, "2025-08-31");
@@ -939,7 +939,7 @@ describe("Section 11 - cross-module interfaces observed through Vendor Directory
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-142 hasActiveContracts is false when the only contract is terminated - deletion is allowed", async (ctx: any) => {
+  test("TC-CTAPI-142 hasActiveContracts is false when the only contract is terminated - deletion is allowed @regression", async (ctx: any) => {
     if (xmError) inconclusive(ctx, `cross-module fixtures could not be seeded: ${xmError}`);
     const term = await api.terminate(poToken, gateFamilyId);
     expect(term.status, `terminate failed: ${JSON.stringify(term.data).slice(0, 200)}`).toBeLessThan(400);
@@ -953,7 +953,7 @@ describe("Section 11 - cross-module interfaces observed through Vendor Directory
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-141 hasActiveContracts is false when the only contract is expired - deletion is allowed", async (ctx: any) => {
+  test("TC-CTAPI-141 hasActiveContracts is false when the only contract is expired - deletion is allowed @regression", async (ctx: any) => {
     if (xmError) inconclusive(ctx, `cross-module fixtures could not be seeded: ${xmError}`);
     const detail = await api.detail(poToken, expiredFamilyId);
     expect(detail.status).toBe(200);
@@ -965,7 +965,7 @@ describe("Section 11 - cross-module interfaces observed through Vendor Directory
     assertResponseTime(r);
   });
 
-  test("TC-CTAPI-144 hasActiveContracts is tenant-scoped and ignores another tenant's active contract", async (ctx: any) => {
+  test("TC-CTAPI-144 hasActiveContracts is tenant-scoped and ignores another tenant's active contract @regression", async (ctx: any) => {
     if (xmError) inconclusive(ctx, `cross-module fixtures could not be seeded: ${xmError}`);
     // PARTIAL BY ENVIRONMENT, but asserted rather than skipped. Section 11.1 is an
     // in-process method with no HTTP route, so it is observed through the FEAT-005
@@ -988,7 +988,7 @@ describe("Section 11 - cross-module interfaces observed through Vendor Directory
     );
   });
 
-  test("TC-CTAPI-145 hasActiveContracts excludes soft-deleted contract families", async (ctx: any) => {
+  test("TC-CTAPI-145 hasActiveContracts excludes soft-deleted contract families @regression", async (ctx: any) => {
     if (xmError) inconclusive(ctx, `cross-module fixtures could not be seeded: ${xmError}`);
     // Own fixture: this case mutates a family through to deletion, so it must not
     // share the gate family the neighbouring cases step through.
@@ -1028,7 +1028,7 @@ describe("Section 11 - cross-module interfaces observed through Vendor Directory
     );
   });
 
-  test("TC-CTAPI-147 getVendorContracts nullability, name fallback and lazy-write Expired refresh", async (ctx: any) => {
+  test("TC-CTAPI-147 getVendorContracts nullability, name fallback and lazy-write Expired refresh @regression", async (ctx: any) => {
     if (xmError) inconclusive(ctx, `cross-module fixtures could not be seeded: ${xmError}`);
     // Own fixture. The shared `vendorExpired` cannot be reused: TC-CTAPI-141 is
     // declared earlier in this describe and DELETES that vendor to prove an expired
@@ -1072,7 +1072,7 @@ describe("Section 11 - cross-module interfaces observed through Vendor Directory
     );
   });
 
-  test("TC-CTAPI-148 getVendorContracts is tenant-scoped and excludes soft-deleted families", async (ctx: any) => {
+  test("TC-CTAPI-148 getVendorContracts is tenant-scoped and excludes soft-deleted families @regression", async (ctx: any) => {
     if (xmError) inconclusive(ctx, `cross-module fixtures could not be seeded: ${xmError}`);
     // Own fixture, for the same reason as TC-CTAPI-145.
     const body = VP.newVendor(cat as VP.CategoryPair);
@@ -1120,7 +1120,7 @@ describe("Section 11 - cross-module interfaces observed through Vendor Directory
 });
 
 describe("Endpoint #14 - POST /:familyId/versions/:versionId/activate (authorization)", () => {
-  test("TC-CTAPI-104-1 activate rejects the unauthenticated caller with 401 and the Analyst with 403", async (ctx: any) => {
+  test("TC-CTAPI-104-1 activate rejects the unauthenticated caller with 401 and the Analyst with 403 @regression", async (ctx: any) => {
     if (seedError) inconclusive(ctx, `family could not be seeded: ${seedError}`);
     const before = await api.detail(poToken, otherFamilyId);
     expect(before.status).toBe(200);
@@ -1146,7 +1146,7 @@ describe("Endpoint #14 - POST /:familyId/versions/:versionId/activate (authoriza
     expect(after.data.data.status).toBe(statusBefore);
   });
 
-  test("TC-CTAPI-104-2 activate across tenants returns 404, not 403", async (ctx: any) => {
+  test("TC-CTAPI-104-2 activate across tenants returns 404, not 403 @regression", async (ctx: any) => {
     if (seedError) inconclusive(ctx, `family could not be seeded: ${seedError}`);
     // UNRUNNABLE leg: the true cross-tenant variant needs a tenant B owner token and a
     // tenant B family. The reachable half is the same code path - an invisible familyId,
