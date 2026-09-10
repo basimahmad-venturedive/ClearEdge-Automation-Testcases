@@ -193,6 +193,18 @@ export function analystPassword(): string {
   return requireVar('ANALYST_PASSWORD');
 }
 
+/**
+ * Opt-in switch for the IRREVERSIBLE Notification Centre cases (CEIQ-FEAT-012
+ * AC-005/AC-006 — dismiss and clear-all). A dismissed notification never returns
+ * (BR-07) and the dev tenant holds exactly five, so those cases consume the whole
+ * fixture and cannot be re-run until new vendor proposal activity occurs. They are
+ * therefore skipped unless NOTIFICATIONS_ALLOW_DESTRUCTIVE=1 is set for the run.
+ * Non-secret knob — read like CI, not like a credential.
+ */
+export function allowsDestructiveNotifications(): boolean {
+  return readVar('NOTIFICATIONS_ALLOW_DESTRUCTIVE') === '1';
+}
+
 /** Non-secret CI knob. */
 export function isCi(): boolean {
   return readVar('CI') !== undefined;

@@ -24,7 +24,11 @@ const poProject: PlaywrightTestProject[] = hasPoCreds
         // — otherwise the bare `sourcing-` alternative would also swallow the
         // role-access specs (…-sourcing-access.spec.ts), which must run under the
         // pm/analyst sessions instead.
-        testMatch: /[\\/](user-management|company-settings|vendors|clause-config|sourcing)-[^\\/]*\.spec\.ts$/,
+        // `notifications.spec.ts` (CEIQ-FEAT-012) is matched as its own alternative:
+        // the prefix list above requires a trailing hyphen, which that filename has
+        // no reason to carry — without this it would belong to no project and simply
+        // never run.
+        testMatch: /[\\/]((user-management|company-settings|vendors|clause-config|sourcing|contracts|chat|dashboard)-[^\\/]*|notifications)\.spec\.ts$/,
       },
     ]
   : [];
@@ -46,7 +50,7 @@ const roleProjects: PlaywrightTestProject[] = [
           name: 'pm',
           dependencies: ['setup'],
           use: { storageState: 'playwright/.auth/pm.json' },
-          testMatch: /manager-sourcing-access\.spec\.ts/,
+          testMatch: /manager-(sourcing|dashboard)-access\.spec\.ts/,
         },
       ]
     : []),
@@ -56,7 +60,7 @@ const roleProjects: PlaywrightTestProject[] = [
           name: 'analyst',
           dependencies: ['setup'],
           use: { storageState: 'playwright/.auth/analyst.json' },
-          testMatch: /analyst-sourcing-access\.spec\.ts/,
+          testMatch: /analyst-(sourcing|dashboard)-access\.spec\.ts/,
         },
       ]
     : []),

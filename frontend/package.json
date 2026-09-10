@@ -24,7 +24,9 @@
     "testrail:execute": "node scripts/testrail-execute.js",
     "test:qa:clause": "node scripts/run-env.mjs qa tests/clause-config-view.spec.ts",
     "test:qa:vendor": "node scripts/run-env.mjs qa tests/vendors-add.spec.ts",
-    "test:qa:setup": "node scripts/run-env.mjs qa --project=setup"
+    "test:qa:setup": "node scripts/run-env.mjs qa --project=setup",
+    "test:dev:notifications": "node scripts/run-env.mjs dev tests/notifications.spec.ts",
+    "test:qa:notifications": "node scripts/run-env.mjs qa tests/notifications.spec.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.50.0",
